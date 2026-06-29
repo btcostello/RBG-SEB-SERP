@@ -42,12 +42,7 @@
 - [x] Story 4.1: Build the data-driven report page registry and renderer
 - [x] Story 4.2: Generate the Cover page
 - [x] Story 4.3: Generate the Census Summary page
-  > As the proposal author
-  > I want a census summary page listing the plan participants
-  > So that the client sees who the plan covers.
-  > AC: Given a quote with a census and a completed run, When the Census Summary page renders, Then it lists the plan participants with their key fields (FR29), And it is registered in the report registry (FR31)
-  > Spec: specs/planning-artifacts/epics.md#story-4-3
-- [ ] Story 4.4: Generate the COLI Summary page
+- [x] Story 4.4: Generate the COLI Summary page
   > As the proposal author
   > I want a COLI summary page showing the headline funding numbers
   > So that the client sees what funding the plan with COLI costs.

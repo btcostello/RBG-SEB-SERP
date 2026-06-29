@@ -297,7 +297,9 @@ npm run format  # prettier --write .
   done in 4.1. **CoverPage (Story 4.2)** renders the SERP-financed-with-COLI title personalized
   with `quoteStore.current.company.name` (FR28). **CensusSummary (Story 4.3)** lists the census
   with key fields (name/gender/DOB/hire/salary/benefit%/risk/plan) from `quoteStore.current.census`
-  (FR29). ColiSummary still a stub (4.4).
+  (FR29). **ColiSummary (Story 4.4)** shows the headline total death benefit + total first-year
+  premium from `quoteStore.current.results.aggregate`, formatted from decimal-string money (FR30,
+  AR2). All three MVP pages now have real content; print/export is Story 4.5.
 - **ESLint:** `svelte/no-navigation-without-resolve` is off — static internal `<a href>` links
   are intentional.
 
