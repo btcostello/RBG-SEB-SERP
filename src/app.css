@@ -1,0 +1,30 @@
+/* Global baseline styles + base print rules.
+   Presentation-grade print CSS for the proposal report is layered in later (Story 4.5). */
+
+:root {
+	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	color-scheme: light;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: var(--font-sans);
+	line-height: 1.5;
+	color: #1a1a1a;
+	background: #ffffff;
+}
+
+@media print {
+	body {
+		background: #ffffff;
+	}
+}

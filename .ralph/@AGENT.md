@@ -20,10 +20,40 @@ npm run build
 npm run dev
 ```
 
+## Production Build (adapter-node)
+```bash
+npm run build   # -> build/  (build/index.js, build/handler.js)
+npm run start   # node build  (runs the production Node server)
+```
+
+## Type & Lint Gates
+```bash
+npm run check   # svelte-kit sync && svelte-check  (type checking)
+npm run lint    # prettier --check . && eslint .    (enforces $lib/server boundary)
+npm run format  # prettier --write .
+```
+
 ## Key Learnings
-- Update this section when you learn new build optimizations
-- Document any gotchas or special setup requirements
-- Keep track of the fastest test/build cycle
+- **Stack (Story 1.1):** SvelteKit 2 + Svelte 5 (runes forced via `svelte.config.js` compilerOptions),
+  TypeScript, Vite 8, Vitest 4, ESLint 10 flat config, Prettier, `@sveltejs/adapter-node`.
+- **Scaffolder gotcha:** `npx sv create` (sv CLI v0.16.1) is interactive. Use
+  `sv create <dir> --template minimal --types ts --no-add-ons --no-install`, then
+  `sv add --no-install --no-git-check eslint prettier vitest=usages:unit sveltekit-adapter=adapter:node`.
+  Omitting `--no-add-ons` on `create` leaves an add-ons prompt that, if interrupted, deletes
+  `svelte.config.js` and corrupts the workspace.
+- **svelte.config.js:** The current sv CLI puts the adapter in `vite.config.ts` and omits
+  `svelte.config.js`. We use the conventional layout instead: adapter-node lives in
+  `svelte.config.js`; `vite.config.ts` only holds `sveltekit()` + the vitest `test` block.
+- **$lib/server boundary:** enforced two ways — SvelteKit build-time guarantee AND an ESLint
+  `no-restricted-imports` rule (in `eslint.config.js`) that excludes server-side files
+  (`src/lib/server/**`, `+server.ts`, `*.server.ts`, `hooks.server.ts`).
+- **Prettier scope:** `.prettierignore` excludes BMAD/Ralph tooling + planning docs
+  (`_bmad/`, `_bmad-output/`, `.ralph/`, `bmalph/`, `.claude/`, `API.md`, `CLAUDE.md`) so
+  `npm run lint` only checks application source.
+- **Vitest config:** uses a `server` project (node environment) including
+  `src/**/*.{test,spec}.{js,ts}` — the home for the pure engine suites. `requireAssertions: true`
+  is on, so every test must assert.
+- Fastest cycle: `npm test` (~0.2s for the placeholder suite); `npm run build` ~2.3s.
 
 ## Feature Development Quality Standards
 

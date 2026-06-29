@@ -5,7 +5,7 @@
 ### Quote Setup, Census & Persistence
 > Goal: The operator can create, open, save, and delete named quotes; set company and model settings (documented defaults with per-quote overrides); and build, edit, and review a full executive census — a complete, persistent data-entry workspace. This epic establishes the project foundation and all input-side capabilities, so the operator can capture and manage everything a proposal needs even before the calculation engine exists.
 
-- [ ] Story 1.1: Initialize the SvelteKit project and module structure
+- [x] Story 1.1: Initialize the SvelteKit project and module structure
   > As a developer building Schiff SERP
   > I want the project scaffolded with the official Svelte CLI and the agreed module structure, tooling, and server boundary in place
   > So that all subsequent feature work builds on a consistent, type-safe, tested foundation with the API-key boundary enforced from day one.
