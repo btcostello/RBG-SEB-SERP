@@ -16,14 +16,7 @@
 - [x] Story 2.1: Project salary to retirement and compute final average salary
 - [x] Story 2.2: Compute the annual benefit and year-by-year benefit stream
 - [x] Story 2.3: Compute total benefit cost and net present value
-  > As the proposal author
-  > I want the system to total the plan's benefit cost and its NPV at the configured discount rate
-  > So that I have the single liability figure the funding calculation depends on.
-  > AC: Given each insured's benefit stream, When the engine computes total benefit cost, Then it returns the correct undiscounted sum across all SERP participants (FR15)
-  > AC: Given the configured NPV discount rate (parameter, default 0%), When the engine computes NPV, Then it discounts the streams correctly, and changing the rate is a data change requiring no code change (FR15, NFR15)
-  > AC: Given the engine modules, When the pure `compute-liability` orchestrator runs, Then it composes salary → FAS → benefit → stream → total/NPV with no hardcoded constants — every figure traces to an input or a named formula (NFR5)
-  > Spec: specs/planning-artifacts/epics.md#story-2-3
-- [ ] Story 2.4: Present per-participant and aggregate liability results live
+- [x] Story 2.4: Present per-participant and aggregate liability results live
   > As the proposal author
   > I want liability results shown per participant and in aggregate, recalculating instantly as I change inputs
   > So that I can see the impact of an assumption change immediately.

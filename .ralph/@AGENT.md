@@ -155,6 +155,18 @@ npm run format  # prettier --write .
 - Engine is Big-internal; mapping `LiabilityResult` → domain `Results` (decimal strings) and
   wiring to the store/UI is Story 2.4.
 
+### Live liability results (Story 2.4)
+- **`engine/results-mapping.ts` `toResults(LiabilityResult)`** → domain `Results`: rounds
+  money to cents (`formatMoney`, half-up) at this output boundary (NFR5); asset fields omitted
+  (Epic 3). Validated against `ResultsSchema` so it persists cleanly.
+- **`$lib/stores/liability.svelte.ts` (`liability`)** — `current` (`$derived.by`) recomputes
+  `computeLiability` from `quoteStore.current` (census + settings) whenever inputs change;
+  `results` re-maps to the domain snapshot. Valuation date = `today()` (local). In-browser +
+  pure ⇒ sub-second (NFR6). It never mutates the quote (no reactive loop).
+- **`LiabilityResults.svelte`** shows per-participant + aggregate (FR16), wired into `/` under
+  the census. Persistence: the Setup route's Save snapshots `liability.results` onto the quote
+  via `quoteStore.setResults(...)` before saving, so results reopen with the quote (AC3/NFR11).
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

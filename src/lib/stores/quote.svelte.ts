@@ -13,7 +13,8 @@ import {
 	type Company,
 	type Insured,
 	type ModelSettings,
-	type Quote
+	type Quote,
+	type Results
 } from '$lib/domain';
 
 function generateId(): string {
@@ -100,6 +101,12 @@ class QuoteStore {
 			...this.current,
 			census: this.current.census.filter((insured) => insured.id !== id)
 		};
+	}
+
+	/** Snapshot the computed results onto the active quote (carried on serialize, FR16/NFR11). */
+	setResults(results: Results | null): void {
+		if (!this.current) return;
+		this.current = { ...this.current, results };
 	}
 }
 

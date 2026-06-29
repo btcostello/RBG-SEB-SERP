@@ -6,16 +6,20 @@
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
 	import { savedQuotes } from '$lib/stores/saved-quotes.svelte';
+	import { liability } from '$lib/stores/liability.svelte';
 	import { CompanySchema, fieldErrors } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
 	import CensusEditor from '$lib/components/CensusEditor.svelte';
+	import LiabilityResults from '$lib/components/LiabilityResults.svelte';
 	import QuoteList from '$lib/components/QuoteList.svelte';
 
 	let saved = $state(false);
 
 	function saveCurrent() {
 		if (!quoteStore.current) return;
+		// Snapshot the live liability results onto the quote so they persist and reopen (AC3).
+		quoteStore.setResults(liability.results);
 		void savedQuotes.save(quoteStore.current).then(() => {
 			saved = true;
 			setTimeout(() => (saved = false), 1500);
@@ -100,6 +104,7 @@
 				<h2>Executive census</h2>
 				<CensusEditor />
 			</div>
+			<LiabilityResults />
 		</section>
 	{/if}
 </main>
