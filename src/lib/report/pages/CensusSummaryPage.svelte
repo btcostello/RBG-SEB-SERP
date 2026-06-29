@@ -5,12 +5,12 @@
 	 * formatted from decimal-string money (AR2).
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
-	import { money, formatMoney } from '$lib/money/money';
+	import { formatMoneyDisplay } from '$lib/money/money';
 
 	const census = $derived(quoteStore.current?.census ?? []);
 
 	function displaySalary(value: string): string {
-		return formatMoney(money(value));
+		return formatMoneyDisplay(value);
 	}
 </script>
 

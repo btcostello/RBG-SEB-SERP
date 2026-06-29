@@ -6,6 +6,7 @@
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
 	import { liability } from '$lib/stores/liability.svelte';
+	import { formatMoneyDisplay } from '$lib/money/money';
 
 	function nameFor(insuredId: string): string {
 		const insured = quoteStore.current?.census.find((c) => c.id === insuredId);
@@ -34,10 +35,10 @@
 					{#each results.perParticipant as p (p.insuredId)}
 						<tr>
 							<td>{nameFor(p.insuredId)}</td>
-							<td class="num">{p.finalAverageSalary}</td>
-							<td class="num">{p.annualBenefit}</td>
-							<td class="num">{p.totalBenefitCost}</td>
-							<td class="num">{p.netPresentValue}</td>
+							<td class="num">{formatMoneyDisplay(p.finalAverageSalary)}</td>
+							<td class="num">{formatMoneyDisplay(p.annualBenefit)}</td>
+							<td class="num">{formatMoneyDisplay(p.totalBenefitCost)}</td>
+							<td class="num">{formatMoneyDisplay(p.netPresentValue)}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -46,8 +47,8 @@
 						<th>Aggregate</th>
 						<td></td>
 						<td></td>
-						<td class="num">{results.aggregate.totalBenefitCost}</td>
-						<td class="num">{results.aggregate.netPresentValue}</td>
+						<td class="num">{formatMoneyDisplay(results.aggregate.totalBenefitCost)}</td>
+						<td class="num">{formatMoneyDisplay(results.aggregate.netPresentValue)}</td>
 					</tr>
 				</tfoot>
 			</table>

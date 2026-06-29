@@ -4,6 +4,7 @@ import {
 	parseMoney,
 	serializeMoney,
 	formatMoney,
+	formatMoneyDisplay,
 	roundToCents,
 	toCents,
 	isMoneyString,
@@ -63,6 +64,23 @@ describe('formatMoney', () => {
 
 	it('honors an explicit decimal-places argument', () => {
 		expect(formatMoney(money('3.14159'), 4)).toBe('3.1416');
+	});
+});
+
+describe('formatMoneyDisplay', () => {
+	it('adds thousands separators while keeping exact cents', () => {
+		expect(formatMoneyDisplay(money('162240'))).toBe('162,240.00');
+		expect(formatMoneyDisplay(money('1234567.5'))).toBe('1,234,567.50');
+		expect(formatMoneyDisplay(money('999'))).toBe('999.00');
+		expect(formatMoneyDisplay(ZERO)).toBe('0.00');
+	});
+
+	it('accepts a canonical money string (the shape carried on Results)', () => {
+		expect(formatMoneyDisplay('162240.00')).toBe('162,240.00');
+	});
+
+	it('handles negatives', () => {
+		expect(formatMoneyDisplay(money('-1234567.89'))).toBe('-1,234,567.89');
 	});
 });
 

@@ -5,13 +5,13 @@
 	 * (FR31). Monetary values are formatted from decimal-string money (AR2).
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
-	import { money, formatMoney } from '$lib/money/money';
+	import { formatMoneyDisplay } from '$lib/money/money';
 
 	const aggregate = $derived(quoteStore.current?.results?.aggregate ?? null);
 
 	/** Display a decimal-string money value as currency; '—' when not yet computed. */
 	function displayMoney(value: string | undefined): string {
-		return value === undefined ? '—' : `$${formatMoney(money(value))}`;
+		return value === undefined ? '—' : `$${formatMoneyDisplay(value)}`;
 	}
 </script>
 

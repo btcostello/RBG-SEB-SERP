@@ -12,6 +12,7 @@
 	import {
 		InsuredDraftSchema,
 		fieldErrors,
+		toNumberOrNaN,
 		GENDERS,
 		PLAN_MEMBERSHIPS,
 		type Gender,
@@ -19,7 +20,7 @@
 		type PlanMembership,
 		type Insured
 	} from '$lib/domain';
-	import { money, formatMoney } from '$lib/money/money';
+	import { formatMoneyDisplay } from '$lib/money/money';
 
 	// Risk-class options reconcile with the engine's discovered schema (FR8, FR22),
 	// falling back to the seeded set when the schema is unreachable.
@@ -46,7 +47,7 @@
 		dateOfBirth,
 		dateOfHire,
 		currentSalary,
-		benefitPercentage: benefitPctStr.trim() === '' ? Number.NaN : Number(benefitPctStr),
+		benefitPercentage: toNumberOrNaN(benefitPctStr),
 		riskClass,
 		planMembership
 	});
@@ -94,9 +95,9 @@
 		quoteStore.removeInsured(id);
 	}
 
-	/** Format a stored decimal-string salary for display (AR2). */
+	/** Format a stored decimal-string salary for display with thousands separators (AR2). */
 	function displaySalary(value: string): string {
-		return formatMoney(money(value));
+		return formatMoneyDisplay(value);
 	}
 </script>
 
@@ -142,9 +143,8 @@
 			<label>
 				<span>Current salary</span>
 				<input
-					type="number"
-					step="0.01"
-					min="0"
+					type="text"
+					inputmode="decimal"
 					bind:value={currentSalary}
 					aria-invalid={!!errors.currentSalary}
 				/>

@@ -6,7 +6,7 @@
 	 */
 	import { runState } from '$lib/stores/run-state.svelte';
 	import { quoteStore } from '$lib/stores/quote.svelte';
-	import { formatMoney } from '$lib/money/money';
+	import { formatMoneyDisplay } from '$lib/money/money';
 
 	function nameFor(insuredId: string): string {
 		const insured = quoteStore.current?.census.find((c) => c.id === insuredId);
@@ -39,16 +39,17 @@
 					{@const y1 = ill.years[0]}
 					<tr>
 						<td>{nameFor(policy.insuredId)}</td>
-						<td class="num">{formatMoney(policy.faceAmount)}</td>
-						<td class="num">{ill.solvedAnnualPremium}</td>
-						<td class="num">{y1?.accountValue ?? '—'}</td>
-						<td class="num">{y1?.cashSurrenderValue ?? '—'}</td>
-						<td class="num">{y1?.deathBenefit ?? '—'}</td>
+						<td class="num">{formatMoneyDisplay(policy.faceAmount)}</td>
+						<td class="num">{formatMoneyDisplay(ill.solvedAnnualPremium)}</td>
+						<td class="num">{y1 ? formatMoneyDisplay(y1.accountValue) : '—'}</td>
+						<td class="num">{y1 ? formatMoneyDisplay(y1.cashSurrenderValue) : '—'}</td>
+						<td class="num">{y1 ? formatMoneyDisplay(y1.deathBenefit) : '—'}</td>
 						<td class:flag={ill.gptAdjusted}>{yesNo(ill.gptAdjusted)}</td>
 						<td class:flag={ill.mecAdjusted}>{yesNo(ill.mecAdjusted)}</td>
 						<td class="num">
-							{ill.guideline.singlePremium} / {ill.guideline.levelPremiumA} / {ill.guideline
-								.levelPremiumB}
+							{formatMoneyDisplay(ill.guideline.singlePremium)} / {formatMoneyDisplay(
+								ill.guideline.levelPremiumA
+							)} / {formatMoneyDisplay(ill.guideline.levelPremiumB)}
 						</td>
 					</tr>
 				{/each}

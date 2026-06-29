@@ -63,6 +63,27 @@ export function formatMoney(value: Money, decimalPlaces: number = MONEY_DECIMAL_
 	return value.toFixed(decimalPlaces);
 }
 
+/**
+ * Format money for on-screen display with thousands separators (e.g. "162,240.00").
+ *
+ * Display-only — NOT for serialization. The canonical money string ({@link formatMoney} /
+ * {@link serializeMoney}) stays comma-free so it round-trips through `Big` and passes
+ * {@link isMoneyString}. Accepts a `Big` or a canonical money string so view code can format
+ * the decimal-string values carried on `Results` without re-parsing concerns. Grouping is done
+ * on the fixed-decimal string (no float), preserving exact cents.
+ */
+export function formatMoneyDisplay(
+	value: Money | string,
+	decimalPlaces: number = MONEY_DECIMAL_PLACES
+): string {
+	const fixed = (typeof value === 'string' ? new Big(value) : value).toFixed(decimalPlaces);
+	const negative = fixed.startsWith('-');
+	const [intPart, decPart] = (negative ? fixed.slice(1) : fixed).split('.');
+	const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+	const body = decPart ? `${grouped}.${decPart}` : grouped;
+	return negative ? `-${body}` : body;
+}
+
 /** Round money to cents using the centralized half-up policy. Returns a `Big`. */
 export function roundToCents(value: Money): Money {
 	return value.round(MONEY_DECIMAL_PLACES, Big.roundHalfUp);
