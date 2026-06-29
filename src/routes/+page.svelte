@@ -8,6 +8,7 @@
 	import { CompanySchema, fieldErrors } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
+	import CensusEditor from '$lib/components/CensusEditor.svelte';
 
 	// --- Create-quote form state ---
 	let newName = $state('');
@@ -78,6 +79,10 @@
 				<CompanyForm />
 				<ModelSettingsForm />
 			</div>
+			<div class="census">
+				<h2>Executive census</h2>
+				<CensusEditor />
+			</div>
 		</section>
 	{/if}
 </main>
@@ -106,6 +111,9 @@
 	.forms {
 		display: grid;
 		gap: 1.5rem;
+	}
+	.census {
+		margin-top: 1.5rem;
 	}
 	.error {
 		color: #b00020;

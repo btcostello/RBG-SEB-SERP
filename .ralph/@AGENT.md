@@ -94,6 +94,17 @@ npm run format  # prettier --write .
 - **Components are runes-mode** (`$props`/`$state`/`$derived`, `onclick`/`oninput`
   attributes, `{@render children()}`) — project forces runes via `svelte.config.js`.
 
+### Executive census (Story 1.4)
+- **Store census methods (`quote.svelte.ts`):** `addInsured(Omit<Insured,'id'>)` (store
+  assigns the id via `crypto.randomUUID`), `updateInsured(id, patch)`, `removeInsured(id)` —
+  all immutable (map/filter/spread), so reactivity tracks (AR12).
+- **`InsuredDraftSchema = v.omit(InsuredSchema, ['id'])`** — the form validates a draft (no
+  id) with `fieldErrors`; the operator never supplies an id.
+- **`CensusEditor.svelte`** is one form that doubles as add/edit (`editingId` state), plus a
+  review table (FR10). Salary displays via `formatMoney(money(value))`; selects are seeded
+  from `RISK_CLASSES` / `GENDERS` / `PLAN_MEMBERSHIPS`. Census editing only renders inside
+  the active-quote branch of `/`, so SSR (no active quote) shows just the create form.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

@@ -68,10 +68,38 @@ class QuoteStore {
 		};
 	}
 
-	/** Replace the census (used by the census editor in Story 1.4). */
+	/** Replace the census wholesale. */
 	setCensus(census: Insured[]): void {
 		if (!this.current) return;
 		this.current = { ...this.current, census };
+	}
+
+	/** Add an executive to the census; the store assigns a stable id (FR5, AR12). */
+	addInsured(data: Omit<Insured, 'id'>): Insured {
+		const insured: Insured = { ...data, id: generateId() };
+		if (!this.current) return insured;
+		this.current = { ...this.current, census: [...this.current.census, insured] };
+		return insured;
+	}
+
+	/** Merge a partial update into one insured, immutably (FR5, AR12). */
+	updateInsured(id: string, patch: Partial<Omit<Insured, 'id'>>): void {
+		if (!this.current) return;
+		this.current = {
+			...this.current,
+			census: this.current.census.map((insured) =>
+				insured.id === id ? { ...insured, ...patch } : insured
+			)
+		};
+	}
+
+	/** Remove an insured from the census, immutably (FR5, AR12). */
+	removeInsured(id: string): void {
+		if (!this.current) return;
+		this.current = {
+			...this.current,
+			census: this.current.census.filter((insured) => insured.id !== id)
+		};
 	}
 }
 

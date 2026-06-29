@@ -39,6 +39,13 @@ export const InsuredSchema = v.object({
 
 export type Insured = v.InferOutput<typeof InsuredSchema>;
 
+/**
+ * Draft insured — every field of Insured except the store-assigned `id`. Used by the census
+ * editor form so the operator never supplies an id; the store assigns it on add.
+ */
+export const InsuredDraftSchema = v.omit(InsuredSchema, ['id']);
+export type InsuredDraft = v.InferOutput<typeof InsuredDraftSchema>;
+
 /** Helper predicates for plan membership (a COLI participant gets an illustration). */
 export function isColiParticipant(insured: Insured): boolean {
 	return insured.planMembership === 'COLI' || insured.planMembership === 'BOTH';

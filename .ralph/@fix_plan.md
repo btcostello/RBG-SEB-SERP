@@ -8,16 +8,7 @@
 - [x] Story 1.1: Initialize the SvelteKit project and module structure
 - [x] Story 1.2: Establish money, date/age, and domain-model foundations
 - [x] Story 1.3: Create and configure a quote (company + model settings)
-  > As the proposal author
-  > I want to create a named quote for a prospect company, set its corporate tax rate, and configure model settings with documented defaults I can override
-  > So that I can capture the company-level and plan-level parameters for a proposal.
-  > AC: Given the app, When I create a new quote, Then I can enter the prospect company name and corporate tax rate, and the quote is held in the active quote store (Svelte 5 runes) (FR1, AR12)
-  > AC: Given a new quote, When I open model settings, Then retirement age, assumed death-benefit age, benefit waiting period, salary growth rate, NPV discount rate, and FAS averaging period are all editable (FR2)
-  > AC: Given model settings I have not changed, When the quote is created, Then documented defaults are pre-populated (salary growth 3%, discount 0%, assumed death age 84) (FR3)
-  > AC: Given any default, When I override it for this quote, Then the override persists on this quote and the default is unaffected for other quotes (FR3)
-  > AC: Given an invalid entry (e.g., tax rate outside 0–1, non-numeric setting), When I attempt to set it, Then a field-level validation error surfaces via Valibot (AR4)
-  > Spec: specs/planning-artifacts/epics.md#story-1-3
-- [ ] Story 1.4: Build and review the executive census
+- [x] Story 1.4: Build and review the executive census
   > As the proposal author
   > I want to add, edit, remove, and review executives with all their identity, actuarial, benefit, risk-class, and plan-membership fields
   > So that I have a complete, validated census ready to run the model.

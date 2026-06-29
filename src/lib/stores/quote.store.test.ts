@@ -61,3 +61,50 @@ describe('quoteStore', () => {
 		expect(quoteStore.current).toBeNull();
 	});
 });
+
+describe('quoteStore census mutations (Story 1.4)', () => {
+	const draft = {
+		firstName: 'Jane',
+		lastName: 'Doe',
+		gender: 'F' as const,
+		dateOfBirth: '1970-06-15',
+		dateOfHire: '2005-01-01',
+		currentSalary: '250000.00',
+		benefitPercentage: 0.6,
+		riskClass: 'Standard Non Tobacco' as const,
+		planMembership: 'BOTH' as const
+	};
+
+	beforeEach(() => {
+		quoteStore.close();
+		quoteStore.create({ companyName: 'Acme', corporateTaxRate: 0.21 });
+	});
+
+	it('adds an insured and assigns a stable id (FR5)', () => {
+		const added = quoteStore.addInsured(draft);
+		expect(added.id).toBeTruthy();
+		expect(quoteStore.current?.census).toHaveLength(1);
+		expect(quoteStore.current?.census[0]).toEqual({ ...draft, id: added.id });
+	});
+
+	it('updates an insured immutably without touching others (FR5, AR12)', () => {
+		const a = quoteStore.addInsured(draft);
+		const b = quoteStore.addInsured({ ...draft, firstName: 'John', lastName: 'Smith' });
+		const before = quoteStore.current?.census;
+
+		quoteStore.updateInsured(a.id, { currentSalary: '300000.00' });
+
+		expect(quoteStore.current?.census).not.toBe(before);
+		expect(quoteStore.current?.census.find((i) => i.id === a.id)?.currentSalary).toBe('300000.00');
+		// the other insured is unchanged
+		expect(quoteStore.current?.census.find((i) => i.id === b.id)?.firstName).toBe('John');
+	});
+
+	it('removes an insured immediately (FR5)', () => {
+		const a = quoteStore.addInsured(draft);
+		const b = quoteStore.addInsured({ ...draft, firstName: 'John' });
+		quoteStore.removeInsured(a.id);
+		expect(quoteStore.current?.census).toHaveLength(1);
+		expect(quoteStore.current?.census[0].id).toBe(b.id);
+	});
+});
