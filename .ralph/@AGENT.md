@@ -76,6 +76,24 @@ npm run format  # prettier --write .
 - **`$lib` alias in tests:** Vitest resolves `$lib/*` via the SvelteKit Vite plugin — import
   cross-module helpers as `$lib/money/money`, not relative paths, in non-co-located code.
 
+### Quote setup + runes store (Story 1.3)
+- **Active quote store — `$lib/stores/quote.svelte.ts`.** A single `QuoteStore` class
+  instance (`quoteStore`) with a `current = $state<Quote | null>(null)` field. Reactive
+  across components because they all read the same instance. Mutations are immutable-style
+  (`updateCompany`/`updateModelSettings`/`setCensus` reassign `current` and the nested
+  object) so `$derived`/`$effect` track and `DEFAULT_MODEL_SETTINGS` is never mutated.
+- **Testing runes stores in node:** name the test `*.store.test.ts` (NOT `*.svelte.test.ts`)
+  so it runs in the node "server" vitest project — `*.svelte.{test,spec}` is excluded there
+  and no browser project exists. Importing the `.svelte.ts` module compiles fine; reading
+  state in assertions is non-reactive, which is what we want.
+- **Field-level validation — `$lib/domain/validate.ts` `fieldErrors(schema, input)`.**
+  Returns `{ topLevelField: message }` from `v.safeParse(..., { abortPipeEarly: true })`.
+  Forms (`CompanyForm`, `ModelSettingsForm`) build a candidate object from raw string
+  inputs (empty -> `NaN` to force an error), `$derived` the errors, and commit to the store
+  only when there are none (AR4).
+- **Components are runes-mode** (`$props`/`$state`/`$derived`, `onclick`/`oninput`
+  attributes, `{@render children()}`) — project forces runes via `svelte.config.js`.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

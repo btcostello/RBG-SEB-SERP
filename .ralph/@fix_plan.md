@@ -7,14 +7,7 @@
 
 - [x] Story 1.1: Initialize the SvelteKit project and module structure
 - [x] Story 1.2: Establish money, date/age, and domain-model foundations
-  > As a developer
-  > I want centralized money (big.js), age-nearest-birthday date utilities, and Valibot domain schemas with the Quote aggregate types
-  > So that every downstream calculation and form draws on one source of truth for precision, dates, and validation — eliminating float drift and inconsistent age math.
-  > AC: Given the money module, When any monetary value is created or operated on, Then it uses big.js with a single documented rounding policy (half-up) and serializes as a decimal string (NFR3, AR2), And a `Big → string → Big` round-trip test asserts exact equality (AR18)
-  > AC: Given the date utility, When an age or duration is computed, Then it uses age nearest birthday with dates as ISO `YYYY-MM-DD` (NFR4, AR3), And boundary-birthday cases are covered by explicit tests (AR19)
-  > AC: Given the domain layer, When `Company`, `ModelSettings`, `Insured`, and the `Quote` aggregate are defined, Then they are Valibot schemas with types derived via `v.InferOutput` (no hand-written parallel interfaces) (AR4), And the `Quote` is a single serializable JSON object (Company + ModelSettings + Census[] + Results) carrying a `schemaVersion` (AR5), And money is never a JS `number` outside the engine and `snake_case` appears in no domain type
-  > Spec: specs/planning-artifacts/epics.md#story-1-2
-- [ ] Story 1.3: Create and configure a quote (company + model settings)
+- [x] Story 1.3: Create and configure a quote (company + model settings)
   > As the proposal author
   > I want to create a named quote for a prospect company, set its corporate tax rate, and configure model settings with documented defaults I can override
   > So that I can capture the company-level and plan-level parameters for a proposal.

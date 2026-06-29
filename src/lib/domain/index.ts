@@ -5,6 +5,7 @@
  * derived via `v.InferOutput` and re-exported here. No `snake_case`, no money-as-number.
  */
 export * from './value-objects';
+export * from './validate';
 export * from './risk-class';
 export * from './company';
 export * from './model-settings';
