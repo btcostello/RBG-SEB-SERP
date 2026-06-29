@@ -231,6 +231,17 @@ npm run format  # prettier --write .
   `DEFAULT_FUNDING_STRATEGY_ID='cost-recovery'`). Options 2–4 = new file + one `register(...)`
   (NFR14). **Consumed by the run orchestrator (Story 3.6)** — tested seam, not yet UI-wired.
 
+### COLI solve design (Story 3.5)
+- **`COST_RECOVERY_SOLVE`** (in `funding/cost-recovery.ts`) = `{ value: '1000.00', when: 100,
+  basis: 'age' }` — operator-confirmed target: solve the level premium so each policy's net
+  surrender value reaches $1,000 at age 100 (AR17/I-2).
+- **`buildCostRecoveryDesignRequest({issueAge, gender, riskClass, faceAmount, productType?})`**
+  → `DesignRequest` with the solve block and NO fixed premium (the engine solves it). Validates
+  against `DesignRequestSchema`. Issue age is computed from DOB by the caller (orchestrator, 3.6).
+- **Adapter solve support** already maps the `solve` block (camelCase→snake_case) and returns
+  the resolved premium as `result.solvedAnnualPremium` (from `summary.initial_annual_premium`).
+  Covered by `adapter.test.ts` against a mocked solved response (AC3).
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

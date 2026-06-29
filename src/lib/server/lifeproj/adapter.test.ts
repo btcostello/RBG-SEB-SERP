@@ -180,4 +180,27 @@ describe('createLifeprojAdapter.project', () => {
 		});
 		await expect(adapter.project(request)).rejects.toBeInstanceOf(LifeprojConnectivityError);
 	});
+
+	it('sends a solve block and returns the engine-solved premium (Story 3.5)', async () => {
+		// Engine echoes the resolved premium in summary.initial_annual_premium after a solve.
+		const solvedBody = {
+			...successBody,
+			summary: { ...successBody.summary, initial_annual_premium: 12345.67 },
+			solve: { value: 1000, when: 100, basis: 'age', premium: 12345.67 }
+		};
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(solvedBody));
+		const adapter = createLifeprojAdapter({
+			baseUrl: 'https://engine.example',
+			apiKey: 'k',
+			fetch: fetchMock
+		});
+
+		const result = await adapter.project(request); // request includes solve {1000, age 100}
+
+		// The solve block crosses the wire...
+		const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+		expect(sentBody.solve).toEqual({ value: 1000, when: 100, basis: 'age' });
+		// ...and the solved premium comes back mapped to camelCase money.
+		expect(result.solvedAnnualPremium).toBe('12345.67');
+	});
 });

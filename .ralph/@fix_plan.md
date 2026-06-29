@@ -32,14 +32,7 @@
 - [x] Story 3.2: Expose the internal BFF endpoints
 - [x] Story 3.3: Discover, cache, and reconcile the engine schema
 - [x] Story 3.4: Compute the tax-adjusted death benefit and allocate per-person face
-  > As the proposal author
-  > I want the Cost-Recovery funding strategy to size the total death benefit and split it per participant
-  > So that each insured has a face amount the illustration can be designed around.
-  > AC: Given the total benefit cost and the corporate tax rate, When the funding strategy computes the total COLI death benefit, Then it returns `Total DB = total cost × (1 − tax rate)` as a single named, tested function (FR17, risk-mitigation)
-  > AC: Given the total death benefit and the set of COLI participants, When the strategy allocates, Then it derives each insured's face amount by equal split (FR18)
-  > AC: Given the funding-strategy interface, When Cost Recovery (Option 1) is implemented, Then it is registered behind the strategy seam so Options 2–4 are additive without touching the engine (NFR14)
-  > Spec: specs/planning-artifacts/epics.md#story-3-4
-- [ ] Story 3.5: Algorithmically design each COLI policy via solve
+- [x] Story 3.5: Algorithmically design each COLI policy via solve
   > As the proposal author
   > I want the system to derive each insured's Cost-Recovery premium by solving against the illustration engine
   > So that the COLI policy is designed automatically rather than hand-tuned.

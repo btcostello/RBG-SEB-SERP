@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import * as v from 'valibot';
 import { Big } from '$lib/money/money';
-import { costRecoveryStrategy } from './cost-recovery';
+import { DesignRequestSchema } from '$lib/domain';
+import {
+	costRecoveryStrategy,
+	COST_RECOVERY_SOLVE,
+	buildCostRecoveryDesignRequest
+} from './cost-recovery';
 import { getFundingStrategy, listFundingStrategies, DEFAULT_FUNDING_STRATEGY_ID } from './index';
 
 describe('costRecoveryStrategy.fund (FR17, FR18)', () => {
@@ -36,5 +42,28 @@ describe('funding strategy registry (NFR14)', () => {
 
 	it('returns undefined for an unregistered strategy id', () => {
 		expect(getFundingStrategy('option-2')).toBeUndefined();
+	});
+});
+
+describe('buildCostRecoveryDesignRequest (FR19, AR17/I-2)', () => {
+	it('targets a $1,000 net surrender value at age 100', () => {
+		expect(COST_RECOVERY_SOLVE).toEqual({ value: '1000.00', when: 100, basis: 'age' });
+	});
+
+	it('builds a solve design request from the per-person face and actuarial inputs', () => {
+		const request = buildCostRecoveryDesignRequest({
+			issueAge: 45,
+			gender: 'M',
+			riskClass: 'Standard Non Tobacco',
+			faceAmount: '474000.00',
+			productType: 'IUL'
+		});
+		expect(request.faceAmount).toBe('474000.00');
+		expect(request.issueAge).toBe(45);
+		expect(request.solve).toEqual({ value: '1000.00', when: 100, basis: 'age' });
+		// No fixed premium is sent — the engine solves it.
+		expect(request.annualPremium).toBeUndefined();
+		// Valid against the domain schema, so the BFF will accept it.
+		expect(v.safeParse(DesignRequestSchema, request).success).toBe(true);
 	});
 });

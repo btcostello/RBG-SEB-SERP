@@ -5,7 +5,12 @@
  * here plus a new strategy file — nothing else changes.
  */
 import type { FundingStrategy } from './funding-strategy';
-import { costRecoveryStrategy, COST_RECOVERY_ID } from './cost-recovery';
+import {
+	costRecoveryStrategy,
+	COST_RECOVERY_ID,
+	COST_RECOVERY_SOLVE,
+	buildCostRecoveryDesignRequest
+} from './cost-recovery';
 
 const registry = new Map<string, FundingStrategy>();
 
@@ -28,5 +33,11 @@ export function listFundingStrategies(): FundingStrategy[] {
 	return [...registry.values()];
 }
 
-export { costRecoveryStrategy, COST_RECOVERY_ID };
+export {
+	costRecoveryStrategy,
+	COST_RECOVERY_ID,
+	COST_RECOVERY_SOLVE,
+	buildCostRecoveryDesignRequest
+};
+export type { CostRecoveryDesignParams } from './cost-recovery';
 export * from './funding-strategy';
