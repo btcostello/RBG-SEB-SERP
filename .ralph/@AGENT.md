@@ -167,6 +167,25 @@ npm run format  # prettier --write .
   the census. Persistence: the Setup route's Save snapshots `liability.results` onto the quote
   via `quoteStore.setResults(...)` before saving, so results reopen with the quote (AC3/NFR11).
 
+### lifeproj adapter + credential boundary (Story 3.1)
+- **`src/lib/server/lifeproj/` is the ONLY place the snake_case wire shape and the API key
+  live.** `adapter.ts` is injectable (`createLifeprojAdapter({baseUrl, apiKey, fetch, timeoutMs})`)
+  so it imports no `$env` and is unit-tested with a mock fetch. `mapDesignRequestToWire`
+  (camelCase→snake_case, actuarial-only — no PII, NFR12) and `mapWireResponseToResult`
+  (wire numbers→money strings via `formatMoney`).
+- **Credential boundary — `credentials.ts` `getLifeprojAdapter()`** reads `$env/dynamic/private`
+  (LIFEPROJ_API_KEY/_BASE_URL) and builds the adapter; throws if unset. Uses **dynamic** (not
+  static) so `build`/CI doesn't require secrets present; still server-only (under `$lib/server`)
+  so the key never reaches the browser (NFR13). Not imported by tests.
+- **Domain types — `domain/illustration.ts`:** `DesignRequest` (camelCase, actuarial-only,
+  optional `solve` block) and `IllustrationResult` (per-year premium/account value/CSV/death
+  benefit + `gptAdjusted`/`mecAdjusted` + guideline premiums). CSV is mapped from account value
+  (wire report has no surrender column) — documented, calibratable via `/schema`.
+- **Typed errors — `errors.ts`:** 400→`LifeprojValidationError(details[])`, 401→`LifeprojAuthError`,
+  422→`LifeprojProjectionError(message)`, timeout/network→`LifeprojConnectivityError`; discriminate
+  on `.kind`. Per-call timeout via `AbortController` (+ `AbortSignal.any` with a caller signal).
+- BFF endpoints that call `getLifeprojAdapter()` are Story 3.2.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

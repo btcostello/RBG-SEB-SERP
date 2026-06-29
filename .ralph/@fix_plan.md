@@ -17,13 +17,6 @@
 - [x] Story 2.2: Compute the annual benefit and year-by-year benefit stream
 - [x] Story 2.3: Compute total benefit cost and net present value
 - [x] Story 2.4: Present per-participant and aggregate liability results live
-  > As the proposal author
-  > I want liability results shown per participant and in aggregate, recalculating instantly as I change inputs
-  > So that I can see the impact of an assumption change immediately.
-  > AC: Given a quote with a complete census, When liability is computed, Then results are available both per participant and in aggregate (FR16)
-  > AC: Given the quote store, When any liability-relevant input changes, Then liability `Results` are recomputed as `$derived` values and the view updates in well under ~5 seconds (target sub-second) (NFR6, AR12)
-  > AC: Given computed liability results, When the quote is serialized, Then the `Results` snapshot is carried on the Quote aggregate for persistence and reopen (supports NFR11)
-  > Spec: specs/planning-artifacts/epics.md#story-2-4
 - [~] Story 2.5: Lock the benchmark correctness gate — SKIPPED per operator (2026-06-28): no signed-off reference quote; calc errors to be corrected later. Do not block engine work on this. Leave the engine structured so a benchmark fixture can be dropped in later, but do not implement the benchmark gate now.
   > As a developer
   > I want a known-good benchmark client asserted exact-to-the-cent in CI
@@ -35,7 +28,7 @@
 ### COLI Asset Design via Illustration Engine (Cost Recovery / Option 1)
 > Goal: The operator runs the full model in a single action: the system computes the tax-adjusted total death benefit, allocates per-person face amounts, and algorithmically designs and retrieves each COLI policy via the external `lifeproj` engine — surfacing GPT/MEC flags and guideline premiums — with whole-run fail-fast and progress feedback. All `lifeproj` access is confined to one server-side adapter; the browser never sees the API key and only actuarial fields cross the boundary.
 
-- [ ] Story 3.1: Build the lifeproj server adapter and credential boundary
+- [x] Story 3.1: Build the lifeproj server adapter and credential boundary
   > As a developer
   > I want a server-only anti-corruption adapter that is the sole caller of `lifeproj` and the sole holder of the API key
   > So that the wire contract, credential, and PII boundary are enforced in one place.
