@@ -119,6 +119,22 @@ npm run format  # prettier --write .
   refreshed after save/remove; UI never touches the repo directly. `QuoteList.svelte` opens
   (loads full quote into `quoteStore`) and deletes; Setup route has a Save button.
 
+### Engine — salary & FAS (Story 2.1)
+- **Pure engine in `$lib/engine/`** — imports ONLY `$lib/money` (for `Big` + policy) and
+  `$lib/dates` (age). NO Svelte/SvelteKit/`$app`/fetch imports, so it is unit-testable in
+  isolation (AR15). Money is a `Big` inside the engine; conversion to decimal strings happens
+  later at the results boundary (Story 2.4).
+- **`projectSalary({currentSalary, dateOfBirth, asOf, retirementAge, salaryGrowthRate})`** →
+  `SalaryYear[]` (`{age, salary: Big}`) from current age (age-nearest-birthday as of `asOf`)
+  to retirement age inclusive: `salary(age)=currentSalary×(1+g)^(age−currentAge)`. `asOf` is an
+  explicit param (engine stays pure/deterministic — no `today()`). No rounding (NFR5).
+- **`finalAverageSalary(path, averagingPeriod)`** → `Big`, averages the trailing N years
+  (full-precision `Big.div`, Big.DP=20); averages what's available if the path is shorter;
+  throws on empty path / non-positive period (programmer error).
+- **Calc convention (calibratable):** FAS includes the retirement-age salary in its trailing
+  window. Benchmark gate is skipped (operator decision) — conventions get calibrated when a
+  signed-off reference quote arrives.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

@@ -10,18 +10,10 @@
 - [x] Story 1.3: Create and configure a quote (company + model settings)
 - [x] Story 1.4: Build and review the executive census
 - [x] Story 1.5: Save, reopen, list, and delete quotes
-  > As the proposal author
-  > I want to save a quote and later reopen, switch between, or delete saved quotes
-  > So that I can manage one proposal per prospect company and trust that a reopened quote is identical to what I saved.
-  > AC: Given a quote with company, settings, and census entered, When I save it, Then it is persisted via the `QuoteRepository` interface backed by localStorage (FR33), And the repository is accessed only through that interface, so a future DB swap touches no calc/UI code (NFR14)
-  > AC: Given a saved quote, When I reopen it, Then all inputs are identical to what was saved, with money round-tripping exactly via decimal strings (FR33, NFR11, AR18)
-  > AC: Given multiple saved quotes, When I view the quote list, Then I can select among them (one per prospect company) (FR34)
-  > AC: Given a saved quote, When I delete it, Then it is removed from storage and from the list (FR35)
-  > Spec: specs/planning-artifacts/epics.md#story-1-5
 ### SERP Liability Calculation
 > Goal: From a census, the operator gets a defensible, deterministic, exact-to-the-cent liability — salary projection → final average salary → annual benefit (Factor × FAS) → year-by-year stream → total cost + NPV — presented per-participant and in aggregate. The engine is built as pure, side-effect-free functions (no Svelte, no I/O) so it is fully unit-testable, and a benchmark-client test stands as the permanent correctness gate.
 
-- [ ] Story 2.1: Project salary to retirement and compute final average salary
+- [x] Story 2.1: Project salary to retirement and compute final average salary
   > As the proposal author
   > I want the system to project each insured's salary to retirement and compute their final average salary
   > So that the benefit calculation rests on correct, reproducible earnings figures.
