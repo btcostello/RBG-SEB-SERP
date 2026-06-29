@@ -1,0 +1,9 @@
+{
+  "name": "Schiff SERP",
+  "description": "SERP Report Generator",
+  "createdAt": "2026-06-29T01:33:54.365Z",
+  "platform": "claude-code",
+  "upstreamVersions": {
+    "bmadCommit": "d1163f85"
+  }
+}
