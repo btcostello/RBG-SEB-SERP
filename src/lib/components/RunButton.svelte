@@ -15,6 +15,17 @@
 	{/if}
 </div>
 
+{#if runState.validationIssues.length > 0}
+	<div class="validation" role="alert">
+		<p>Fix these issues before running:</p>
+		<ul>
+			{#each runState.validationIssues as issue (issue.label + issue.field + issue.message)}
+				<li><strong>{issue.label}:</strong> {issue.message}</li>
+			{/each}
+		</ul>
+	</div>
+{/if}
+
 <style>
 	.run {
 		display: flex;
@@ -29,5 +40,21 @@
 	.error {
 		color: #b00020;
 		margin: 0;
+	}
+	.validation {
+		background: #fdecea;
+		border: 1px solid #f5c2c0;
+		border-radius: 6px;
+		padding: 0.75rem 1rem;
+		margin-bottom: 1rem;
+		color: #7a1c17;
+	}
+	.validation p {
+		margin: 0 0 0.5rem;
+		font-weight: 600;
+	}
+	.validation ul {
+		margin: 0;
+		padding-left: 1.25rem;
 	}
 </style>

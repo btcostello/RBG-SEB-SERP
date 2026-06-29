@@ -7,9 +7,11 @@
  * quote store; it never mutates inputs (a failed run leaves the quote intact for re-run).
  */
 import { runModel, type DesignedPolicy, type RunStatus } from '$lib/orchestrator/run';
+import { validateRun, type RunValidationIssue } from '$lib/orchestrator/validate-run';
 import { assembleResults } from '$lib/engine/results-mapping';
 import { postIllustration } from '$lib/api/illustration-client';
 import { quoteStore } from './quote.svelte';
+import { schemaStore } from './schema.svelte';
 
 function today(): string {
 	const now = new Date();
@@ -23,6 +25,8 @@ class RunStateStore {
 	status = $state<RunStatus>('idle');
 	progress = $state<{ completed: number; total: number }>({ completed: 0, total: 0 });
 	error = $state<{ kind: string; message: string } | null>(null);
+	/** Pre-run contract violations (FR24); when non-empty the run does not start. */
+	validationIssues = $state<RunValidationIssue[]>([]);
 	/** Designed COLI policies from the last successful run (for live results display). */
 	designed = $state<DesignedPolicy[]>([]);
 
@@ -38,6 +42,14 @@ class RunStateStore {
 		this.error = null;
 		this.designed = [];
 		this.progress = { completed: 0, total: 0 };
+
+		// Pre-run validation against the engine contract — the run does not start on a violation.
+		const issues = validateRun({ quote, asOf: today(), riskClasses: schemaStore.riskClasses });
+		this.validationIssues = issues;
+		if (issues.length > 0) {
+			this.status = 'idle';
+			return;
+		}
 
 		try {
 			const output = await runModel({
@@ -74,6 +86,7 @@ class RunStateStore {
 		this.status = 'idle';
 		this.progress = { completed: 0, total: 0 };
 		this.error = null;
+		this.validationIssues = [];
 		this.designed = [];
 	}
 }

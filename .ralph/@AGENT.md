@@ -261,6 +261,16 @@ npm run format  # prettier --write .
   (computing… / designing N/total), `AssetResults` (per-policy premium/AV/CSV/DB + GPT/MEC +
   guideline premiums — FR20/FR21). Wired into `/`.
 
+### Pre-run validation (Story 3.7)
+- **`orchestrator/validate-run.ts` `validateRun({quote, asOf, riskClasses})`** → `RunValidationIssue[]`
+  (pure, store-free). Per insured: risk class ∈ the **discovered** engine set (passed in from
+  `schemaStore.riskClasses`, not just the seeded enum), issue age ∈ [0,120], gender M/F, salary
+  is money. Plus readiness: ≥1 COLI participant; settings `retirementAge ≤ assumedDeathBenefitAge`.
+  Empty list ⇒ ready. Each issue carries `{insuredId?, label, field, message}` (FR24).
+- **`runState.start()` gates on it:** validates first; if any issue, sets `validationIssues`,
+  stays `idle`, and does NOT call `runModel`. `RunButton` shows the field-level issues; cleared
+  on the next start/reset.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

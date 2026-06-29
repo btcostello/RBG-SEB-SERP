@@ -34,14 +34,7 @@
 - [x] Story 3.4: Compute the tax-adjusted death benefit and allocate per-person face
 - [x] Story 3.5: Algorithmically design each COLI policy via solve
 - [x] Story 3.6: Orchestrate the single-action run with progress and results
-  > As the proposal author
-  > I want one action that runs the whole model and shows progress
-  > So that I get a complete liability + asset result without manual steps.
-  > AC: Given a complete quote, When I trigger Run, Then the pure engine computes liability and per-person face in-browser, then the client issues N sequential `POST /api/illustration` calls — one per COLI participant (FR23, AR9)
-  > AC: Given a multi-member run, When illustrations are being designed, Then `runState` transitions `computing → designing → done` and a progress indicator shows completed/total (FR27, NFR7, AR12)
-  > AC: Given completed asset design, When results populate, Then each insured's premium / account value / CSV / death benefit and the `gpt_adjusted` / `mec_adjusted` flags + guideline premiums are surfaced to the operator — never silently ignored (FR21, FR20)
-  > Spec: specs/planning-artifacts/epics.md#story-3-6
-- [ ] Story 3.7: Validate inputs against the engine contract before a run
+- [x] Story 3.7: Validate inputs against the engine contract before a run
   > As the proposal author
   > I want my census and settings checked against the engine's contract before any call
   > So that avoidable errors are caught up front with clear, field-level messages.
