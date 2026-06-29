@@ -36,7 +36,11 @@ export default defineConfig(
 	{
 		// Override or add rule settings here, such as:
 		// 'svelte/button-has-type': 'error'
-		rules: {}
+		rules: {
+			// Plain static internal links (<a href="/report">) are intentional in this app;
+			// SvelteKit's resolve() is unnecessary for these fixed routes.
+			'svelte/no-navigation-without-resolve': 'off'
+		}
 	},
 	{
 		// $lib/server boundary (architecture: "Server-Only Boundary").

@@ -20,6 +20,11 @@
 	<div class="schema-notice" role="status">{schemaStore.notice}</div>
 {/if}
 
+<nav class="app-nav">
+	<a href="/">Setup</a>
+	<a href="/report">Report</a>
+</nav>
+
 {@render children()}
 
 <style>
@@ -30,5 +35,24 @@
 		padding: 0.5rem 1rem;
 		font-size: 0.9rem;
 		text-align: center;
+	}
+	.app-nav {
+		display: flex;
+		gap: 1rem;
+		padding: 0.75rem 1rem;
+		border-bottom: 1px solid #e2e2e2;
+	}
+	.app-nav a {
+		text-decoration: none;
+		font-weight: 600;
+		color: #1a3a7a;
+	}
+
+	/* The report nav is screen-only; print shows just the report pages (refined in Story 4.5). */
+	@media print {
+		.app-nav,
+		.schema-notice {
+			display: none;
+		}
 	}
 </style>

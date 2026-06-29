@@ -284,6 +284,20 @@ npm run format  # prettier --write .
   `setResults` runs only on full success; a failed run never mutates the quote (inputs intact,
   re-run from scratch, no retry/resume). `RunButton` shows `runFailureHeadline(kind): message`.
 
+### Report registry + renderer (Story 4.1)
+- **`report/registry.ts`** — `ReportPage { id, title, component: Component }` + ordered
+  `reportPages` array (cover → census-summary → coli-summary). Adding a page = append one entry
+  (additive, NFR14/FR31). `Component` type from `'svelte'`.
+- **`report/ReportView.svelte`** renders the registry in order via
+  `{#each reportPages}{@const PageComponent = page.component}<PageComponent />`. (Svelte 5 runes:
+  no `<svelte:component>` — capture the component into a capitalized const.)
+- **`/report` route** renders `ReportView` only when `runState.status === 'done'`, else a "run
+  the model" prompt (supports FR28–30). Layout has Setup ↔ Report nav (hidden in `@media print`).
+- **Pages** (`report/pages/CoverPage`, `CensusSummaryPage`, `ColiSummaryPage`) are minimal
+  stubs here; Stories 4.2–4.4 fill in their content (registration is already done).
+- **ESLint:** `svelte/no-navigation-without-resolve` is off — static internal `<a href>` links
+  are intentional.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

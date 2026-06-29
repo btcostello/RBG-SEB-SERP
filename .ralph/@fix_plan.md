@@ -36,17 +36,10 @@
 - [x] Story 3.6: Orchestrate the single-action run with progress and results
 - [x] Story 3.7: Validate inputs against the engine contract before a run
 - [x] Story 3.8: Fail the whole run fast and preserve inputs for re-run
-  > As the proposal author
-  > I want a failed run to stop cleanly with a clear reason and keep my inputs intact
-  > So that I never get partial or ambiguous output and can correct and re-run.
-  > AC: Given any error during a run (validation / auth / projection / connectivity), When it occurs, Then the orchestrator aborts remaining calls (AbortController), sets `runState = failed` with a specific reason, and produces no partial output (FR25, NFR10)
-  > AC: Given a per-call timeout, When the engine is slow or unreachable, Then the call fails as `ConnectivityError` and the whole run fails with a clear message (no silent hang) (NFR10)
-  > AC: Given a failed run, When I correct the offending input, Then all previously entered data is intact (a run never mutates inputs) and I can re-run from scratch — there is no partial retry/resume (FR26)
-  > Spec: specs/planning-artifacts/epics.md#story-3-8
 ### Proposal Report Generation & Export
 > Goal: The operator generates the client-ready proposal — Cover, Census Summary, and COLI Summary as discrete, data-driven pages personalized with the prospect company name — and prints or exports to PDF with presentation-grade layout. A data-driven page registry keeps the future ~52-page report purely additive.
 
-- [ ] Story 4.1: Build the data-driven report page registry and renderer
+- [x] Story 4.1: Build the data-driven report page registry and renderer
   > As a developer
   > I want a report rendered from a page registry
   > So that new report pages can be added later without touching existing pages.
