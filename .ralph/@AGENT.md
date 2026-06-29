@@ -143,6 +143,18 @@ npm run format  # prettier --write .
   payment age > death age; throws on negative/non-integer waiting period. MVP is a level
   benefit (no COLA/mortality decrement).
 
+### Engine — liability + orchestrator (Story 2.3)
+- **`totalBenefitCost(stream)`** → `Big`, undiscounted sum (FR15).
+- **`netPresentValue(stream, discountRate, fromAge)`** → `Big`: each payment at `age`
+  discounted by `(1+rate)^(age−fromAge)`, where `fromAge` is the valuation/current age. 0% ⇒
+  equals the undiscounted total. Discount rate is a parameter — a data change, not code (NFR15).
+- **`computeLiability({census, settings, asOf})`** → `LiabilityResult` (`perParticipant` +
+  `aggregate`, all `Big`). Filters to SERP participants (`isSerpParticipant`, so COLI-only are
+  excluded, BOTH included), composes salary→FAS→benefit→stream→total/NPV, aggregates total +
+  NPV. No hardcoded actuarial constants — every figure traces to a setting/input/named formula.
+- Engine is Big-internal; mapping `LiabilityResult` → domain `Results` (decimal strings) and
+  wiring to the store/UI is Story 2.4.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

@@ -15,13 +15,7 @@
 
 - [x] Story 2.1: Project salary to retirement and compute final average salary
 - [x] Story 2.2: Compute the annual benefit and year-by-year benefit stream
-  > As the proposal author
-  > I want the system to derive each insured's annual retirement benefit and full payment stream
-  > So that the plan's promised payments are explicit and traceable.
-  > AC: Given an insured's final average salary and benefit percentage, When the engine computes the annual benefit, Then it returns Factor × Final Average Salary as a documented, named function (FR13)
-  > AC: Given the annual benefit, retirement age, benefit waiting period, and assumed death-benefit age (default 84), When the engine generates the benefit stream, Then it produces the correct year-by-year payments from retirement (after any waiting period) through the assumed death age (FR14), And boundary timing (first and final payment years) is verified by tests (NFR4, AR19)
-  > Spec: specs/planning-artifacts/epics.md#story-2-2
-- [ ] Story 2.3: Compute total benefit cost and net present value
+- [x] Story 2.3: Compute total benefit cost and net present value
   > As the proposal author
   > I want the system to total the plan's benefit cost and its NPV at the configured discount rate
   > So that I have the single liability figure the funding calculation depends on.
