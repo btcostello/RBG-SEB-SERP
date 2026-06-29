@@ -14,14 +14,7 @@
 > Goal: From a census, the operator gets a defensible, deterministic, exact-to-the-cent liability — salary projection → final average salary → annual benefit (Factor × FAS) → year-by-year stream → total cost + NPV — presented per-participant and in aggregate. The engine is built as pure, side-effect-free functions (no Svelte, no I/O) so it is fully unit-testable, and a benchmark-client test stands as the permanent correctness gate.
 
 - [x] Story 2.1: Project salary to retirement and compute final average salary
-  > As the proposal author
-  > I want the system to project each insured's salary to retirement and compute their final average salary
-  > So that the benefit calculation rests on correct, reproducible earnings figures.
-  > AC: Given an insured with a current salary, date of hire, and the quote's salary growth rate, When the engine projects salary, Then it produces a year-by-year salary path from current age to retirement age using age-nearest-birthday timing (FR11, NFR4), And all salary values use big.js money with no intermediate rounding (NFR3, NFR5)
-  > AC: Given a projected salary path and the configured FAS averaging period, When the engine computes final average salary, Then it averages the correct trailing years of salary up to retirement (FR12)
-  > AC: Given identical inputs, When the projection runs twice, Then it returns identical results, and the functions are pure (no Svelte/I-O imports) with co-located unit tests (NFR1, AR15)
-  > Spec: specs/planning-artifacts/epics.md#story-2-1
-- [ ] Story 2.2: Compute the annual benefit and year-by-year benefit stream
+- [x] Story 2.2: Compute the annual benefit and year-by-year benefit stream
   > As the proposal author
   > I want the system to derive each insured's annual retirement benefit and full payment stream
   > So that the plan's promised payments are explicit and traceable.

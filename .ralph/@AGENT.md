@@ -135,6 +135,14 @@ npm run format  # prettier --write .
   window. Benchmark gate is skipped (operator decision) — conventions get calibrated when a
   signed-off reference quote arrives.
 
+### Engine — benefit & stream (Story 2.2)
+- **`annualBenefit(fas: Big, benefitPercentage: number)`** → `Big` = Factor × FAS (FR13).
+- **`benefitStream({annualBenefit, retirementAge, benefitWaitingPeriod, assumedDeathBenefitAge})`**
+  → `BenefitYear[]` (`{age, amount: Big}`): level payments from `retirementAge +
+  benefitWaitingPeriod` through `assumedDeathBenefitAge` inclusive (FR14). Empty if first
+  payment age > death age; throws on negative/non-integer waiting period. MVP is a level
+  benefit (no COLA/mortality decrement).
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.
