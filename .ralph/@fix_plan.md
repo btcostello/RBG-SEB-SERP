@@ -31,14 +31,7 @@
 - [x] Story 3.1: Build the lifeproj server adapter and credential boundary
 - [x] Story 3.2: Expose the internal BFF endpoints
 - [x] Story 3.3: Discover, cache, and reconcile the engine schema
-  > As the proposal author
-  > I want the app to learn the engine's accepted values from its published schema
-  > So that risk classes and defaults stay in lockstep with the engine instead of drifting from hardcoded values.
-  > AC: Given app start, When `/api/schema` is fetched, Then enums and defaults are cached for the session and feed both Valibot validation and the census UI (FR22, AR10)
-  > AC: Given the discovered schema, When the census risk-class field is rendered, Then its options reconcile with the engine's risk-class set (replacing the Epic 1 seeded enum) (FR8, FR22)
-  > AC: Given `/schema` is unreachable at startup, When the app falls back, Then it uses the six seeded risk-class strings + documented defaults and shows a non-blocking notice (AR10/M-1)
-  > Spec: specs/planning-artifacts/epics.md#story-3-3
-- [ ] Story 3.4: Compute the tax-adjusted death benefit and allocate per-person face
+- [x] Story 3.4: Compute the tax-adjusted death benefit and allocate per-person face
   > As the proposal author
   > I want the Cost-Recovery funding strategy to size the total death benefit and split it per participant
   > So that each insured has a face amount the illustration can be designed around.

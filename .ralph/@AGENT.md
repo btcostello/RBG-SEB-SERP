@@ -218,6 +218,19 @@ npm run format  # prettier --write .
   sets `status='fallback'` + a `notice`, and the layout shows a non-blocking banner. App stays
   usable.
 
+### Funding — tax-adjust + allocation (Story 3.4)
+- **`engine/tax-adjustment.ts` `taxAdjustedDeathBenefit(totalCost, taxRate)`** → `Big` =
+  `cost × (1 − taxRate)` (FR17); throws if rate ∉ [0,1]. No rounding.
+- **`engine/allocation.ts` `allocateEqually(totalDB, insuredIds)`** → `FaceAllocation[]`
+  (`{insuredId, faceAmount: Big}`), equal split; `[]` for no participants; full Big precision
+  (rounded at the output boundary).
+- **Funding seam — `funding/`:** `funding-strategy.ts` (`FundingStrategy` interface:
+  `fund({totalBenefitCost, corporateTaxRate, coliParticipantIds}) → {totalDeathBenefit,
+  allocations}`); `cost-recovery.ts` (`costRecoveryStrategy`, Option 1, composes the two engine
+  fns); `index.ts` registry (`getFundingStrategy`/`listFundingStrategies`/
+  `DEFAULT_FUNDING_STRATEGY_ID='cost-recovery'`). Options 2–4 = new file + one `register(...)`
+  (NFR14). **Consumed by the run orchestrator (Story 3.6)** — tested seam, not yet UI-wired.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.
