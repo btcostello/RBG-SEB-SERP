@@ -1,0 +1,43 @@
+/**
+ * Dedicated print stylesheet for the proposal report (FR32, AR14).
+ *
+ * Produces page-accurate output via window.print(): a defined page size/margin, each registered
+ * report page on its own physical page, and page-break control so tables and figures are not
+ * split or clipped across pages.
+ */
+@media print {
+	@page {
+		size: Letter;
+		margin: 0.75in;
+	}
+
+	/* Print only the report — app chrome is hidden by the layout's print rules; this hides any
+	   element explicitly marked no-print (e.g. the Print button). */
+	.no-print {
+		display: none !important;
+	}
+
+	body {
+		background: #fff;
+	}
+
+	/* Each registered report page starts a new physical page (last one doesn't trail a blank). */
+	.report-page {
+		page-break-after: always;
+		break-after: page;
+	}
+	.report-page:last-child {
+		page-break-after: auto;
+		break-after: auto;
+	}
+
+	/* Keep rows and figures whole; repeat table headers on every printed page. */
+	tr,
+	.figure {
+		page-break-inside: avoid;
+		break-inside: avoid;
+	}
+	thead {
+		display: table-header-group;
+	}
+}

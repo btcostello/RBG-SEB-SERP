@@ -43,12 +43,7 @@
 - [x] Story 4.2: Generate the Cover page
 - [x] Story 4.3: Generate the Census Summary page
 - [x] Story 4.4: Generate the COLI Summary page
-  > As the proposal author
-  > I want a COLI summary page showing the headline funding numbers
-  > So that the client sees what funding the plan with COLI costs.
-  > AC: Given a completed run, When the COLI Summary page renders, Then it shows the total death benefit and total first-year premium (FR30), And monetary values are formatted from decimal-string money (AR2), And it is registered in the report registry (FR31)
-  > Spec: specs/planning-artifacts/epics.md#story-4-4
-- [ ] Story 4.5: Print and export the proposal to PDF with presentation-grade layout
+- [x] Story 4.5: Print and export the proposal to PDF with presentation-grade layout
   > As the proposal author
   > I want to print or export the proposal to PDF with stable, presentation-grade pages
   > So that I can bring the deliverable to a client meeting.

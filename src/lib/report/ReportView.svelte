@@ -2,7 +2,9 @@
 	/**
 	 * ReportView — renders the registered report pages in order (FR31, AR13).
 	 * Purely data-driven: it iterates `reportPages`, so new pages are additive.
+	 * Imports the dedicated print stylesheet so window.print() is page-accurate (FR32).
 	 */
+	import './print.css';
 	import { reportPages } from './registry';
 </script>
 

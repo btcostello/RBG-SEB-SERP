@@ -303,6 +303,15 @@ npm run format  # prettier --write .
 - **ESLint:** `svelte/no-navigation-without-resolve` is off — static internal `<a href>` links
   are intentional.
 
+### Print / PDF export (Story 4.5)
+- **`report/print.css`** (imported by `ReportView`): `@media print` with `@page { size: Letter;
+  margin: 0.75in }`, `.report-page { break-after: page }` (each registered page → its own physical
+  page; `:last-child` no trailing blank), `tr/.figure { break-inside: avoid }`, `thead` repeats,
+  and `.no-print { display: none }` (FR32, AR14).
+- **`/report`** has a "Print / Save as PDF" button (`.no-print`) calling `window.print()` when a
+  run is done; `main` padding is dropped in print so `@page` margins control layout. The layout
+  already hides nav + schema notice in `@media print`.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.
