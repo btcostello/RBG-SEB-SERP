@@ -7,7 +7,7 @@
 	import { quoteStore } from '$lib/stores/quote.svelte';
 	import { savedQuotes } from '$lib/stores/saved-quotes.svelte';
 	import { liability } from '$lib/stores/liability.svelte';
-	import { CompanySchema, fieldErrors } from '$lib/domain';
+	import { CompanySchema, fieldErrors, toNumberOrNaN } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
 	import CensusEditor from '$lib/components/CensusEditor.svelte';
@@ -35,7 +35,7 @@
 
 	const createCandidate = $derived({
 		name: newName,
-		corporateTaxRate: newTaxRateStr.trim() === '' ? Number.NaN : Number(newTaxRateStr)
+		corporateTaxRate: toNumberOrNaN(newTaxRateStr)
 	});
 	const createErrors = $derived(fieldErrors(CompanySchema, createCandidate));
 

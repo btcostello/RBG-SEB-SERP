@@ -6,7 +6,7 @@
 	 * (AR4); valid changes commit immutably to the active quote store (AR12).
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
-	import { ModelSettingsSchema, fieldErrors, type ModelSettings } from '$lib/domain';
+	import { ModelSettingsSchema, fieldErrors, toNumberOrNaN, type ModelSettings } from '$lib/domain';
 
 	const settings = quoteStore.current?.modelSettings;
 
@@ -18,9 +18,7 @@
 	let npvDiscountRate = $state(settings ? String(settings.npvDiscountRate) : '');
 	let fasAveragingPeriod = $state(settings ? String(settings.fasAveragingPeriod) : '');
 
-	function num(value: string): number {
-		return value.trim() === '' ? Number.NaN : Number(value);
-	}
+	const num = toNumberOrNaN;
 
 	const candidate = $derived<ModelSettings>({
 		retirementAge: num(retirementAge),

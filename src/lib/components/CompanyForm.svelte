@@ -5,7 +5,7 @@
 	 * errors (AR4). Valid changes are committed immutably to the active quote store (AR12).
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
-	import { CompanySchema, fieldErrors } from '$lib/domain';
+	import { CompanySchema, fieldErrors, toNumberOrNaN } from '$lib/domain';
 
 	let name = $state(quoteStore.current?.company.name ?? '');
 	let taxRateStr = $state(
@@ -16,7 +16,7 @@
 	// validation rather than silently coercing to 0.
 	const candidate = $derived({
 		name,
-		corporateTaxRate: taxRateStr.trim() === '' ? Number.NaN : Number(taxRateStr)
+		corporateTaxRate: toNumberOrNaN(taxRateStr)
 	});
 	const errors = $derived(fieldErrors(CompanySchema, candidate));
 

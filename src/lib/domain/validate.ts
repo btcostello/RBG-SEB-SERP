@@ -9,6 +9,20 @@ import * as v from 'valibot';
 export type FieldErrors = Record<string, string>;
 
 /**
+ * Coerce a raw form-input value to a number for schema validation, returning `NaN` for
+ * empty/blank input so it fails validation rather than silently becoming 0.
+ *
+ * Svelte's `bind:value` on `<input type="number">` yields a `number` (or `null` when empty),
+ * while text inputs yield a `string`. This accepts both so callers never assume one shape
+ * (calling `.trim()` on a number throws).
+ */
+export function toNumberOrNaN(value: string | number | null | undefined): number {
+	if (value === null || value === undefined) return Number.NaN;
+	if (typeof value === 'string' && value.trim() === '') return Number.NaN;
+	return Number(value);
+}
+
+/**
  * Validate `input` against `schema` and return a map of field path → first error message.
  * An empty map means the input is valid. `abortPipeEarly` keeps one message per field.
  */
