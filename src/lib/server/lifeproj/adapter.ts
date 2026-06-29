@@ -28,6 +28,7 @@ import {
 } from './errors';
 
 const PROJECT_PATH = '/api/v1/project';
+const SCHEMA_PATH = '/api/v1/schema';
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 /** Wire money is a JS number; cents strings convert losslessly. Confined to this boundary. */
@@ -125,43 +126,55 @@ export interface LifeprojAdapterConfig {
 export interface LifeprojAdapter {
 	/** Run a single projection. Throws a typed LifeprojError on any failure (whole-call fail). */
 	project(request: DesignRequest, signal?: AbortSignal): Promise<IllustrationResult>;
+	/** Fetch the engine's self-describing schema (open endpoint, no key). Raw JSON. */
+	schema(signal?: AbortSignal): Promise<unknown>;
 }
 
 export function createLifeprojAdapter(config: LifeprojAdapterConfig): LifeprojAdapter {
 	const fetchImpl = config.fetch ?? globalThis.fetch;
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-	const url = config.baseUrl.replace(/\/$/, '') + PROJECT_PATH;
+	const base = config.baseUrl.replace(/\/$/, '');
+
+	/** fetch with a per-call timeout (+ optional caller signal); network failure → typed error. */
+	async function fetchWithTimeout(
+		path: string,
+		init: RequestInit,
+		callerSignal?: AbortSignal
+	): Promise<Response> {
+		const timeoutController = new AbortController();
+		const timer = setTimeout(() => timeoutController.abort(), timeoutMs);
+		const signal = callerSignal
+			? AbortSignal.any([callerSignal, timeoutController.signal])
+			: timeoutController.signal;
+		try {
+			return await fetchImpl(base + path, { ...init, signal });
+		} catch (error) {
+			throw new LifeprojConnectivityError(
+				`Could not reach lifeproj at ${base + path}: ${(error as Error).message}`,
+				{ cause: error }
+			);
+		} finally {
+			clearTimeout(timer);
+		}
+	}
 
 	return {
 		async project(request, callerSignal) {
 			// Validate the outbound body so only actuarial wire fields ever leave (NFR12).
 			const body = v.parse(WireProjectRequestSchema, mapDesignRequestToWire(request));
 
-			const timeoutController = new AbortController();
-			const timer = setTimeout(() => timeoutController.abort(), timeoutMs);
-			const signal = callerSignal
-				? AbortSignal.any([callerSignal, timeoutController.signal])
-				: timeoutController.signal;
-
-			let response: Response;
-			try {
-				response = await fetchImpl(url, {
+			const response = await fetchWithTimeout(
+				PROJECT_PATH,
+				{
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
 						'X-API-Key': config.apiKey
 					},
-					body: JSON.stringify(body),
-					signal
-				});
-			} catch (error) {
-				throw new LifeprojConnectivityError(
-					`Could not reach lifeproj at ${url}: ${(error as Error).message}`,
-					{ cause: error }
-				);
-			} finally {
-				clearTimeout(timer);
-			}
+					body: JSON.stringify(body)
+				},
+				callerSignal
+			);
 
 			if (!response.ok) {
 				await throwForErrorResponse(response);
@@ -176,6 +189,20 @@ export function createLifeprojAdapter(config: LifeprojAdapterConfig): LifeprojAd
 				});
 			}
 			return mapWireResponseToResult(v.parse(WireProjectResponseSchema, json));
+		},
+
+		async schema(callerSignal) {
+			const response = await fetchWithTimeout(SCHEMA_PATH, { method: 'GET' }, callerSignal);
+			if (!response.ok) {
+				await throwForErrorResponse(response);
+			}
+			try {
+				return await response.json();
+			} catch (error) {
+				throw new LifeprojConnectivityError('lifeproj returned a non-JSON schema body', {
+					cause: error
+				});
+			}
 		}
 	};
 }

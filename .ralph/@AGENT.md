@@ -186,6 +186,23 @@ npm run format  # prettier --write .
   on `.kind`. Per-call timeout via `AbortController` (+ `AbortSignal.any` with a caller signal).
 - BFF endpoints that call `getLifeprojAdapter()` are Story 3.2.
 
+### Internal BFF endpoints (Story 3.2)
+- **Routes:** `GET /api/schema` (`src/routes/api/schema/+server.ts`) proxies lifeproj
+  `/schema` via `schema-cache.ts` (server-process cache); `POST /api/illustration`
+  (`.../illustration/+server.ts`) validates the body against `DesignRequestSchema`, calls
+  `getLifeprojAdapter().project(...)`, returns the result or a mapped error envelope.
+- **`adapter.schema()`** added; fetch/timeout refactored into a shared `fetchWithTimeout` helper.
+- **Error envelope — `error-envelope.ts` `toErrorEnvelope(err)`** → `{ status, body: { error:
+  { kind, message, details? } } }`; pass-through status (400/401/422/504), unknown → generic
+  500 with NO internal leak.
+- **Browser clients — `$lib/api/`** (`schema-client.ts` `fetchSchema`, `illustration-client.ts`
+  `postIllustration`): call ONLY same-origin `/api/*` (never lifeproj, AR6); throw `ApiError`
+  (`api-error.ts`) carrying `kind`/`status`/`details` from the envelope; network failure →
+  `kind: 'connectivity'`.
+- **Test note:** mocking an adapter rejection inside a `+server` test trips vitest's
+  unhandled-rejection tracker; that pass-through is covered at the unit level instead
+  (`error-envelope.test.ts`, `illustration-client.test.ts`).
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

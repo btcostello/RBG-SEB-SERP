@@ -29,15 +29,7 @@
 > Goal: The operator runs the full model in a single action: the system computes the tax-adjusted total death benefit, allocates per-person face amounts, and algorithmically designs and retrieves each COLI policy via the external `lifeproj` engine — surfacing GPT/MEC flags and guideline premiums — with whole-run fail-fast and progress feedback. All `lifeproj` access is confined to one server-side adapter; the browser never sees the API key and only actuarial fields cross the boundary.
 
 - [x] Story 3.1: Build the lifeproj server adapter and credential boundary
-  > As a developer
-  > I want a server-only anti-corruption adapter that is the sole caller of `lifeproj` and the sole holder of the API key
-  > So that the wire contract, credential, and PII boundary are enforced in one place.
-  > AC: Given `LIFEPROJ_API_KEY` and `LIFEPROJ_BASE_URL` in server env (`$env/static/private`), When the adapter calls `POST /api/v1/project`, Then it injects `X-API-Key` server-side and the key never reaches the browser bundle (FR4, NFR13)
-  > AC: Given a domain `DesignRequest` (camelCase, actuarial fields only — issue age, gender, risk class, face amount, design params), When the adapter maps it to the wire request, Then `snake_case` and the wire shape appear only inside `src/lib/server/lifeproj/`, and no name/DOB/identifier is structurally present in the outbound type (NFR12, FR19)
-  > AC: Given a `lifeproj` response, When the adapter maps it to `IllustrationResult`, Then it returns per-insured yearly premium, account value, cash surrender value, and death benefit, plus `gpt_adjusted` / `mec_adjusted` and guideline premiums (FR20, NFR8)
-  > AC: Given API responses 400 / 401 / 422 / timeout, When the adapter handles them, Then each maps to a distinct typed error (`ValidationError(details[])`, `AuthError`, `ProjectionError`, `ConnectivityError`), surfacing field-level messages where provided (NFR9, AR8)
-  > Spec: specs/planning-artifacts/epics.md#story-3-1
-- [ ] Story 3.2: Expose the internal BFF endpoints
+- [x] Story 3.2: Expose the internal BFF endpoints
   > As a developer
   > I want internal `/api/schema` and `/api/illustration` endpoints the browser calls
   > So that the client never constructs a `lifeproj` URL and the proxy is the only network surface.
