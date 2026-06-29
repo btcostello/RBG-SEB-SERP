@@ -40,14 +40,7 @@
 > Goal: The operator generates the client-ready proposal — Cover, Census Summary, and COLI Summary as discrete, data-driven pages personalized with the prospect company name — and prints or exports to PDF with presentation-grade layout. A data-driven page registry keeps the future ~52-page report purely additive.
 
 - [x] Story 4.1: Build the data-driven report page registry and renderer
-  > As a developer
-  > I want a report rendered from a page registry
-  > So that new report pages can be added later without touching existing pages.
-  > AC: Given the report module, When the registry is defined, Then it is a list of `{ id, title, component }` entries and `ReportView` renders the registered pages in order on the `/report` route (FR31, AR13)
-  > AC: Given the run state, When results are not yet ready, Then the report renders only when `runState.status === 'done'` (otherwise prompts to run) (supports FR28–30)
-  > AC: Given a new page is added later, When it is registered, Then it appears in the report with no change to existing pages (FR31, NFR14)
-  > Spec: specs/planning-artifacts/epics.md#story-4-1
-- [ ] Story 4.2: Generate the Cover page
+- [x] Story 4.2: Generate the Cover page
   > As the proposal author
   > I want a cover page personalized with the prospect company name
   > So that the proposal opens as a polished, client-specific document.
