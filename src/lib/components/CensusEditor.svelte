@@ -8,10 +8,10 @@
 	 * field-level messages (AR4). The table below reviews every participant (FR10).
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
+	import { schemaStore } from '$lib/stores/schema.svelte';
 	import {
 		InsuredDraftSchema,
 		fieldErrors,
-		RISK_CLASSES,
 		GENDERS,
 		PLAN_MEMBERSHIPS,
 		type Gender,
@@ -20,6 +20,10 @@
 		type Insured
 	} from '$lib/domain';
 	import { money, formatMoney } from '$lib/money/money';
+
+	// Risk-class options reconcile with the engine's discovered schema (FR8, FR22),
+	// falling back to the seeded set when the schema is unreachable.
+	const riskClassOptions = $derived(schemaStore.riskClasses as RiskClass[]);
 
 	const census = $derived(quoteStore.current?.census ?? []);
 
@@ -164,7 +168,7 @@
 			<label>
 				<span>Risk class</span>
 				<select bind:value={riskClass}>
-					{#each RISK_CLASSES as rc (rc)}<option value={rc}>{rc}</option>{/each}
+					{#each riskClassOptions as rc (rc)}<option value={rc}>{rc}</option>{/each}
 				</select>
 			</label>
 			<label>

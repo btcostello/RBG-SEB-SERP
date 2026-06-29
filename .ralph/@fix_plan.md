@@ -30,14 +30,7 @@
 
 - [x] Story 3.1: Build the lifeproj server adapter and credential boundary
 - [x] Story 3.2: Expose the internal BFF endpoints
-  > As a developer
-  > I want internal `/api/schema` and `/api/illustration` endpoints the browser calls
-  > So that the client never constructs a `lifeproj` URL and the proxy is the only network surface.
-  > AC: Given the server adapter, When `GET /api/schema` is called, Then it proxies `lifeproj` `/schema` and returns it (cached per session) (AR7, AR10)
-  > AC: Given the server adapter, When `POST /api/illustration` is called with a design request, Then it returns a single projection result or a mapped error envelope `{ error: { kind, message, details? } }` with pass-through status codes (AR7, NFR9)
-  > AC: Given the browser, When it needs schema or an illustration, Then it calls only `src/lib/api/*-client.ts` against same-origin BFF routes, never `lifeproj` directly (AR6)
-  > Spec: specs/planning-artifacts/epics.md#story-3-2
-- [ ] Story 3.3: Discover, cache, and reconcile the engine schema
+- [x] Story 3.3: Discover, cache, and reconcile the engine schema
   > As the proposal author
   > I want the app to learn the engine's accepted values from its published schema
   > So that risk classes and defaults stay in lockstep with the engine instead of drifting from hardcoded values.

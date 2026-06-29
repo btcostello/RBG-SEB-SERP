@@ -203,6 +203,21 @@ npm run format  # prettier --write .
   unhandled-rejection tracker; that pass-through is covered at the unit level instead
   (`error-envelope.test.ts`, `illustration-client.test.ts`).
 
+### Schema discovery + reconcile (Story 3.3)
+- **`$lib/stores/schema.svelte.ts` (`schemaStore`)** — loaded once at app start from
+  `+layout.svelte` `onMount` (`schemaStore.load()`; idempotent — won't refetch when ready).
+  Caches reconciled `riskClasses` + `defaults` for the session.
+- **Tolerant extraction:** the `/schema` JSON shape isn't fixed, so `extractRiskClasses(raw)`
+  recursively finds the health/risk-class enum (a string array containing a known class or a
+  `/tobacco/i` value) wherever it sits; `extractDefaults` pulls a top-level `defaults` object.
+- **Reconcile (FR8/FR22):** `CensusEditor` renders risk-class options from
+  `schemaStore.riskClasses` (cast to `RiskClass[]`), replacing the seeded `RISK_CLASSES` import.
+  Valibot still validates against the seeded `RiskClassSchema` (== engine set in practice);
+  full dynamic-schema validation is Story 3.7.
+- **Fallback (AR10/M-1):** if `/schema` is unreachable, the store keeps the six seeded classes,
+  sets `status='fallback'` + a `notice`, and the layout shows a non-blocking banner. App stays
+  usable.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.
