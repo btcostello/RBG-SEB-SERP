@@ -242,6 +242,25 @@ npm run format  # prettier --write .
   the resolved premium as `result.solvedAnnualPremium` (from `summary.initial_annual_premium`).
   Covered by `adapter.test.ts` against a mocked solved response (AC3).
 
+### Run orchestration (Story 3.6)
+- **`orchestrator/run.ts` `runModel({quote, asOf, illustrate, onStatus, onProgress, signal})`**
+  — pure, store-free, `illustrate` injected (testable with a mock). Emits `computing` (engine
+  liability + funding in-browser), then `designing` while issuing N **sequential** illustration
+  calls (one per COLI participant, `await` in a loop) with `onProgress(completed, total)`.
+  Returns `{liability, totalDeathBenefit, designed}`; does NOT emit `done` (caller does, after
+  assembling).
+- **`engine/results-mapping.ts` `assembleResults({liability, totalDeathBenefit, designed})`** →
+  full domain `Results`: SERP liability merged with COLI asset design (face, solved premium,
+  year-1 AV/CSV/DB, GPT/MEC flags) + aggregate total DB / total first-year premium; COLI-only
+  participants get a zero-liability entry.
+- **`stores/run-state.svelte.ts` (`runState`)** — `status`/`progress`/`error`/`designed`;
+  `start()` wires `runModel` → `postIllustration` → `assembleResults` → `quoteStore.setResults`
+  → `done`; on error → `failed` (full fail-fast/AbortController is Story 3.8). Never mutates the
+  quote.
+- **Components:** `RunButton` (disabled while running / no quote), `ProgressIndicator`
+  (computing… / designing N/total), `AssetResults` (per-policy premium/AV/CSV/DB + GPT/MEC +
+  guideline premiums — FR20/FR21). Wired into `/`.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

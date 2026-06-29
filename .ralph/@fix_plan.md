@@ -33,14 +33,7 @@
 - [x] Story 3.3: Discover, cache, and reconcile the engine schema
 - [x] Story 3.4: Compute the tax-adjusted death benefit and allocate per-person face
 - [x] Story 3.5: Algorithmically design each COLI policy via solve
-  > As the proposal author
-  > I want the system to derive each insured's Cost-Recovery premium by solving against the illustration engine
-  > So that the COLI policy is designed automatically rather than hand-tuned.
-  > AC: Given an insured's face amount and actuarial inputs, When the design loop runs, Then it uses `lifeproj` `solve` to derive the Cost-Recovery premium (solved level premium over the agreed pay window) and retrieves the resulting illustration (FR19, AR17/I-2)
-  > AC: Given the solve target is not yet confirmed, When design work begins, Then the exact target (e.g., level premium to endow / target net surrender value, and pay-period length) is confirmed with the operator as an explicit prerequisite (AR17/I-2) — RESOLVED per operator (2026-06-28): solve target is $1000 net surrender value at age 100. Design the Cost-Recovery solve so each policy's CSV reaches $1,000 at age 100.
-  > AC: Given the adapter's `solve` support, When it is exercised, Then it is covered by adapter tests against a mocked engine response
-  > Spec: specs/planning-artifacts/epics.md#story-3-5
-- [ ] Story 3.6: Orchestrate the single-action run with progress and results
+- [x] Story 3.6: Orchestrate the single-action run with progress and results
   > As the proposal author
   > I want one action that runs the whole model and shows progress
   > So that I get a complete liability + asset result without manual steps.

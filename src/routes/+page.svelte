@@ -12,6 +12,9 @@
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
 	import CensusEditor from '$lib/components/CensusEditor.svelte';
 	import LiabilityResults from '$lib/components/LiabilityResults.svelte';
+	import RunButton from '$lib/components/RunButton.svelte';
+	import ProgressIndicator from '$lib/components/ProgressIndicator.svelte';
+	import AssetResults from '$lib/components/AssetResults.svelte';
 	import QuoteList from '$lib/components/QuoteList.svelte';
 
 	let saved = $state(false);
@@ -104,7 +107,10 @@
 				<h2>Executive census</h2>
 				<CensusEditor />
 			</div>
+			<RunButton />
+			<ProgressIndicator />
 			<LiabilityResults />
+			<AssetResults />
 		</section>
 	{/if}
 </main>
