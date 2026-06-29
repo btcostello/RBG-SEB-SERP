@@ -105,6 +105,20 @@ npm run format  # prettier --write .
   from `RISK_CLASSES` / `GENDERS` / `PLAN_MEMBERSHIPS`. Census editing only renders inside
   the active-quote branch of `/`, so SSR (no active quote) shows just the create form.
 
+### Persistence (Story 1.5)
+- **Seam:** `$lib/persistence/quote-repository.ts` defines the async `QuoteRepository`
+  (`list/get/save/delete`) + `QuoteSummary`. UI/stores depend ONLY on this interface; a DB
+  swap reimplements it and touches nothing else (NFR14).
+- **Impl:** `local-storage-repository.ts` — `LocalStorageQuoteRepository` keyed by
+  `schiff-serp:quote:<id>`, depends on a minimal `KeyValueStorage` port (testable with an
+  in-memory fake; `localStorage` satisfies it structurally). `getQuoteRepository()` resolves
+  `localStorage` lazily so importing is SSR-safe — only call it in browser (onMount/handlers).
+- **Serialization:** `serialization.ts` — money is decimal strings in the Quote, so JSON
+  round-trips exactly (AR18); `deserializeQuote` validates via `QuoteSchema` (migration seam).
+- **Façade:** `$lib/stores/saved-quotes.svelte.ts` (`savedQuotes`) — reactive `summaries`
+  refreshed after save/remove; UI never touches the repo directly. `QuoteList.svelte` opens
+  (loads full quote into `quoteStore`) and deletes; Setup route has a Save button.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

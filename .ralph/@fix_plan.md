@@ -9,17 +9,7 @@
 - [x] Story 1.2: Establish money, date/age, and domain-model foundations
 - [x] Story 1.3: Create and configure a quote (company + model settings)
 - [x] Story 1.4: Build and review the executive census
-  > As the proposal author
-  > I want to add, edit, remove, and review executives with all their identity, actuarial, benefit, risk-class, and plan-membership fields
-  > So that I have a complete, validated census ready to run the model.
-  > AC: Given a quote, When I add an executive, Then I can record first name, last name, gender, date of birth, date of hire, and current salary (FR5, FR6), And salary is handled as money (decimal string) and DOB/date of hire as ISO dates per the foundations (AR2, AR3)
-  > AC: Given an insured, When I set their retirement benefit, Then I can specify it as a percentage of final average salary (FR7)
-  > AC: Given an insured, When I assign a risk class, Then I choose from the engine's accepted set (seeded enum now; reconciled with `/schema` in Epic 3) (FR8, AR10)
-  > AC: Given an insured, When I set plan membership, Then I can mark them COLI, SERP, or both (FR9)
-  > AC: Given a census with multiple insured, When I edit or remove an entry, Then the change is reflected immediately in the active quote via an immutable-style update (FR5, AR12)
-  > AC: Given a completed census, When I review it before running, Then a census table shows all participants and their key fields (FR10)
-  > Spec: specs/planning-artifacts/epics.md#story-1-4
-- [ ] Story 1.5: Save, reopen, list, and delete quotes
+- [x] Story 1.5: Save, reopen, list, and delete quotes
   > As the proposal author
   > I want to save a quote and later reopen, switch between, or delete saved quotes
   > So that I can manage one proposal per prospect company and trust that a reopened quote is identical to what I saved.

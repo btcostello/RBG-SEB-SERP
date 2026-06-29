@@ -5,10 +5,22 @@
 	 * company and model-settings editors, plus a summary of the prospect company.
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
+	import { savedQuotes } from '$lib/stores/saved-quotes.svelte';
 	import { CompanySchema, fieldErrors } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
 	import CensusEditor from '$lib/components/CensusEditor.svelte';
+	import QuoteList from '$lib/components/QuoteList.svelte';
+
+	let saved = $state(false);
+
+	function saveCurrent() {
+		if (!quoteStore.current) return;
+		void savedQuotes.save(quoteStore.current).then(() => {
+			saved = true;
+			setTimeout(() => (saved = false), 1500);
+		});
+	}
 
 	// --- Create-quote form state ---
 	let newName = $state('');
@@ -35,6 +47,8 @@
 
 <main>
 	<h1>Schiff SERP</h1>
+
+	<QuoteList />
 
 	{#if !quoteStore.current}
 		<section>
@@ -73,7 +87,10 @@
 		<section>
 			<div class="header">
 				<h2>{quoteStore.current.company.name || 'Untitled quote'}</h2>
-				<button type="button" onclick={() => quoteStore.close()}>New quote</button>
+				<div class="header-actions">
+					<button type="button" onclick={saveCurrent}>{saved ? 'Saved ✓' : 'Save quote'}</button>
+					<button type="button" onclick={() => quoteStore.close()}>New quote</button>
+				</div>
 			</div>
 			<div class="forms">
 				<CompanyForm />
@@ -107,6 +124,10 @@
 		align-items: baseline;
 		justify-content: space-between;
 		gap: 1rem;
+	}
+	.header-actions {
+		display: flex;
+		gap: 0.5rem;
 	}
 	.forms {
 		display: grid;
