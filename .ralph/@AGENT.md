@@ -55,6 +55,27 @@ npm run format  # prettier --write .
   is on, so every test must assert.
 - Fastest cycle: `npm test` (~0.2s for the placeholder suite); `npm run build` ~2.3s.
 
+### Foundations (Story 1.2)
+- **Money — `$lib/money/money.ts` (big.js 7.0.1).** Single rounding policy set at module
+  load: `Big.RM = Big.roundHalfUp`, `Big.DP = 20` (high division precision; never round
+  mid-calc). Money is `Big` in the engine, decimal strings everywhere else. Serialize with
+  `serializeMoney` (lossless `toString`), parse with `parseMoney`, display with `formatMoney`
+  (2 dp). `isMoneyString` is the Valibot-free predicate the domain wraps. **Never use a JS
+  `number` for money outside the engine.**
+- **Dates — `$lib/dates/age.ts`.** `ageNearestBirthday(dob, asOf)` is the single age source
+  (age nearest birthday; ties round up). Dates are ISO `YYYY-MM-DD`; all math is UTC. Feb-29
+  birthdays fall back to Feb-28 in non-leap years. `isValidIsoDate` is the domain's date
+  predicate. Never inline date math elsewhere.
+- **Domain — `$lib/domain/` (Valibot 1.4.2).** Schemas are the source of truth; types via
+  `v.InferOutput` (no hand-written parallel interfaces). Files: `value-objects.ts`
+  (MoneyString/IsoDate/Rate/…), `risk-class.ts` (six seeded `health` strings), `company.ts`,
+  `model-settings.ts` (+ `DEFAULT_MODEL_SETTINGS`: growth 3% / discount 0% / death age 84),
+  `insured.ts` (gender M/F, plan membership COLI/SERP/BOTH), `results.ts`, `quote.ts`
+  (aggregate root, `schemaVersion`, `createQuote`), `index.ts` barrel. No `snake_case` in any
+  domain type.
+- **`$lib` alias in tests:** Vitest resolves `$lib/*` via the SvelteKit Vite plugin — import
+  cross-module helpers as `$lib/money/money`, not relative paths, in non-co-located code.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.

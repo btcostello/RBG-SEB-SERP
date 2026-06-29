@@ -6,14 +6,7 @@
 > Goal: The operator can create, open, save, and delete named quotes; set company and model settings (documented defaults with per-quote overrides); and build, edit, and review a full executive census — a complete, persistent data-entry workspace. This epic establishes the project foundation and all input-side capabilities, so the operator can capture and manage everything a proposal needs even before the calculation engine exists.
 
 - [x] Story 1.1: Initialize the SvelteKit project and module structure
-  > As a developer building Schiff SERP
-  > I want the project scaffolded with the official Svelte CLI and the agreed module structure, tooling, and server boundary in place
-  > So that all subsequent feature work builds on a consistent, type-safe, tested foundation with the API-key boundary enforced from day one.
-  > AC: Given a clean workspace, When the project is scaffolded with `npx sv create schiff-serp` (TypeScript, Vitest, ESLint, Prettier), Then the app builds and `npm run dev` serves at `http://localhost:5173`, And `@sveltejs/adapter-node` is installed and configured in `svelte.config.js` so `node build` produces a runnable Node server (AR1)
-  > AC: Given the scaffolded project, When the `src/lib` structure is created, Then the module folders exist per the architecture (`domain/`, `money/`, `dates/`, `engine/`, `funding/`, `orchestrator/`, `api/`, `persistence/`, `report/`, `stores/`, `components/`, `server/`), And ESLint flat config enforces the `$lib/server` boundary so server-only code cannot be imported into client code
-  > AC: Given environment configuration, When the repo is initialized, Then `.env` is gitignored and `.env.example` is committed with `LIFEPROJ_API_KEY` and `LIFEPROJ_BASE_URL` placeholders (AR11), And `vitest` and `svelte-check` run green on a placeholder test (optional CI workflow runs vitest + svelte-check + build)
-  > Spec: specs/planning-artifacts/epics.md#story-1-1
-- [ ] Story 1.2: Establish money, date/age, and domain-model foundations
+- [x] Story 1.2: Establish money, date/age, and domain-model foundations
   > As a developer
   > I want centralized money (big.js), age-nearest-birthday date utilities, and Valibot domain schemas with the Quote aggregate types
   > So that every downstream calculation and form draws on one source of truth for precision, dates, and validation — eliminating float drift and inconsistent age math.
