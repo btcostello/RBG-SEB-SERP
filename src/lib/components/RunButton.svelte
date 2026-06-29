@@ -2,6 +2,7 @@
 	/** Single-action Run trigger (FR23). Disabled while running or with no active quote. */
 	import { runState } from '$lib/stores/run-state.svelte';
 	import { quoteStore } from '$lib/stores/quote.svelte';
+	import { runFailureHeadline } from '$lib/domain';
 
 	const canRun = $derived(!!quoteStore.current && !runState.isRunning);
 </script>
@@ -11,7 +12,9 @@
 		{runState.isRunning ? 'Running…' : 'Run model'}
 	</button>
 	{#if runState.status === 'failed' && runState.error}
-		<p class="error">Run failed: {runState.error.message}</p>
+		<p class="error">
+			{runFailureHeadline(runState.error.kind)}: {runState.error.message}
+		</p>
 	{/if}
 </div>
 

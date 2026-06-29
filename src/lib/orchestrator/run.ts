@@ -25,6 +25,9 @@ import { buildCostRecoveryDesignRequest, costRecoveryStrategy } from '$lib/fundi
 
 export type RunStatus = 'idle' | 'computing' | 'designing' | 'done' | 'failed';
 
+/** Default per-call timeout — a slow/unreachable engine fails the call (no silent hang, NFR10). */
+export const DEFAULT_RUN_CALL_TIMEOUT_MS = 30_000;
+
 /** A designed COLI policy: the allocated face and the retrieved illustration. */
 export interface DesignedPolicy {
 	insuredId: string;
@@ -46,11 +49,33 @@ export interface RunModelParams {
 	illustrate: (request: DesignRequest, signal?: AbortSignal) => Promise<IllustrationResult>;
 	onStatus?: (status: RunStatus) => void;
 	onProgress?: (completed: number, total: number) => void;
+	/** Run-level abort signal (fail-fast cancels in-flight + remaining calls). */
 	signal?: AbortSignal;
+	/** Per-call timeout in ms (default 30s). */
+	timeoutMs?: number;
 }
 
 export async function runModel(params: RunModelParams): Promise<RunOutput> {
 	const { quote, asOf, illustrate, onStatus, onProgress, signal } = params;
+	const timeoutMs = params.timeoutMs ?? DEFAULT_RUN_CALL_TIMEOUT_MS;
+
+	/**
+	 * Run one illustration with a per-call timeout, combined with the run-level signal. A timeout
+	 * (or a run-level abort) aborts the call, which surfaces as a connectivity failure and — since
+	 * a thrown error stops the loop — aborts the remaining calls too (whole-run fail-fast).
+	 */
+	async function illustrateWithTimeout(request: DesignRequest): Promise<IllustrationResult> {
+		const callController = new AbortController();
+		const callSignal = signal
+			? AbortSignal.any([signal, callController.signal])
+			: callController.signal;
+		const timer = setTimeout(() => callController.abort(), timeoutMs);
+		try {
+			return await illustrate(request, callSignal);
+		} finally {
+			clearTimeout(timer);
+		}
+	}
 
 	// --- computing: pure engine liability + funding, in-browser ---
 	onStatus?.('computing');
@@ -82,7 +107,7 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 			riskClass: insured.riskClass,
 			faceAmount: formatMoney(faceAmount)
 		});
-		const illustration = await illustrate(request, signal);
+		const illustration = await illustrateWithTimeout(request);
 		designed.push({ insuredId: insured.id, faceAmount, illustration });
 		onProgress?.(index + 1, total);
 	}

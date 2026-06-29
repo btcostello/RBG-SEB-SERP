@@ -106,4 +106,48 @@ describe('runModel (FR23, AR9, AR12)', () => {
 		expect(illustrate).not.toHaveBeenCalled();
 		expect(output.designed).toEqual([]);
 	});
+
+	it('fails fast: the first error aborts the remaining calls (Story 3.8, FR25)', async () => {
+		const census = [
+			insured({ id: 'a', planMembership: 'BOTH' }),
+			insured({ id: 'b', planMembership: 'BOTH' })
+		];
+		const illustrate = vi.fn(async () => {
+			throw Object.assign(new Error('engine down'), { kind: 'connectivity' });
+		});
+
+		await expect(runModel({ quote: quoteWith(census), asOf, illustrate })).rejects.toThrow(
+			'engine down'
+		);
+		// The second participant is never attempted — remaining calls are aborted.
+		expect(illustrate).toHaveBeenCalledTimes(1);
+	});
+
+	it('fails the call on a per-call timeout (no silent hang, NFR10)', async () => {
+		// A call that only settles when its signal aborts; with a tiny timeout it is aborted.
+		const illustrate = vi.fn(
+			(_request, signal?: AbortSignal) =>
+				new Promise<never>((_, reject) => {
+					signal?.addEventListener('abort', () => reject(new Error('aborted by timeout')));
+				})
+		);
+		await expect(
+			runModel({
+				quote: quoteWith([insured({ id: 'a', planMembership: 'BOTH' })]),
+				asOf,
+				illustrate,
+				timeoutMs: 5
+			})
+		).rejects.toThrow('aborted by timeout');
+	});
+
+	it('never mutates the input quote, even on failure (FR26)', async () => {
+		const quote = quoteWith([insured({ id: 'a', planMembership: 'BOTH' })]);
+		const before = JSON.stringify(quote);
+		const illustrate = vi.fn(async () => {
+			throw new Error('boom');
+		});
+		await runModel({ quote, asOf, illustrate }).catch(() => {});
+		expect(JSON.stringify(quote)).toBe(before);
+	});
 });

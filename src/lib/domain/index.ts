@@ -12,4 +12,5 @@ export * from './model-settings';
 export * from './insured';
 export * from './illustration';
 export * from './results';
+export * from './errors';
 export * from './quote';

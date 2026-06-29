@@ -35,13 +35,7 @@
 - [x] Story 3.5: Algorithmically design each COLI policy via solve
 - [x] Story 3.6: Orchestrate the single-action run with progress and results
 - [x] Story 3.7: Validate inputs against the engine contract before a run
-  > As the proposal author
-  > I want my census and settings checked against the engine's contract before any call
-  > So that avoidable errors are caught up front with clear, field-level messages.
-  > AC: Given a quote about to run, When pre-run validation executes, Then census and settings are validated against the `lifeproj` contract (via Valibot schemas informed by the discovered schema) (FR24, AR4)
-  > AC: Given a contract violation (e.g., missing/invalid risk class), When validation fails, Then specific, field-level issues are reported to the operator and the run does not start (FR24)
-  > Spec: specs/planning-artifacts/epics.md#story-3-7
-- [ ] Story 3.8: Fail the whole run fast and preserve inputs for re-run
+- [x] Story 3.8: Fail the whole run fast and preserve inputs for re-run
   > As the proposal author
   > I want a failed run to stop cleanly with a clear reason and keep my inputs intact
   > So that I never get partial or ambiguous output and can correct and re-run.

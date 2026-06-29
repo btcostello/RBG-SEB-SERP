@@ -271,6 +271,19 @@ npm run format  # prettier --write .
   stays `idle`, and does NOT call `runModel`. `RunButton` shows the field-level issues; cleared
   on the next start/reset.
 
+### Whole-run fail-fast (Story 3.8)
+- **Per-call timeout (NFR10):** `runModel` wraps each illustration call in a per-call
+  `AbortController` combined (`AbortSignal.any`) with the run-level signal; a timeout
+  (`timeoutMs`, default `DEFAULT_RUN_CALL_TIMEOUT_MS`=30s) aborts the call → the client throws a
+  `connectivity` ApiError → the thrown error stops the loop, so remaining calls are aborted
+  (whole-run fail-fast). No silent hang.
+- **`domain/errors.ts`:** `RunFailure {kind, message, details?}` + `toRunFailure(err)` (maps an
+  ApiError's kind/message/details; unknown → `internal`) + `runFailureHeadline(kind)`.
+- **`runState`:** owns a run `AbortController` (+ `cancel()`); on any error it aborts, clears
+  `designed`, sets `status='failed'` and `error = toRunFailure(...)`. **No partial output** —
+  `setResults` runs only on full success; a failed run never mutates the quote (inputs intact,
+  re-run from scratch, no retry/resume). `RunButton` shows `runFailureHeadline(kind): message`.
+
 ## Feature Development Quality Standards
 
 **CRITICAL**: All new features MUST meet the following mandatory requirements before being considered complete.
