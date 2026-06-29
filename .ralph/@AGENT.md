@@ -295,7 +295,9 @@ npm run format  # prettier --write .
   the model" prompt (supports FR28–30). Layout has Setup ↔ Report nav (hidden in `@media print`).
 - **Pages** (`report/pages/CoverPage`, `CensusSummaryPage`, `ColiSummaryPage`); registration
   done in 4.1. **CoverPage (Story 4.2)** renders the SERP-financed-with-COLI title personalized
-  with `quoteStore.current.company.name` (FR28). CensusSummary/ColiSummary still stubs (4.3/4.4).
+  with `quoteStore.current.company.name` (FR28). **CensusSummary (Story 4.3)** lists the census
+  with key fields (name/gender/DOB/hire/salary/benefit%/risk/plan) from `quoteStore.current.census`
+  (FR29). ColiSummary still a stub (4.4).
 - **ESLint:** `svelte/no-navigation-without-resolve` is off — static internal `<a href>` links
   are intentional.
 

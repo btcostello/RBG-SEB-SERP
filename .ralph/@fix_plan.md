@@ -41,12 +41,7 @@
 
 - [x] Story 4.1: Build the data-driven report page registry and renderer
 - [x] Story 4.2: Generate the Cover page
-  > As the proposal author
-  > I want a cover page personalized with the prospect company name
-  > So that the proposal opens as a polished, client-specific document.
-  > AC: Given a quote with a company name and a completed run, When the Cover page renders, Then it displays the SERP-financed-with-COLI proposal cover personalized with the prospect company name (FR28), And it is registered in the report registry (FR31)
-  > Spec: specs/planning-artifacts/epics.md#story-4-2
-- [ ] Story 4.3: Generate the Census Summary page
+- [x] Story 4.3: Generate the Census Summary page
   > As the proposal author
   > I want a census summary page listing the plan participants
   > So that the client sees who the plan covers.
