@@ -7,6 +7,7 @@
 	import { quoteStore } from '$lib/stores/quote.svelte';
 	import { savedQuotes } from '$lib/stores/saved-quotes.svelte';
 	import { liability } from '$lib/stores/liability.svelte';
+	import { runState } from '$lib/stores/run-state.svelte';
 	import { CompanySchema, fieldErrors, toNumberOrNaN } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
@@ -21,8 +22,13 @@
 
 	function saveCurrent() {
 		if (!quoteStore.current) return;
-		// Snapshot the live liability results onto the quote so they persist and reopen (AC3).
-		quoteStore.setResults(liability.results);
+		// A completed run already wrote the full Results (incl. the COLI asset aggregate — total
+		// death benefit and total first-year premium) onto the quote. Only snapshot the live
+		// liability-only results when no run has populated them yet, so saving never clobbers the
+		// asset figures the report depends on (FR30); a never-run quote still persists liability (AC3).
+		if (runState.status !== 'done') {
+			quoteStore.setResults(liability.results);
+		}
 		void savedQuotes.save(quoteStore.current).then(() => {
 			saved = true;
 			setTimeout(() => (saved = false), 1500);
