@@ -145,6 +145,10 @@
 				<input
 					type="text"
 					inputmode="decimal"
+					autocomplete="off"
+					name="current-salary"
+					data-1p-ignore
+					data-lpignore="true"
 					bind:value={currentSalary}
 					aria-invalid={!!errors.currentSalary}
 				/>
