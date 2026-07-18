@@ -8,7 +8,11 @@ import {
 } from './design-basis';
 import { buildBenefitDistributionDesignRequest } from './benefit-distribution';
 import { buildPremiumDepositDesignRequest } from './premium-deposit';
-import { buildPremiumRecoveryDesignRequest } from './premium-recovery';
+import {
+	buildFlooredPremiumRecoveryDesignRequest,
+	buildPremiumRecoveryDesignRequest,
+	premiumRecoveryIsUnderfunded
+} from './premium-recovery';
 
 const insured = {
 	issueAge: 45,
@@ -132,5 +136,29 @@ describe('Options 2-4 design requests', () => {
 		});
 		expect(request.solve?.value).toBeUndefined();
 		expect(v.safeParse(DesignRequestSchema, request).success).toBe(true);
+	});
+
+	it('Option 4 floors at Option 2 premium — it must be at least as well funded', () => {
+		expect(premiumRecoveryIsUnderfunded('25657.00', '32129.00')).toBe(true);
+		expect(premiumRecoveryIsUnderfunded('32129.00', '32129.00')).toBe(false);
+		expect(premiumRecoveryIsUnderfunded('40000.00', '32129.00')).toBe(false);
+	});
+
+	it('the floored Option 4 keeps the distributions but specifies Option 2 premium', () => {
+		const floored = buildFlooredPremiumRecoveryDesignRequest({
+			...insured,
+			benefitStream: levelStream,
+			lifeExpectancy: 85,
+			annualPremium: '32129.00'
+		});
+		expect(floored.premiumPeriods).toEqual([
+			{ startYear: 1, endYear: 10, kind: 'specify', amount: '32129.00' }
+		]);
+		// Premium recovery becomes a reported outcome, not the target.
+		expect(floored.solve).toBeUndefined();
+		expect(floored.distributionPeriods).toEqual([
+			{ startYear: 21, endYear: 40, kind: 'specify', amount: '30000.00' }
+		]);
+		expect(v.safeParse(DesignRequestSchema, floored).success).toBe(true);
 	});
 });

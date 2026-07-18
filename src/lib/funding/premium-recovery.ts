@@ -8,13 +8,17 @@
  *
  * Over-recovery is acceptable — the operator's rule is "at least premiums back," not equality.
  *
- * ⚠ **Read the result before trusting it.** Live probing (2026-07-18) showed this target can go
- * slack: when the face is generous the death benefit clears cumulative premium easily, and the
- * solve degenerates into "the minimum premium that keeps the policy in force to LE" (because
- * `net_death_benefit` is 0 for a policy that lapsed earlier), landing the lapse *on* life
- * expectancy. Under the smallest-compliant-face basis that is much less likely, but
- * `solveFeasible` and `lapseYear` still need checking against LE before a design is presented.
+ * **Floored at Option 2's premium** (operator, 2026-07-18): Option 4 is meant to be at least as
+ * well funded as Option 2, so where the recovery solve asks for less, Option 2's premium wins.
+ *
+ * The floor exists because the recovery target alone does not pin the design. `net_death_benefit`
+ * is 0 for a policy that lapsed before the target year, so the feasible region has a hard edge at
+ * "survives to LE" — and with the recovery floor itself non-binding (the death benefit clears
+ * cumulative premium comfortably at a compliant face), the solve converges onto that edge and
+ * lapses the contract *exactly* at life expectancy. Live, every unfloored variant did this. An
+ * insured who outlives LE would leave nothing behind, which is the outcome the floor prevents.
  */
+import { Big } from '$lib/money/money';
 import type { DesignRequest, SolveSpec, StreamYear } from '$lib/domain';
 import type { FundingStrategy, FundingStrategyInput, FundingResult } from './funding-strategy';
 import {
@@ -44,7 +48,13 @@ export interface PremiumRecoveryDesignParams extends PremiumFundedDesignParams {
 	lifeExpectancy: number;
 }
 
-/** Build the Option 4 design request: Option 2's distributions, premium-recovery endpoint. */
+/**
+ * Build the Option 4 design request: Option 2's distributions, premium-recovery endpoint.
+ *
+ * This is step one of two. Run it, then compare the solved premium against Option 2's with
+ * {@link premiumRecoveryIsUnderfunded}; if it comes in lower, rebuild with
+ * {@link buildFlooredPremiumRecoveryDesignRequest} to apply the floor.
+ */
 export function buildPremiumRecoveryDesignRequest(
 	params: PremiumRecoveryDesignParams
 ): DesignRequest {
@@ -53,6 +63,39 @@ export function buildPremiumRecoveryDesignRequest(
 		distributionPeriods: benefitStreamToDistributionPeriods(params.benefitStream, params.issueAge),
 		distributionType: SERP_DISTRIBUTION_TYPE,
 		solve: premiumRecoverySolve(params.lifeExpectancy)
+	};
+}
+
+/** True when the recovery solve funds less than Option 2, so Option 2's premium should win. */
+export function premiumRecoveryIsUnderfunded(
+	solvedPremium: string,
+	benefitDistributionPremium: string
+): boolean {
+	return new Big(solvedPremium).lt(new Big(benefitDistributionPremium));
+}
+
+export interface FlooredPremiumRecoveryDesignParams extends PremiumRecoveryDesignParams {
+	/** Option 2's solved premium — the floor Option 4 may not fund below. */
+	annualPremium: string;
+}
+
+/**
+ * Build the floored Option 4 request: the same distributions, but Option 2's premium specified
+ * rather than solved. Premium recovery becomes a *reported outcome* here rather than the target
+ * — funding at or above Option 2 clears it by a wide margin anyway.
+ */
+export function buildFlooredPremiumRecoveryDesignRequest(
+	params: FlooredPremiumRecoveryDesignParams
+): DesignRequest {
+	const base = premiumFundedBase(params);
+	const payYears = base.premiumPeriods?.[0].endYear ?? 0;
+	return {
+		...base,
+		premiumPeriods: [
+			{ startYear: 1, endYear: payYears, kind: 'specify', amount: params.annualPremium }
+		],
+		distributionPeriods: benefitStreamToDistributionPeriods(params.benefitStream, params.issueAge),
+		distributionType: SERP_DISTRIBUTION_TYPE
 	};
 }
 

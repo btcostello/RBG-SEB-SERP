@@ -219,6 +219,47 @@ Two ways out, in preference order:
    premium — the bisection previously sketched. Costs N calls per participant and buys more death
    benefit than the operator wants, but unblocks presentable designs today.
 
+### Option 4 is floored at Option 2 — and is genuinely distinct only sometimes
+
+**Rule (operator, 2026-07-18):** Option 4 must be at least as well funded as Option 2, so its
+premium is `max(recovery solve, Option 2 premium)`. Option 2 funds all SERP benefits from
+distributions and stays in force to age 100; Option 4 does the same **and** requires net death
+benefit at LE to be at least cumulative premium paid.
+
+**Does Option 2 satisfy Option 4 automatically? No — usually, but not always.** Live sweep
+(10-pay, $30k draws ages 66–85, LE 85), Option 2's recovery margin by issue age:
+
+| issue age | Opt 2 premium | net DB @ LE | cum. premium | margin | |
+|---|---|---|---|---|---|
+| 38 | $18,116 | $160,242 | $181,164 | −$20,922 | **fails** |
+| 40 | $20,601 | $147,089 | $206,006 | −$58,918 | **fails** |
+| 41 | $22,034 | $190,550 | $220,335 | −$29,785 | **fails** |
+| **42** | $23,639 | $252,284 | $236,393 | +$15,891 | recovers |
+| 45 | $32,129 | $591,286 | $321,295 | +$269,992 | recovers |
+| 55 | $132,777 | $3,462,916 | $1,327,767 | +$2,135,149 | recovers |
+
+At age 40 Option 4 stands alone and costs more — premium $21,564 vs $20,601, recovery binding to
+the dollar ($215,642 = $215,642), and the policy lapses in year 72 rather than 61.
+
+**Why young ages fail.** The margin is roughly `P × (k − payYears) − D`, where k is the
+face-to-premium multiple and D the accumulated draws. **D is fixed by the plan while P swings
+hard with issue age.** A 40-year-old needs only ~$20k/yr (45 years of growth ahead), so a
+$600,000 benefit stream dwarfs $206,006 of premium and eats the death benefit below it. A
+55-year-old needs ~$133k/yr, so the same draws are a rounding error against a $2.7M face. k does
+fall with age, but nowhere near fast enough to offset that.
+
+**Expect Options 2 and 4 to match for most participants and diverge for the youngest.**
+
+The `max()` is load-bearing, not cosmetic: without it, the recovery solve at ages 42+ converges
+onto the "survives exactly to LE" edge (`net_death_benefit` is 0 for a policy that lapsed
+earlier, so the feasible region has a hard boundary there) and produces a fragile design that
+lapses precisely at life expectancy. See `premiumRecoveryIsUnderfunded` /
+`buildFlooredPremiumRecoveryDesignRequest`.
+
+**Engine bug to report:** issue age 65 returns `feasible: false` with `solved_premium:
+1.8446744073709552e+22` (2⁶⁴ × 1000 — an integer overflow artifact). The design is genuinely
+infeasible there, but the number is garbage and would print if surfaced.
+
 **Two caveats to settle in deep testing:**
 
 1. ⚠ **`min_non_mec` does not prevent a GPT cap.** It binds on the 7-pay/MEC limit only. Live,

@@ -63,9 +63,14 @@ export {
 	premiumRecoveryStrategy,
 	PREMIUM_RECOVERY_ID,
 	premiumRecoverySolve,
-	buildPremiumRecoveryDesignRequest
+	premiumRecoveryIsUnderfunded,
+	buildPremiumRecoveryDesignRequest,
+	buildFlooredPremiumRecoveryDesignRequest
 } from './premium-recovery';
-export type { PremiumRecoveryDesignParams } from './premium-recovery';
+export type {
+	PremiumRecoveryDesignParams,
+	FlooredPremiumRecoveryDesignParams
+} from './premium-recovery';
 export {
 	premiumFundedBase,
 	dboSwitchAfterFunding,
