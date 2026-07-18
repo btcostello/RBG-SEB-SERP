@@ -25,3 +25,9 @@ vite.config.ts.timestamp-*
 # Project tooling
 .ralph/logs/
 _bmad-output/
+
+# Ralph runtime state — loop/session bookkeeping and logs, regenerated each run (not source)
+.ralph/.*
+.ralph/live.log
+.ralph/progress.json
+.ralph/status.json
