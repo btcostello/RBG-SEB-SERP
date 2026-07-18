@@ -29,9 +29,15 @@ export type RunStatus = 'idle' | 'computing' | 'designing' | 'done' | 'failed';
 /** Default per-call timeout — a slow/unreachable engine fails the call (no silent hang, NFR10). */
 export const DEFAULT_RUN_CALL_TIMEOUT_MS = 30_000;
 
-/** A designed COLI policy: the allocated face and the retrieved illustration. */
+/** A designed COLI policy: the face in force and the retrieved illustration. */
 export interface DesignedPolicy {
 	insuredId: string;
+	/** Funding strategy this design belongs to — one participant carries one per option. */
+	strategyId: string;
+	/**
+	 * For Option 1 this is the face allocated from the SERP liability. For the premium-funded
+	 * options face is an output of the solve, so it is read back off the illustration.
+	 */
 	faceAmount: Big;
 	illustration: IllustrationResult;
 }
@@ -115,7 +121,12 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 				: {})
 		});
 		const illustration = await illustrateWithTimeout(request);
-		designed.push({ insuredId: insured.id, faceAmount, illustration });
+		designed.push({
+			insuredId: insured.id,
+			strategyId: costRecoveryStrategy.id,
+			faceAmount,
+			illustration
+		});
 		onProgress?.(index + 1, total);
 	}
 
