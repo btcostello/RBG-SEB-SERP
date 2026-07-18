@@ -187,6 +187,11 @@ export const IllustrationResultSchema = v.object({
 	mecAdjusted: v.boolean(),
 	/** The resolved year-1 annual premium (reflects a solve, if one ran). */
 	solvedAnnualPremium: MoneyStringSchema,
+	/**
+	 * The resolved year-1 face. For a `min_non_mec` design this is the *answer* — face is derived
+	 * from the solved premium, so it is read back here rather than being known up front.
+	 */
+	initialFaceAmount: v.optional(MoneyStringSchema),
 	guideline: GuidelinePremiumsSchema,
 	/** Policy year the contract lapsed, or null/absent while it stays in force. */
 	lapseYear: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),

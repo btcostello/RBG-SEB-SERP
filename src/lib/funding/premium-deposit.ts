@@ -11,7 +11,7 @@
  * *solved* premium).
  */
 import type { DesignRequest } from '$lib/domain';
-import type { FundingStrategy, FundingStrategyInput, FundingResult } from './funding-strategy';
+import type { FundingStrategy, FundingResult } from './funding-strategy';
 import { premiumFundedBase, type PremiumFundedDesignParams } from './design-basis';
 
 export const PREMIUM_DEPOSIT_ID = 'premium-deposit';
@@ -40,7 +40,7 @@ export const premiumDepositStrategy: FundingStrategy = {
 	id: PREMIUM_DEPOSIT_ID,
 	label: 'Premium Deposit (Option 3)',
 	facesFromPremium: true,
-	fund(_input: FundingStrategyInput): FundingResult {
+	fund(): FundingResult {
 		return { allocations: [] };
 	}
 };

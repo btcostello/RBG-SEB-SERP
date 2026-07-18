@@ -138,6 +138,9 @@ export function mapWireResponseToResult(wire: WireProjectResponse): Illustration
 		gptAdjusted: wire.gpt_adjusted,
 		mecAdjusted: wire.mec_adjusted,
 		solvedAnnualPremium: toMoneyString(wire.summary.initial_annual_premium),
+		...(wire.summary.initial_face_amount !== undefined
+			? { initialFaceAmount: toMoneyString(wire.summary.initial_face_amount) }
+			: {}),
 		guideline: {
 			singlePremium: toMoneyString(wire.summary.guideline_single_premium),
 			levelPremiumA: toMoneyString(wire.summary.guideline_level_premium_a),

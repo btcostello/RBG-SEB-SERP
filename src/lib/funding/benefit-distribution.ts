@@ -9,7 +9,7 @@
  * (see `design-basis.ts`).
  */
 import type { DesignRequest, SolveSpec, StreamYear } from '$lib/domain';
-import type { FundingStrategy, FundingStrategyInput, FundingResult } from './funding-strategy';
+import type { FundingStrategy, FundingResult } from './funding-strategy';
 import {
 	benefitStreamToDistributionPeriods,
 	premiumFundedBase,
@@ -55,7 +55,7 @@ export const benefitDistributionStrategy: FundingStrategy = {
 	id: BENEFIT_DISTRIBUTION_ID,
 	label: 'Benefit Distribution (Option 2)',
 	facesFromPremium: true,
-	fund(_input: FundingStrategyInput): FundingResult {
-		return { totalDeathBenefit: undefined, allocations: [] };
+	fund(): FundingResult {
+		return { allocations: [] };
 	}
 };

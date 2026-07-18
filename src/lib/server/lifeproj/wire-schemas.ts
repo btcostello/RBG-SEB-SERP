@@ -101,6 +101,8 @@ export const WireLoanRowSchema = v.object({
 });
 
 export const WireSummarySchema = v.object({
+	/** Resolved year-1 face — the answer for options whose face derives from the solved premium. */
+	initial_face_amount: v.optional(v.number()),
 	initial_annual_premium: v.number(),
 	guideline_single_premium: v.number(),
 	guideline_level_premium_a: v.number(),

@@ -20,7 +20,7 @@
  */
 import { Big } from '$lib/money/money';
 import type { DesignRequest, SolveSpec, StreamYear } from '$lib/domain';
-import type { FundingStrategy, FundingStrategyInput, FundingResult } from './funding-strategy';
+import type { FundingStrategy, FundingResult } from './funding-strategy';
 import {
 	benefitStreamToDistributionPeriods,
 	premiumFundedBase,
@@ -103,7 +103,7 @@ export const premiumRecoveryStrategy: FundingStrategy = {
 	id: PREMIUM_RECOVERY_ID,
 	label: 'Premium Recovery (Option 4)',
 	facesFromPremium: true,
-	fund(_input: FundingStrategyInput): FundingResult {
+	fund(): FundingResult {
 		return { allocations: [] };
 	}
 };

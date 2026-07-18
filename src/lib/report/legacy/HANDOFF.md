@@ -278,10 +278,30 @@ nothing tests cash value against them. That headroom is most likely the engine d
 police CVAT at all, not real compliance room (it also raised `mec_adjusted`). Treat CVAT as
 unavailable until the engine enforces it.
 
-**Not yet wired:** the orchestrator still runs Option 1 only. Options 2–4 are registered behind
-the strategy seam with `facesFromPremium: true` (face is an *output* of their design call, so
-there is nothing to pre-allocate), but running them per participant — and reading face back off
-the illustration — is the next step.
+**Orchestrator: WIRED (2026-07-18).** `runModel` designs all four options per COLI participant
+and `assembleResults` keys them under `designs` / `aggregate.byOption`.
+
+- **Options run sequentially within a participant** — they are a dependency chain (Option 3
+  reuses Option 2's solved premium; Option 4 is floored at it). **Participants run in parallel**
+  in a bounded pool (`DEFAULT_RUN_CONCURRENCY = 4`, overridable per run).
+- **Face for Options 2–4 is read back** off `summary.initial_face_amount` (now parsed as
+  `IllustrationResult.initialFaceAmount`) — it is the *answer*, not an input.
+- **COLI-only participants get Option 1 only.** With no SERP benefit there is nothing to
+  distribute, and Options 2/4 would collapse to a trivial design. (The SERP-only / COLI-only
+  wrinkle is otherwise still deferred per operator.)
+- **Progress counts options, not participants**, so a large census does not appear to stall.
+- **Output is ordered by census, not completion**, so a re-run reproduces an identical snapshot
+  despite the parallelism (NFR11).
+- **Fail-fast preserved**: the first error aborts in-flight calls in the other workers rather
+  than leaving them running.
+
+Verified end to end against the live engine: a 3-participant census (2 SERP+COLI, 1 COLI-only)
+produced 9 designs in ~1.6s and a snapshot that validates against `ResultsSchema`. The young
+participant's Option 4 stood on its own solve while the older one floored to Option 2 — the
+age-driven divergence predicted above, showing up in a real run.
+
+**Next:** bind report pages 4.3 / 4.5 to `aggregate.byOption`, and surface `solveFeasible` /
+`gptAdjusted` / `lapseYear` so a capped or infeasible design cannot reach a page looking clean.
 
 **Options 2–4 — how they map** (operator-confirmed 2026-07-18):
 
