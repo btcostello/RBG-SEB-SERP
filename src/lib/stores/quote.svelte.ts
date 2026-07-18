@@ -8,8 +8,11 @@
  * changed) rather than deep-mutating, so `$derived`/`$effect` consumers track correctly and
  * the documented `DEFAULT_MODEL_SETTINGS` are never mutated (FR3).
  */
+import * as v from 'valibot';
+import { browser } from '$app/environment';
 import {
 	createQuote,
+	QuoteSchema,
 	type Company,
 	type Insured,
 	type ModelSettings,
@@ -21,9 +24,45 @@ function generateId(): string {
 	return crypto.randomUUID();
 }
 
+/**
+ * Session-storage key for the active working quote. The quote lives in memory for reactivity,
+ * but is mirrored here so a page reload or a direct visit to `/report` (a full page load, which
+ * resets in-memory state) rehydrates the same quote — including its computed results — instead
+ * of showing an empty screen. Cleared when the quote is closed. This is the transient working
+ * copy; the explicit "Save quote" flow still persists named quotes separately (localStorage).
+ */
+const ACTIVE_QUOTE_KEY = 'schiff:active-quote';
+
 class QuoteStore {
 	/** The active quote, or `null` when none has been created/opened yet. */
 	current = $state<Quote | null>(null);
+
+	constructor() {
+		if (!browser) return;
+		// Rehydrate a working quote persisted from a previous page load, if it still validates.
+		try {
+			const raw = sessionStorage.getItem(ACTIVE_QUOTE_KEY);
+			if (raw) {
+				const parsed = v.safeParse(QuoteSchema, JSON.parse(raw));
+				if (parsed.success) this.current = parsed.output;
+				else sessionStorage.removeItem(ACTIVE_QUOTE_KEY); // stale/incompatible shape
+			}
+		} catch {
+			// Corrupt storage — ignore and start fresh.
+		}
+		// Mirror every change (edits, run results, close) back to session storage.
+		$effect.root(() => {
+			$effect(() => {
+				const quote = this.current;
+				try {
+					if (quote) sessionStorage.setItem(ACTIVE_QUOTE_KEY, JSON.stringify(quote));
+					else sessionStorage.removeItem(ACTIVE_QUOTE_KEY);
+				} catch {
+					// Storage unavailable/full — persistence is best-effort.
+				}
+			});
+		});
+	}
 
 	/** True when there is an active quote. */
 	get hasQuote(): boolean {
