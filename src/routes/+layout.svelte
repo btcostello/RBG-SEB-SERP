@@ -23,6 +23,7 @@
 <nav class="app-nav">
 	<a href="/">Setup</a>
 	<a href="/report">Report</a>
+	<a href="/report/legacy">Legacy Report</a>
 </nav>
 
 {@render children()}
