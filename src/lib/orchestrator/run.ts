@@ -107,12 +107,24 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 			gender: toWireGender(insured.gender),
 			riskClass: insured.riskClass,
 			faceAmount: formatMoney(faceAmount),
-				creditedRate: quote.modelSettings.creditingRate
-			});
+			creditedRate: quote.modelSettings.creditingRate,
+			// The engine now bounds the premium window itself, so the returned stream stops
+			// charging premium after this many years (was previously summed on our side only).
+			...(quote.modelSettings.premiumYears !== undefined
+				? { premiumYears: quote.modelSettings.premiumYears }
+				: {})
+		});
 		const illustration = await illustrateWithTimeout(request);
 		designed.push({ insuredId: insured.id, faceAmount, illustration });
 		onProgress?.(index + 1, total);
 	}
 
-	return { liability, totalDeathBenefit: funding.totalDeathBenefit, designed };
+	// Option 1 always sizes a death benefit up front. The fallback only satisfies the widened
+	// FundingResult type, which allows none for the premium-funded strategies (Options 2–4) —
+	// those derive face from the solved premium and this orchestrator does not run them yet.
+	return {
+		liability,
+		totalDeathBenefit: funding.totalDeathBenefit ?? new Big(0),
+		designed
+	};
 }

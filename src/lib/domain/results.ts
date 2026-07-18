@@ -38,6 +38,14 @@ export const ParticipantResultSchema = v.object({
 	gptAdjusted: v.optional(v.boolean()),
 	mecAdjusted: v.optional(v.boolean()),
 	/**
+	 * False when the engine's solve could not reach its target. An infeasible solve still
+	 * returns 200 with the engine's best effort, so this is the only signal that the designed
+	 * premium does not actually hit the funding target.
+	 */
+	solveFeasible: v.optional(v.boolean()),
+	/** Policy year the illustrated contract lapses, when it does. */
+	lapseYear: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
+	/**
 	 * Full COLI illustration stream, one entry per policy year (premium, account value, cash
 	 * surrender value, death benefit). Present for COLI participants; enables life-of-plan
 	 * cash-flow and accounting derivations (e.g. total premiums) that single-point values cannot.

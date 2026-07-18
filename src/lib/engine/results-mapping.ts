@@ -78,6 +78,14 @@ export function assembleResults(input: {
 		entry.deathBenefit = firstYear?.deathBenefit;
 		entry.gptAdjusted = policy.illustration.gptAdjusted;
 		entry.mecAdjusted = policy.illustration.mecAdjusted;
+		// An infeasible solve still returns 200 with a best-effort premium, so carry the flag
+		// through rather than let a design that misses its target look like a clean result.
+		if (policy.illustration.solve != null) {
+			entry.solveFeasible = policy.illustration.solve.feasible;
+		}
+		if (policy.illustration.lapseYear !== undefined) {
+			entry.lapseYear = policy.illustration.lapseYear;
+		}
 		// Persist the full illustration stream (already cent-rounded at the adapter boundary) so
 		// life-of-plan cash-flow / accounting figures can be derived and survive serialization.
 		entry.illustrationYears = policy.illustration.years;

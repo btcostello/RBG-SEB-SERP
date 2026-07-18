@@ -17,7 +17,7 @@ describe('costRecoveryStrategy.fund (FR17, FR18)', () => {
 			coliParticipantIds: ['a', 'b']
 		});
 		// Total DB = 1,200,000 × 0.79 = 948,000; split 2 ways = 474,000 each
-		expect(result.totalDeathBenefit.toString()).toBe('948000');
+		expect(result.totalDeathBenefit?.toString()).toBe('948000');
 		expect(result.allocations).toHaveLength(2);
 		expect(result.allocations.every((a) => a.faceAmount.eq(new Big('474000')))).toBe(true);
 	});
@@ -28,7 +28,7 @@ describe('costRecoveryStrategy.fund (FR17, FR18)', () => {
 			corporateTaxRate: 0.25,
 			coliParticipantIds: []
 		});
-		expect(result.totalDeathBenefit.toString()).toBe('750000');
+		expect(result.totalDeathBenefit?.toString()).toBe('750000');
 		expect(result.allocations).toEqual([]);
 	});
 });
@@ -46,8 +46,15 @@ describe('funding strategy registry (NFR14)', () => {
 });
 
 describe('buildCostRecoveryDesignRequest (FR19, AR17/I-2)', () => {
-	it('targets a $1,000 net surrender value at age 100', () => {
-		expect(COST_RECOVERY_SOLVE).toEqual({ value: '1000.00', when: 100, basis: 'age' });
+	it('targets a $1,000 net account value at age 100', () => {
+		expect(COST_RECOVERY_SOLVE).toEqual({
+			mode: 'premium',
+			metric: 'net_account_value',
+			target: 'specify',
+			value: '1000.00',
+			when: 100,
+			basis: 'age'
+		});
 	});
 
 	it('builds a solve design request from the per-person face and actuarial inputs', () => {
@@ -60,10 +67,34 @@ describe('buildCostRecoveryDesignRequest (FR19, AR17/I-2)', () => {
 		});
 		expect(request.faceAmount).toBe('474000.00');
 		expect(request.issueAge).toBe(45);
-		expect(request.solve).toEqual({ value: '1000.00', when: 100, basis: 'age' });
+		expect(request.solve).toEqual(COST_RECOVERY_SOLVE);
 		// No fixed premium is sent — the engine solves it.
 		expect(request.annualPremium).toBeUndefined();
 		// Valid against the domain schema, so the BFF will accept it.
 		expect(v.safeParse(DesignRequestSchema, request).success).toBe(true);
+	});
+
+	it('pairs the solve block with a solve premium window (both halves are required)', () => {
+		// A solve block WITHOUT a `kind: "solve"` window makes the engine report
+		// `no_solve_period` / feasible:false and pay zero premium — so this pairing is the
+		// contract, not a detail.
+		const request = buildCostRecoveryDesignRequest({
+			issueAge: 45,
+			gender: 'M',
+			riskClass: 'Standard Non Tobacco',
+			faceAmount: '474000.00',
+			premiumYears: 7
+		});
+		expect(request.premiumPeriods).toEqual([{ startYear: 1, endYear: 7, kind: 'solve' }]);
+	});
+
+	it('defaults the premium-payment period to ten years', () => {
+		const request = buildCostRecoveryDesignRequest({
+			issueAge: 45,
+			gender: 'M',
+			riskClass: 'Standard Non Tobacco',
+			faceAmount: '474000.00'
+		});
+		expect(request.premiumPeriods?.[0].endYear).toBe(10);
 	});
 });

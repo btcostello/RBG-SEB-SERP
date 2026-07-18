@@ -33,6 +33,10 @@ const successBody = {
 			attained_age: 40,
 			premium: 8000,
 			account_value: 7000.5,
+			net_account_value: 7000.5,
+			// Distinct from the account value — proves the adapter reads the engine's own
+			// surrender value rather than the pre-v1 account-value approximation.
+			cash_surrender_value: 5200.25,
 			death_benefit: 500000,
 			status: 'in_force'
 		},
@@ -42,20 +46,26 @@ const successBody = {
 			attained_age: 41,
 			premium: 8000,
 			account_value: 14500.25,
+			net_account_value: 12500.25,
+			cash_surrender_value: 12000,
 			death_benefit: 500000,
 			status: 'in_force'
 		}
 	],
 	charges: [],
 	credits: [],
-	loans: [],
+	loans: [
+		{ policy_year: 1, withdrawal: 0, new_loan: 0, loan_interest: 0, eoy_loan_balance: 0 },
+		{ policy_year: 2, withdrawal: 1500, new_loan: 2000, loan_interest: 100, eoy_loan_balance: 2100 }
+	],
 	summary: {
 		initial_face_amount: 500000,
 		initial_annual_premium: 8000,
 		guideline_single_premium: 50000,
 		guideline_level_premium_a: 6000,
 		guideline_level_premium_b: 6500,
-		lapse_year: null
+		lapse_year: null,
+		mec_year: null
 	},
 	solve: null,
 	gpt_adjusted: false,
@@ -117,9 +127,21 @@ describe('createLifeprojAdapter.project', () => {
 			age: 41,
 			premium: '8000.00',
 			accountValue: '7000.50',
-			cashSurrenderValue: '7000.50',
-			deathBenefit: '500000.00'
+			netAccountValue: '7000.50',
+			cashSurrenderValue: '5200.25',
+			deathBenefit: '500000.00',
+			status: 'in_force',
+			withdrawal: '0.00',
+			loan: '0.00',
+			loanBalance: '0.00'
 		});
+		// The parallel `loans[]` table is folded into the matching year row.
+		expect(result.years[1]).toMatchObject({
+			withdrawal: '1500.00',
+			loan: '2000.00',
+			loanBalance: '2100.00'
+		});
+		expect(result.lapseYear).toBeNull();
 		expect(result.gptAdjusted).toBe(false);
 		expect(result.mecAdjusted).toBe(true);
 		expect(result.solvedAnnualPremium).toBe('8000.00');
@@ -186,7 +208,13 @@ describe('createLifeprojAdapter.project', () => {
 		const solvedBody = {
 			...successBody,
 			summary: { ...successBody.summary, initial_annual_premium: 12345.67 },
-			solve: { value: 1000, when: 100, basis: 'age', premium: 12345.67 }
+			solve: {
+				feasible: true,
+				metric: 'net_account_value',
+				target_kind: 'specify',
+				target_value: 1000,
+				solved_premium: 12345.67
+			}
 		};
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(solvedBody));
 		const adapter = createLifeprojAdapter({
@@ -202,5 +230,55 @@ describe('createLifeprojAdapter.project', () => {
 		expect(sentBody.solve).toEqual({ value: 1000, when: 100, basis: 'age' });
 		// ...and the solved premium comes back mapped to camelCase money.
 		expect(result.solvedAnnualPremium).toBe('12345.67');
+		expect(result.solve).toMatchObject({
+			feasible: true,
+			targetValue: '1000.00',
+			solvedPremium: '12345.67'
+		});
+	});
+
+	it('sends premium and distribution periods as year windows', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(successBody));
+		const adapter = createLifeprojAdapter({
+			baseUrl: 'https://engine.example',
+			apiKey: 'k',
+			fetch: fetchMock
+		});
+
+		await adapter.project({
+			...request,
+			annualPremium: undefined,
+			premiumPeriods: [{ startYear: 1, endYear: 10, kind: 'solve' }],
+			distributionPeriods: [
+				{ startYear: 21, endYear: 40, kind: 'specify', amount: '20000.00' }
+			],
+			distributionType: 'withdraw_to_basis_then_loan'
+		});
+
+		const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+		// `amount` is omitted for a solve window — the engine ignores it there anyway, and
+		// sending a stray 0 would read as a deliberate premium holiday.
+		expect(sentBody.premium_periods).toEqual([{ start_year: 1, end_year: 10, kind: 'solve' }]);
+		expect(sentBody.distribution_periods).toEqual([
+			{ start_year: 21, end_year: 40, kind: 'specify', amount: 20000 }
+		]);
+		expect(sentBody.distribution_type).toBe('withdraw_to_basis_then_loan');
+	});
+
+	it('surfaces an infeasible solve rather than treating the 200 as a clean design', async () => {
+		// A solve that cannot reach its target still returns 200 with a best effort.
+		const infeasibleBody = {
+			...successBody,
+			solve: { feasible: false, reason: 'no_solve_period' }
+		};
+		const adapter = createLifeprojAdapter({
+			baseUrl: 'https://engine.example',
+			apiKey: 'k',
+			fetch: vi.fn().mockResolvedValue(jsonResponse(infeasibleBody))
+		});
+
+		const result = await adapter.project(request);
+
+		expect(result.solve).toEqual({ feasible: false, reason: 'no_solve_period' });
 	});
 });

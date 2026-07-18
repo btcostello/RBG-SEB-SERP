@@ -24,10 +24,10 @@ export const ModelSettingsSchema = v.object({
 	/** Plan effective date, ISO YYYY-MM-DD. Optional so pre-existing quotes still validate. */
 	effectiveDate: v.optional(IsoDateSchema),
 	/**
-	 * Number of years out-of-pocket COLI premiums are paid (the premium-payment period). Used to
-	 * bound life-of-plan premium totals. NOTE: the illustration API has no field for this yet, so
-	 * it is applied in our derivations only; send it to the engine once the API supports it, so
-	 * the returned stream itself stops premiums after this many years. Optional (defaults to 10).
+	 * Number of years out-of-pocket COLI premiums are paid (the premium-payment period). Sent to
+	 * the illustration engine as the premium window, so the returned stream itself stops charging
+	 * premium after this many years, and used to bound life-of-plan premium totals.
+	 * Optional (defaults to 10).
 	 */
 	premiumYears: v.optional(YearCountSchema)
 });
