@@ -184,9 +184,9 @@ Resolved (2026-07-17): illustration streams are now persisted (`ParticipantResul
 - ☑ COLI death benefits — taken at each participant's life-expectancy age from the stream.
 - ☑ Net COLI gain/(loss) = death benefits − premiums; Net program aggregate cash flow = net benefits paid + net gain/loss; COLI cost recovery = −net benefits paid / net gain/loss.
 Remaining gaps:
-- ☐ **COLI policy loans & withdrawals** — not returned by the projection API (0 for Option 1; needed for Options 2/4).
-- ☐ **Options 2 / 3 / 4** — require new illustrations (funding strategies 2–4).
-- ⧗ **`premiumYears` → illustration API.** New `ModelSettings.premiumYears` input bounds our premium summation, but the API has **no field** for it yet, so the returned stream still charges premiums every year — making the cash values slightly inconsistent with a bounded premium period. Send `premiumYears` to the engine once the API supports it (then the stream itself stops premiums after N years).
+- ☑ **COLI policy loans & withdrawals** — RESOLVED (2026-07-18). lifeproj v1 returns `loans[]`; the adapter folds it into the year rows as `withdrawal` / `loan` / `loanBalance`. Still 0 for Option 1; the data is there for Options 2/4.
+- ☑ **`premiumYears` → illustration API** — RESOLVED (2026-07-18). Sent as a `premium_periods` window (`{1..premiumYears, kind:"solve"}`), so the engine's stream now stops premiums after N years and our summation matches the returned cash values.
+- ☐ **Options 2 / 3 / 4** — require new illustrations (funding strategies 2–4). Now fully expressible against the v1 API (`distribution_periods`, `distribution_type`, and the `premium_recovery` solve target) — see [HANDOFF.md](./HANDOFF.md) §5 for the per-option mapping, including the outer face loop Option 4 needs.
 - Note: face sizing (cost-recovery) targets after-tax benefits only, not benefits + premiums, so Option 1 aggregate/cost-recovery won't hit exactly 0 / 100% (a face-sizing calibration item). "Net Benefits Paid" uses `afterTaxCost` as an approximation of actual net cash flow.
 
 ### 16. Earnings Impact — `pages/LegacyEarningsImpactPage.svelte` (section page 5.1)

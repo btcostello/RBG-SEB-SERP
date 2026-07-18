@@ -102,30 +102,207 @@ level prints the value when uniform, else **"Varies"**. Applied on pages 2.2 and
 
 ---
 
-## 5. ⚠ API contract — what the report needs from the calculator
+## 5. API contract — status against lifeproj v1
 
-Current wire contract lives in `src/lib/server/lifeproj/wire-schemas.ts` (POST `/api/v1/project`):
+Wire contract lives in `src/lib/server/lifeproj/wire-schemas.ts` (POST `/api/v1/project`),
+tracking `API.md` v1 as of 2026-07-18. **All four previously-blocking additions have landed.**
 
 - **Request:** `issue_age, gender(M|F), health, face_amount, product_type?, db_option?,
-  annual_premium?, premium_mode?, credited_rate?, qualification_test?, maturity_age?, solve{value,when,basis?}`
-- **Response:** `report[]{policy_year, age, premium, account_value, death_benefit}`,
-  `summary{initial_annual_premium, guideline_single_premium, guideline_level_premium_a, guideline_level_premium_b}`,
-  `gpt_adjusted`, `mec_adjusted`
+  annual_premium?, premium_periods[]?, premium_mode?, distribution_periods[]?,
+  distribution_type?, credited_rate?, qualification_test?, mec_handling?, maturity_age?,
+  solve{mode?,metric?,target?,value?,when,basis?}`
+- **Response:** `report[]{policy_year, age, premium, account_value, net_account_value,
+  cash_surrender_value, death_benefit, status}`, `loans[]{policy_year, withdrawal, new_loan,
+  loan_interest, eoy_loan_balance}`, `summary{…, lapse_year, mec_year}`, `gpt_adjusted`,
+  `mec_adjusted`, `solve{feasible, reason?, target_value?, solved_premium?, …}`
 
-**Requested additions (these block report pages):**
+**Resolved (2026-07-18):**
 
-1. **Premium payment period** *(request field)* — e.g. `premium_years`. We have the operator input
-   (`ModelSettings.premiumYears`) but no way to send it, so the engine currently charges premiums
-   **every year** of the stream. We bound the premium *summation* ourselves, which makes cash
-   values slightly inconsistent with a bounded premium period. Once the API accepts it, send it
-   from `run.ts` → `buildCostRecoveryDesignRequest` and drop the local workaround note.
-2. **Loans / withdrawals** *(response, per policy year)* — needed for the "COLI Policy Loans and
-   Withdrawals" row and for funding Options 2 & 4. Not currently returned at all.
-3. **Cash surrender value** *(response, per policy year)* — the wire report has no CSV field, so
-   the adapter currently **uses `account_value` as CSV** (see the comment in
-   `src/lib/server/lifeproj/adapter.ts`). A real CSV field would remove that approximation.
-4. **Funding strategies 2 / 3 / 4** — Options 2–4 on pages 4.3 and 4.5 need additional
-   illustrations with different premium/withdrawal patterns. Only Option 1 (Cost Recovery) exists.
+1. ☑ **Premium payment period** — sent as `premium_periods:[{1..premiumYears, kind:"solve"}]`.
+   `run.ts` passes `ModelSettings.premiumYears` through `buildCostRecoveryDesignRequest`, so the
+   engine's own stream now stops charging premium after the period; our summation no longer
+   diverges from the returned cash values.
+2. ☑ **Loans / withdrawals** — `loans[]` is folded into the year rows by `policy_year`, so
+   `IllustrationYear` now carries `withdrawal`, `loan`, `loanBalance`.
+3. ☑ **Cash surrender value** — real `cash_surrender_value` replaces the account-value
+   approximation (the fallback remains only for an older engine deployment). The old
+   approximation was **materially wrong in early durations**: live year 1 shows
+   `account_value` 6,752.69 against `cash_surrender_value` **0.00** (the surrender charge
+   wipes it out), and the two do not converge until roughly year 20. Any early-duration CSV
+   the report has shown to date was overstated.
+4. ☑ **Funding strategies 2 / 3 / 4** — now *expressible* (see below); the strategies themselves
+   are still to be built.
+
+> ⚠ **A solve needs both halves.** The `solve` block AND a period with `kind: "solve"`.
+> We previously sent the block alone. **Verified against the live engine 2026-07-18 — the
+> failure is silent, not loud.** With no `premium_periods` the engine falls back to legacy
+> level-premium behaviour and solves a *pay-every-year* policy: same target, `feasible: true`,
+> no warning, but a materially different product. For a 45M Standard NT, $474k face @5.75%:
+>
+> | | solved premium | premiums paid |
+> |---|---|---|
+> | old shape (no window) | **$4,685.67** | every year to lapse (56 yrs) |
+> | correct 10-pay window | **$9,790.20** | years 1–10 only |
+>
+> So the old code understated the annual premium by ~2× while looking perfectly healthy.
+> Fixed in `cost-recovery.ts`.
+
+> ℹ **`/api/v1/schema` was briefly stale for the solve block; re-checked 2026-07-18 and it now
+> matches `API.md`** (`mode: premium|face|distribution|rollout`, `metric`, `target`) and
+> documents the solve-window pairing rule. `/schema` is trustworthy again — keep using it as
+> the authority.
+
+### Design basis for Options 2–4 — IMPLEMENTED (2026-07-18)
+
+**Operator direction:** face for Options 2–4 = the smallest face that does not fail 7702/7702A
+("min non-MEC" as shorthand for compliance, not the literal API kind). GPT + DBO B gives the
+lowest death benefit for the solved premium — never buy more than that. Designs fund over 5–10
+years. Pick a plausible structure now; deep testing later.
+
+Built in [`design-basis.ts`](../../funding/design-basis.ts), shared by all three options:
+`face_periods: min_non_mec`, `db_option: 'B'`, `qualification_test: 'GPT'`, premium solved over
+the pay period. The options differ only in solve target and distributions:
+
+| | file | distributions | solve |
+|---|---|---|---|
+| Opt 2 Benefit Distribution | `benefit-distribution.ts` | SERP benefit stream | premium → $1k net AV @ 100 |
+| Opt 3 Premium Deposit | `premium-deposit.ts` | none | none (Opt 2's premium, specified) |
+| Opt 4 Premium Recovery | `premium-recovery.ts` | SERP benefit stream | premium → net DB ≥ cum. premium @ LE |
+
+**DBO schedule (operator, 2026-07-18):** option **B while premiums are going in, switching to A
+the year after the final premium** — `dboSwitchAfterFunding()`. B buys guideline room exactly
+when premium goes in; A avoids paying B's extra COI across the whole distribution phase.
+**Live-verified to work:** Option 3 went from lapsing in year 59 (B held for life) to **staying
+in force**; Options 2/4 extended from year 37 to 40 and gained a death benefit at LE where the
+policy had previously lapsed before reaching it.
+
+**Live status after the engine change (2026-07-18):**
+
+- ☑ **The 400 is gone.** `min_non_mec` + a premium solve is accepted and **converges correctly** —
+  18 iterations, and the seed `face_amount` is properly irrelevant (100k/500k/1M/5M seeds all
+  return the identical answer, since face is derived from premium).
+- ☑ **Option 3 runs today** (specified premium — never needed the fix).
+- ☑ **The $50,000 solve ceiling is lifted** (engine, 2026-07-18). All four options now solve at
+  realistic benefit levels.
+
+**All four options, live (45M Standard NT, IUL @5.75%, $30k/yr benefit ages 66–85, LE 85):**
+
+| | premium | face | cum. premium | net DB @ LE | lapse |
+|---|---|---|---|---|---|
+| Opt 2 Benefit Distribution | $55,711 | $708,187 | $237,676 | $213,450 | yr 56 (age 101, by design) |
+| Opt 3 Premium Deposit | $55,711 | $708,187 | $237,676 | $1,392,439 | none |
+| Opt 4 Premium Recovery | $57,049 | $725,195 | $243,384 | **$243,384** | yr 62 (age 107) |
+
+**Option 4 now works exactly as defined:** net death benefit at LE equals cumulative premium to
+the dollar, and the policy stays in force well past LE. The earlier degenerate behaviour is gone
+— it was an artifact of the oversized cost-recovery face, not of the target.
+
+⚠ **REMAINING BLOCKER — the premium schedule is not presentable.** `gpt_adjusted: true` on every
+option. `min_non_mec` sizes face against the **7-pay** limit, which is far more generous than the
+**guideline** limit, so the solved premium does not fit the face under GPT and the engine rations
+it year by year. The "10-pay at $55,711" design actually pays:
+
+| yr 1–3 | yr 4 | yr 5–8 | yr 9 | yr 10 | total |
+|---|---|---|---|---|---|
+| $55,710.63 | $35,455.28 | **$0** | $11,321.50 | $23,767.63 | $237,676 of $557,106 (43%) |
+
+Internally consistent — the solve does hit its target — but no client can be told "pay $55,711
+for ten years" when the real schedule is three full years, a partial, a four-year gap, then two
+odd amounts. **This is the operator's own stated intent not being met:** min-non-MEC was meant as
+"never fail 7702 *or* 7702A", and only 7702A is being honoured.
+
+Two ways out, in preference order:
+
+1. **Engine (asked):** a face kind that binds on *both* limits — the smallest face at which the
+   entered premium is cut by neither the 7-pay limit nor the guideline limit.
+2. **Our side (no engine change):** raise face until `gpt_adjusted` is false, with a specified
+   premium — the bisection previously sketched. Costs N calls per participant and buys more death
+   benefit than the operator wants, but unblocks presentable designs today.
+
+**Two caveats to settle in deep testing:**
+
+1. ⚠ **`min_non_mec` does not prevent a GPT cap.** It binds on the 7-pay/MEC limit only. Live,
+   Option 3 at a min-non-MEC face came back `gpt_adjusted: true`, admitting **$143,765 of an
+   intended $336,980**. If the intent is "never fail 7702 *or* 7702A", the face rule must bind on
+   the guideline limit too. For reference, funding $500k uncapped needs ~$1.75M face (DBO A) or
+   ~$1.5M (DBO B) at issue 45 — far above the min-non-MEC face.
+2. ⚠ **DBO B is not strictly better.** It admits ~17% more premium on a 10-pay (neutral on a
+   5-pay, where GSP binds and is option-independent), but its death benefit rides the account
+   value and so buys more COI. Live, a $1M-face Option 2 was **feasible under A and infeasible
+   under B** (lapsed year 46). More room to pay in, less to draw out.
+
+⚠ **CVAT is a trap right now.** It admits the full premium at the min-non-MEC face, which looks
+like it solves everything. But `API.md` states the CVAT columns are **reported, not enforced** —
+nothing tests cash value against them. That headroom is most likely the engine declining to
+police CVAT at all, not real compliance room (it also raised `mec_adjusted`). Treat CVAT as
+unavailable until the engine enforces it.
+
+**Not yet wired:** the orchestrator still runs Option 1 only. Options 2–4 are registered behind
+the strategy seam with `facesFromPremium: true` (face is an *output* of their design call, so
+there is nothing to pre-allocate), but running them per participant — and reading face back off
+the illustration — is the next step.
+
+**Options 2–4 — how they map** (operator-confirmed 2026-07-18):
+
+- **Option 2** — `distribution_periods` carrying the SERP benefit stream +
+  `distribution_type: "withdraw_to_basis_then_loan"`, premium solved to $1,000 net account
+  value at age 100. Year-varying benefits can use `distribution_schedule` instead.
+  **Needs its own face sizing — see the Option 4 note below.** Watch for `gptAdjusted`: in the
+  under-sized range the solved premium is GPT-capped and non-monotonic in face (live: $52k at
+  $750k face vs $28k at $1M face), so a capped result is not a usable design.
+- **Option 3** — no solve; Option 2's solved premium as a `specify` window, no distributions.
+- **Option 4** — Option 2 *plus* a floor on the face: the death benefit at life expectancy must
+  be **at least** cumulative premiums paid (over-recovery is fine). Two unknowns, and the API
+  allows one solve per call, so this needs an outer loop on our side: trial face → engine
+  solves premium → compare `net_death_benefit` at LE against cumulative premium → raise face
+  and repeat. A `mode: "face"` solve does **not** help — it returns the *largest* face reaching
+  the target, which for a death-benefit metric finds the lapse boundary, the opposite end.
+
+  **Live-verified with distributions included (2026-07-18) — this is the key finding for
+  Options 2 AND 4.**
+
+  ⚠ **Options 2 and 4 cannot use the cost-recovery face.** It is not a calibration nit — it is
+  structurally infeasible. 7702 caps *total* premium at roughly the guideline single premium,
+  which scales with face. At the Option 1 face ($474k for a 45M) the GSP is only ~$135k, and
+  $135k cannot fund $600k of SERP distributions. The engine confirms it: premium pinned at the
+  7-pay limit, `gpt_adjusted` and `mec_adjusted` both true, policy **lapses in year 32**, solve
+  infeasible. **Face drives maximum fundable premium, which drives supportable distributions**
+  — so Options 2 and 4 need their own, much larger face sizing.
+
+  Face sweep, 45M Standard NT @5.75%, $30k/yr draws policy years 21–40, LE 85 (year 40):
+
+  | face | Option 2 (net AV $1k @ 100) | Option 4 (recovery @ LE) |
+  |---|---|---|
+  | $474k (Opt 1 face) | **infeasible**, lapse yr 32 | **infeasible**, lapse yr 32 |
+  | $750k | feasible, GPT-capped | infeasible, GPT+MEC capped |
+  | $850k–$1.0M | feasible | **floor binds exactly, slack $0** |
+  | ≥$1.05M | feasible | floor goes slack; lapses at LE |
+
+  **Option 4 has a well-defined answer, and it is the binding band.** Between ~$850k and
+  ~$1.0M the solve lands `net_death_benefit` at LE *exactly* equal to cumulative premium
+  (slack $0.00 at every point tested), and from $900k up the policy **stays in force**. Above
+  ~$1.05M the constraint goes slack, the solve degenerates to "minimum premium that survives to
+  LE," and the contract lapses precisely in year 40 — fragile, and strictly worse. So the face
+  rule is: **the largest face at which the recovery constraint still binds** (~$1.0M here),
+  which is also the in-force end of the band.
+
+  Caveat: `gpt_adjusted` is true throughout the binding band, so the guideline limit is part of
+  what sets the answer. The result is well-defined but the GPT interaction should be understood
+  before it is presented as a design.
+
+**Remaining gaps (API-side):**
+
+- **No taxable-income modelling.** Distributions are only tax-free if the contract is not a MEC;
+  the engine reports a MEC but does not change the distribution math. Check `mecYear`.
+- **One solve per call** — face sizing stays our own calculation (see below).
+- **`mec_handling: "avoid"` silently caps premium**, so a "successful" solve can carry a quietly
+  reduced premium. `solveFeasible` / `gptAdjusted` / `mecAdjusted` are now on `ParticipantResult`
+  and should be surfaced in the UI.
+- **`lapseYear` is non-null for every Option 1 policy by design** — solving to $1,000 at age 100
+  leaves nothing behind, so the contract lapses the following year (live: `lapse_year: 56`,
+  age 101). Do **not** surface this as an error; only a lapse *before* life expectancy matters.
+  Note the projection also stops at lapse, so the stream is ~56 rows, not to age 121.
+- **Rate tables are placeholders** — structurally correct, not product-accurate.
 
 **Our-side calc item (not API):** the cost-recovery funding strategy sizes face = *after-tax
 benefits only*, not benefits + premiums. So Option 1's aggregate cash flow doesn't land at 0 and
