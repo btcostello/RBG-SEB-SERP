@@ -1,32 +1,40 @@
 <script lang="ts">
 	/**
-	 * ModelSettingsForm — edit the active quote's model settings (FR2).
-	 * Documented defaults are pre-populated by createQuote (FR3); overrides persist on this
-	 * quote only. Each field validates against ModelSettingsSchema with field-level errors
-	 * (AR4); valid changes commit immutably to the active quote store (AR12).
+	 * ModelSettingsForm — edit the active quote's plan-level model settings (FR2).
+	 *
+	 * Timing and salary assumptions are now per-participant (edited in the census grid). What
+	 * remains plan-level is the NPV discount rate. Documented defaults are pre-populated by
+	 * createQuote (FR3); the override persists on this quote only. Validates against
+	 * ModelSettingsSchema with field-level errors (AR4) and commits immutably (AR12).
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
-	import { ModelSettingsSchema, fieldErrors, toNumberOrNaN, type ModelSettings } from '$lib/domain';
+	import {
+		ModelSettingsSchema,
+		MORTALITY_TABLES,
+		fieldErrors,
+		toNumberOrNaN,
+		type ModelSettings,
+		type MortalityTable
+	} from '$lib/domain';
 
 	const settings = quoteStore.current?.modelSettings;
 
-	// One string field per setting (raw input). Empty -> NaN so it fails validation.
-	let retirementAge = $state(settings ? String(settings.retirementAge) : '');
-	let assumedDeathBenefitAge = $state(settings ? String(settings.assumedDeathBenefitAge) : '');
-	let benefitWaitingPeriod = $state(settings ? String(settings.benefitWaitingPeriod) : '');
-	let salaryGrowthRate = $state(settings ? String(settings.salaryGrowthRate) : '');
+	// One string field per numeric setting (raw input). Empty -> NaN so it fails validation.
 	let npvDiscountRate = $state(settings ? String(settings.npvDiscountRate) : '');
-	let fasAveragingPeriod = $state(settings ? String(settings.fasAveragingPeriod) : '');
+	let creditingRate = $state(settings ? String(settings.creditingRate) : '');
+	let mortalityTable = $state<MortalityTable>(settings?.mortalityTable ?? 'RP-2012U');
+	let effectiveDate = $state(settings?.effectiveDate ?? '');
+	let premiumYears = $state(settings?.premiumYears != null ? String(settings.premiumYears) : '');
 
 	const num = toNumberOrNaN;
 
 	const candidate = $derived<ModelSettings>({
-		retirementAge: num(retirementAge),
-		assumedDeathBenefitAge: num(assumedDeathBenefitAge),
-		benefitWaitingPeriod: num(benefitWaitingPeriod),
-		salaryGrowthRate: num(salaryGrowthRate),
 		npvDiscountRate: num(npvDiscountRate),
-		fasAveragingPeriod: num(fasAveragingPeriod)
+		creditingRate: num(creditingRate),
+		mortalityTable,
+		// Optional: an empty picker means "not set" (undefined), which is valid.
+		effectiveDate: effectiveDate || undefined,
+		premiumYears: premiumYears.trim() === '' ? undefined : num(premiumYears)
 	});
 	const errors = $derived(fieldErrors(ModelSettingsSchema, candidate));
 
@@ -44,34 +52,6 @@
 		step: string;
 	}[] = [
 		{
-			key: 'retirementAge',
-			label: 'Retirement age',
-			value: () => retirementAge,
-			set: (v) => (retirementAge = v),
-			step: '1'
-		},
-		{
-			key: 'assumedDeathBenefitAge',
-			label: 'Assumed death-benefit age',
-			value: () => assumedDeathBenefitAge,
-			set: (v) => (assumedDeathBenefitAge = v),
-			step: '1'
-		},
-		{
-			key: 'benefitWaitingPeriod',
-			label: 'Benefit waiting period (years)',
-			value: () => benefitWaitingPeriod,
-			set: (v) => (benefitWaitingPeriod = v),
-			step: '1'
-		},
-		{
-			key: 'salaryGrowthRate',
-			label: 'Salary growth rate',
-			value: () => salaryGrowthRate,
-			set: (v) => (salaryGrowthRate = v),
-			step: '0.01'
-		},
-		{
 			key: 'npvDiscountRate',
 			label: 'NPV discount rate (0–1)',
 			value: () => npvDiscountRate,
@@ -79,10 +59,17 @@
 			step: '0.01'
 		},
 		{
-			key: 'fasAveragingPeriod',
-			label: 'FAS averaging period (years)',
-			value: () => fasAveragingPeriod,
-			set: (v) => (fasAveragingPeriod = v),
+			key: 'creditingRate',
+			label: 'Crediting rate (0–1)',
+			value: () => creditingRate,
+			set: (v) => (creditingRate = v),
+			step: '0.0001'
+		},
+		{
+			key: 'premiumYears',
+			label: 'Number of premium years',
+			value: () => premiumYears,
+			set: (v) => (premiumYears = v),
 			step: '1'
 		}
 	];
@@ -107,6 +94,28 @@
 			{#if errors[field.key]}<span class="error">{errors[field.key]}</span>{/if}
 		</label>
 	{/each}
+
+	<label>
+		<span>Plan effective date</span>
+		<input
+			type="date"
+			value={effectiveDate}
+			oninput={(e) => {
+				effectiveDate = e.currentTarget.value;
+				commit();
+			}}
+			aria-invalid={!!errors.effectiveDate}
+		/>
+		{#if errors.effectiveDate}<span class="error">{errors.effectiveDate}</span>{/if}
+	</label>
+
+	<label>
+		<span>Mortality table</span>
+		<select bind:value={mortalityTable} onchange={commit} aria-invalid={!!errors.mortalityTable}>
+			{#each MORTALITY_TABLES as table (table)}<option value={table}>{table}</option>{/each}
+		</select>
+		{#if errors.mortalityTable}<span class="error">{errors.mortalityTable}</span>{/if}
+	</label>
 </fieldset>
 
 <style>

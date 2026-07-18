@@ -8,7 +8,7 @@
 	import { savedQuotes } from '$lib/stores/saved-quotes.svelte';
 	import { liability } from '$lib/stores/liability.svelte';
 	import { runState } from '$lib/stores/run-state.svelte';
-	import { CompanySchema, fieldErrors, toNumberOrNaN } from '$lib/domain';
+	import { CompanySchema, fieldErrors } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
 	import CensusEditor from '$lib/components/CensusEditor.svelte';
@@ -36,12 +36,14 @@
 	}
 
 	// --- Create-quote form state ---
+	// Only the company name is collected up front; the corporate tax rate starts at a documented
+	// default and is set by the operator in the company form after the quote is created.
+	const DEFAULT_CORPORATE_TAX_RATE = 0.2;
 	let newName = $state('');
-	let newTaxRateStr = $state('');
 
 	const createCandidate = $derived({
 		name: newName,
-		corporateTaxRate: toNumberOrNaN(newTaxRateStr)
+		corporateTaxRate: DEFAULT_CORPORATE_TAX_RATE
 	});
 	const createErrors = $derived(fieldErrors(CompanySchema, createCandidate));
 
@@ -49,10 +51,9 @@
 		if (Object.keys(createErrors).length > 0) return;
 		quoteStore.create({
 			companyName: createCandidate.name,
-			corporateTaxRate: createCandidate.corporateTaxRate
+			corporateTaxRate: DEFAULT_CORPORATE_TAX_RATE
 		});
 		newName = '';
-		newTaxRateStr = '';
 	}
 </script>
 
@@ -77,20 +78,6 @@
 					<input type="text" bind:value={newName} aria-invalid={!!createErrors.name} />
 					{#if createErrors.name && newName !== ''}
 						<span class="error">{createErrors.name}</span>
-					{/if}
-				</label>
-				<label>
-					<span>Corporate tax rate (0–1)</span>
-					<input
-						type="number"
-						step="0.01"
-						min="0"
-						max="1"
-						bind:value={newTaxRateStr}
-						aria-invalid={!!createErrors.corporateTaxRate}
-					/>
-					{#if createErrors.corporateTaxRate && newTaxRateStr !== ''}
-						<span class="error">{createErrors.corporateTaxRate}</span>
 					{/if}
 				</label>
 				<button type="submit" disabled={Object.keys(createErrors).length > 0}>Create quote</button>

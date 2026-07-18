@@ -10,7 +10,7 @@
  * start the run when any issue is returned.
  */
 import { ageNearestBirthday, isValidIsoDate } from '$lib/dates/age';
-import { isColiParticipant, type Quote } from '$lib/domain';
+import { CENSUS_GENDERS, isColiParticipant, type Quote } from '$lib/domain';
 import { isMoneyString } from '$lib/money/money';
 
 export interface RunValidationIssue {
@@ -57,14 +57,18 @@ export function validateRun(params: ValidateRunParams): RunValidationIssue[] {
 				);
 			}
 		}
-		if (insured.gender !== 'M' && insured.gender !== 'F') {
-			report('gender', 'Gender must be M or F');
+		if (!CENSUS_GENDERS.includes(insured.gender)) {
+			report('gender', `Gender must be one of ${CENSUS_GENDERS.join(', ')}`);
 		}
 		if (!allowedRiskClasses.has(insured.riskClass)) {
 			report('riskClass', `Risk class "${insured.riskClass}" is not accepted by the engine`);
 		}
 		if (!isMoneyString(insured.currentSalary)) {
 			report('currentSalary', 'Salary is not a valid amount');
+		}
+		// Timing sanity is per-participant now: life expectancy must reach the retirement age.
+		if (insured.lifeExpectancy < insured.retirementAge) {
+			report('lifeExpectancy', 'Life expectancy must be at least the retirement age');
 		}
 	}
 
@@ -74,16 +78,6 @@ export function validateRun(params: ValidateRunParams): RunValidationIssue[] {
 			label: 'Census',
 			field: 'census',
 			message: 'Add at least one COLI participant before running'
-		});
-	}
-
-	// Settings sanity against the contract.
-	const settings = quote.modelSettings;
-	if (settings.retirementAge > settings.assumedDeathBenefitAge) {
-		issues.push({
-			label: 'Model settings',
-			field: 'assumedDeathBenefitAge',
-			message: 'Assumed death age must be at least the retirement age'
 		});
 	}
 

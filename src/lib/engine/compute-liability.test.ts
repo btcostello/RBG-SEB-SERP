@@ -1,31 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { computeLiability } from './compute-liability';
-import type { Insured, ModelSettings } from '$lib/domain';
+import type { Insured } from '$lib/domain';
+import { makeInsured, makeSettings } from '$lib/testing/fixtures';
 
-// Flat 0% growth keeps the arithmetic clean and exact for assertions.
-const settings: ModelSettings = {
-	retirementAge: 65,
-	assumedDeathBenefitAge: 84,
-	benefitWaitingPeriod: 0,
-	salaryGrowthRate: 0,
-	npvDiscountRate: 0,
-	fasAveragingPeriod: 3
-};
+// The fixture's flat 0% growth, 0-year waiting, 3-year FAS keeps the arithmetic clean and exact.
+const settings = makeSettings();
 
 function insured(overrides: Partial<Insured> = {}): Insured {
-	return {
-		id: 'i1',
-		firstName: 'Jane',
-		lastName: 'Doe',
-		gender: 'F',
-		dateOfBirth: '1967-06-15', // age 60 as of 2027-06-15
-		dateOfHire: '2005-01-01',
-		currentSalary: '100000',
-		benefitPercentage: 0.6,
-		riskClass: 'Standard Non Tobacco',
-		planMembership: 'SERP',
-		...overrides
-	};
+	return makeInsured(overrides); // dob 1967-06-15 → age 60 as of 2027-06-15
 }
 
 const asOf = '2027-06-15';

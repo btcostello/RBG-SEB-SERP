@@ -1,24 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { validateRun } from './validate-run';
 import { createQuote, RISK_CLASSES, type Insured, type Quote } from '$lib/domain';
+import { makeInsured } from '$lib/testing/fixtures';
 
 const ENGINE_RISK_CLASSES = [...RISK_CLASSES];
 const asOf = '2027-06-15';
 
 function insured(overrides: Partial<Insured> = {}): Insured {
-	return {
-		id: 'i1',
-		firstName: 'Jane',
-		lastName: 'Doe',
-		gender: 'F',
+	return makeInsured({
 		dateOfBirth: '1975-06-15',
-		dateOfHire: '2005-01-01',
 		currentSalary: '200000',
-		benefitPercentage: 0.6,
-		riskClass: 'Standard Non Tobacco',
 		planMembership: 'BOTH',
 		...overrides
-	};
+	});
 }
 
 function quoteWith(census: Insured[]): Quote {
@@ -76,11 +70,9 @@ describe('validateRun (FR24)', () => {
 		expect(issues.some((i) => i.field === 'dateOfBirth')).toBe(true);
 	});
 
-	it('flags settings where retirement age exceeds the assumed death age', () => {
-		const quote = quoteWith([insured()]);
-		quote.modelSettings.retirementAge = 90;
-		quote.modelSettings.assumedDeathBenefitAge = 84;
+	it('flags a participant whose life expectancy is below the retirement age', () => {
+		const quote = quoteWith([insured({ retirementAge: 90, lifeExpectancy: 84 })]);
 		const issues = validateRun({ quote, asOf, riskClasses: ENGINE_RISK_CLASSES });
-		expect(issues.some((i) => i.field === 'assumedDeathBenefitAge')).toBe(true);
+		expect(issues.some((i) => i.field === 'lifeExpectancy')).toBe(true);
 	});
 });

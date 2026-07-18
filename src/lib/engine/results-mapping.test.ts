@@ -2,32 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { Big } from '$lib/money/money';
 import { computeLiability } from './compute-liability';
 import { toResults, assembleResults } from './results-mapping';
-import type { Insured, IllustrationResult, ModelSettings } from '$lib/domain';
+import type { IllustrationResult } from '$lib/domain';
 import { ResultsSchema } from '$lib/domain';
 import * as v from 'valibot';
 import type { DesignedPolicy } from '$lib/orchestrator/run';
+import { makeInsured, makeSettings } from '$lib/testing/fixtures';
 
-const settings: ModelSettings = {
-	retirementAge: 65,
-	assumedDeathBenefitAge: 84,
-	benefitWaitingPeriod: 0,
-	salaryGrowthRate: 0,
-	npvDiscountRate: 0,
-	fasAveragingPeriod: 3
-};
-
-const insured: Insured = {
-	id: 'i1',
-	firstName: 'Jane',
-	lastName: 'Doe',
-	gender: 'F',
-	dateOfBirth: '1967-06-15',
-	dateOfHire: '2005-01-01',
-	currentSalary: '100000',
-	benefitPercentage: 0.6,
-	riskClass: 'Standard Non Tobacco',
-	planMembership: 'SERP'
-};
+const settings = makeSettings();
+const insured = makeInsured();
 
 describe('toResults', () => {
 	it('maps Big engine results to a valid domain Results snapshot with cent strings (AR2)', () => {
@@ -93,6 +75,9 @@ describe('assembleResults (FR20, FR21)', () => {
 		expect(p?.cashSurrenderValue).toBe('900.00');
 		expect(p?.gptAdjusted).toBe(true);
 		expect(p?.mecAdjusted).toBe(false);
+		// The full illustration stream is persisted (not just year 1's single-point values).
+		expect(p?.illustrationYears).toHaveLength(1);
+		expect(p?.illustrationYears?.[0]).toMatchObject({ policyYear: 1, premium: '5000.00' });
 		expect(results.aggregate.totalDeathBenefit).toBe('948000.00');
 		expect(results.aggregate.totalFirstYearPremium).toBe('5000.00');
 	});

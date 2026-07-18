@@ -16,6 +16,7 @@ import { Big, formatMoney } from '$lib/money/money';
 import { ageNearestBirthday } from '$lib/dates/age';
 import {
 	isColiParticipant,
+	toWireGender,
 	type DesignRequest,
 	type IllustrationResult,
 	type Quote
@@ -103,10 +104,11 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 		const faceAmount = faceById.get(insured.id) ?? new Big(0);
 		const request = buildCostRecoveryDesignRequest({
 			issueAge: ageNearestBirthday(insured.dateOfBirth, asOf),
-			gender: insured.gender,
+			gender: toWireGender(insured.gender),
 			riskClass: insured.riskClass,
-			faceAmount: formatMoney(faceAmount)
-		});
+			faceAmount: formatMoney(faceAmount),
+				creditedRate: quote.modelSettings.creditingRate
+			});
 		const illustration = await illustrateWithTimeout(request);
 		designed.push({ insuredId: insured.id, faceAmount, illustration });
 		onProgress?.(index + 1, total);

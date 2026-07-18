@@ -1,0 +1,148 @@
+import { describe, it, expect } from 'vitest';
+import { deriveReport, formatPercent, longDate, shortDate, wholeDollars } from './report-data';
+import { DEFAULT_MODEL_SETTINGS, SCHEMA_VERSION, type Quote } from '$lib/domain';
+import { makeInsured } from '$lib/testing/fixtures';
+
+describe('report formatters', () => {
+	it('formats whole dollars with grouping (half-up at the display boundary)', () => {
+		expect(wholeDollars('1234567.89')).toBe('$1,234,568');
+		expect(wholeDollars('999.49')).toBe('$999');
+		expect(wholeDollars('0.00')).toBe('$0');
+	});
+
+	it('formats rates as percentages', () => {
+		expect(formatPercent(0.6)).toBe('60%');
+		expect(formatPercent(0.03)).toBe('3%');
+		expect(formatPercent(0.035)).toBe('3.5%');
+		expect(formatPercent(0)).toBe('0%');
+	});
+
+	it('formats dates', () => {
+		expect(longDate('2026-07-09')).toBe('July 9, 2026');
+		expect(shortDate('1972-01-04')).toBe('1/4/1972');
+	});
+});
+
+function buildQuote(): Quote {
+	return {
+		schemaVersion: SCHEMA_VERSION,
+		id: 'q1',
+		company: { name: 'Acme Widgets', corporateTaxRate: 0.21 },
+		modelSettings: { ...DEFAULT_MODEL_SETTINGS },
+		census: [
+			makeInsured({
+				id: 'a',
+				firstName: 'Alice',
+				lastName: 'Anders',
+				gender: 'Female',
+				dateOfBirth: '1976-03-15',
+				dateOfHire: '2010-06-01',
+				currentSalary: '400000.00',
+				benefitPercentage: 0.6,
+				riskClass: 'Preferred Non Tobacco',
+				planMembership: 'BOTH'
+			}),
+			makeInsured({
+				id: 'b',
+				firstName: 'Bob',
+				lastName: 'Baker',
+				gender: 'Male',
+				dateOfBirth: '1980-09-01',
+				dateOfHire: '2015-01-15',
+				currentSalary: '300000.00',
+				benefitPercentage: 0.4,
+				riskClass: 'Standard Non Tobacco',
+				planMembership: 'SERP'
+			})
+		],
+		results: {
+			perParticipant: [
+				{
+					insuredId: 'a',
+					finalAverageSalary: '500000.00',
+					annualBenefit: '300000.00',
+					benefitStream: [
+						{ age: 65, amount: '300000.00' },
+						{ age: 66, amount: '300000.00' }
+					],
+					totalBenefitCost: '600000.00',
+					netPresentValue: '600000.00',
+					faceAmount: '1000000.00',
+					firstYearPremium: '50000.00',
+					accountValue: '40000.00',
+					cashSurrenderValue: '30000.00',
+					deathBenefit: '1000000.00',
+					gptAdjusted: false,
+					mecAdjusted: true
+				},
+				{
+					insuredId: 'b',
+					finalAverageSalary: '350000.00',
+					annualBenefit: '140000.00',
+					benefitStream: [{ age: 65, amount: '140000.00' }],
+					totalBenefitCost: '140000.00',
+					netPresentValue: '140000.00'
+				}
+			],
+			aggregate: {
+				totalBenefitCost: '740000.00',
+				netPresentValue: '740000.00',
+				totalDeathBenefit: '1000000.00',
+				totalFirstYearPremium: '50000.00'
+			},
+			asOf: '2026-07-09'
+		}
+	};
+}
+
+describe('deriveReport', () => {
+	const today = '2026-12-31';
+
+	it('uses the results asOf date over today', () => {
+		const model = deriveReport(buildQuote(), today);
+		expect(model.asOf).toBe('2026-07-09');
+		expect(model.runDate).toBe('July 9, 2026');
+	});
+
+	it('counts plan populations and sums covered payroll over SERP participants', () => {
+		const model = deriveReport(buildQuote(), today);
+		expect(model.numSerp).toBe(2);
+		expect(model.numColi).toBe(1);
+		expect(model.coveredPayroll).toBe('$700,000');
+		expect(model.censusPayroll).toBe('$700,000');
+	});
+
+	it('derives the tax math from the aggregate cost and corporate tax rate', () => {
+		const model = deriveReport(buildQuote(), today);
+		expect(model.totalBenefitCost).toBe('$740,000');
+		expect(model.taxDeduction).toBe('$155,400'); // 740,000 × 0.21
+		expect(model.afterTaxCost).toBe('$584,600'); // 740,000 × 0.79
+		expect(model.totalDeathBenefit).toBe('$1,000,000');
+	});
+
+	it('shows a benefit percentage range when SERP percentages differ', () => {
+		const model = deriveReport(buildQuote(), today);
+		expect(model.benefitPercentDisplay).toBe('40%–60%');
+	});
+
+	it('builds projection rows for SERP participants and policy rows for COLI participants', () => {
+		const model = deriveReport(buildQuote(), today);
+		expect(model.projections.map((p) => p.name)).toEqual(['Alice Anders', 'Bob Baker']);
+		expect(model.projections[0].paymentYears).toBe(2);
+		expect(model.policies.map((p) => p.name)).toEqual(['Alice Anders']);
+		expect(model.policies[0].mecAdjusted).toBe(true);
+	});
+
+	it('orders sample chips by annual benefit, largest first', () => {
+		const model = deriveReport(buildQuote(), today);
+		expect(model.samples[0].name).toBe('Alice Anders');
+		expect(model.samples[0].annualBenefit).toBe('$300,000');
+	});
+
+	it('derives the payout window from the model settings', () => {
+		const model = deriveReport(buildQuote(), today);
+		// retirement 65 + waiting 0 → first payment 65; through 84 inclusive = 20 payments
+		expect(model.firstPaymentAge).toBe(65);
+		expect(model.payoutYears).toBe(20);
+	});
+});

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { quoteStore } from './quote.svelte';
 import { DEFAULT_MODEL_SETTINGS } from '$lib/domain';
+import { makeInsuredDraft } from '$lib/testing/fixtures';
 
 // Note: file is named *.store.test.ts (not *.svelte.test.ts) so it runs in the node "server"
 // vitest project. Importing the runes module compiles fine; reading state is non-reactive here.
@@ -36,23 +37,22 @@ describe('quoteStore', () => {
 
 	it('overriding a model setting does not affect the shared defaults (FR3)', () => {
 		quoteStore.create({ companyName: 'Acme', corporateTaxRate: 0.21 });
-		quoteStore.updateModelSettings({ salaryGrowthRate: 0.05 });
-		expect(quoteStore.current?.modelSettings.salaryGrowthRate).toBe(0.05);
-		// other settings untouched; the documented default constant is unchanged
-		expect(quoteStore.current?.modelSettings.npvDiscountRate).toBe(0);
-		expect(DEFAULT_MODEL_SETTINGS.salaryGrowthRate).toBe(0.03);
+		quoteStore.updateModelSettings({ npvDiscountRate: 0.05 });
+		expect(quoteStore.current?.modelSettings.npvDiscountRate).toBe(0.05);
+		// the documented default constant is unchanged
+		expect(DEFAULT_MODEL_SETTINGS.npvDiscountRate).toBe(0);
 	});
 
 	it('keeps overrides isolated between two quotes (FR3)', () => {
 		quoteStore.create({ companyName: 'First', corporateTaxRate: 0.21 });
-		quoteStore.updateModelSettings({ retirementAge: 70 });
-		const firstRetirement = quoteStore.current?.modelSettings.retirementAge;
+		quoteStore.updateModelSettings({ npvDiscountRate: 0.07 });
+		const firstDiscount = quoteStore.current?.modelSettings.npvDiscountRate;
 
 		quoteStore.create({ companyName: 'Second', corporateTaxRate: 0.25 });
-		expect(firstRetirement).toBe(70);
+		expect(firstDiscount).toBe(0.07);
 		// the fresh quote gets the documented default, not the previous override
-		expect(quoteStore.current?.modelSettings.retirementAge).toBe(
-			DEFAULT_MODEL_SETTINGS.retirementAge
+		expect(quoteStore.current?.modelSettings.npvDiscountRate).toBe(
+			DEFAULT_MODEL_SETTINGS.npvDiscountRate
 		);
 	});
 
@@ -63,17 +63,11 @@ describe('quoteStore', () => {
 });
 
 describe('quoteStore census mutations (Story 1.4)', () => {
-	const draft = {
-		firstName: 'Jane',
-		lastName: 'Doe',
-		gender: 'F' as const,
+	const draft = makeInsuredDraft({
 		dateOfBirth: '1970-06-15',
-		dateOfHire: '2005-01-01',
 		currentSalary: '250000.00',
-		benefitPercentage: 0.6,
-		riskClass: 'Standard Non Tobacco' as const,
-		planMembership: 'BOTH' as const
-	};
+		planMembership: 'BOTH'
+	});
 
 	beforeEach(() => {
 		quoteStore.close();

@@ -53,8 +53,10 @@ class RunStateStore {
 		this.designed = [];
 		this.progress = { completed: 0, total: 0 };
 
+		const asOf = today();
+
 		// Pre-run validation against the engine contract — the run does not start on a violation.
-		const issues = validateRun({ quote, asOf: today(), riskClasses: schemaStore.riskClasses });
+		const issues = validateRun({ quote, asOf, riskClasses: schemaStore.riskClasses });
 		this.validationIssues = issues;
 		if (issues.length > 0) {
 			this.status = 'idle';
@@ -67,7 +69,7 @@ class RunStateStore {
 		try {
 			const output = await runModel({
 				quote,
-				asOf: today(),
+				asOf,
 				illustrate: (request, signal) => postIllustration(request, { signal }),
 				signal: controller.signal,
 				onStatus: (status) => {
@@ -84,7 +86,8 @@ class RunStateStore {
 				assembleResults({
 					liability: output.liability,
 					totalDeathBenefit: output.totalDeathBenefit,
-					designed: output.designed
+					designed: output.designed,
+					asOf
 				})
 			);
 			this.status = 'done';

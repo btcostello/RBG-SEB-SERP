@@ -11,8 +11,23 @@ describe('report page registry (FR31, AR13)', () => {
 		}
 	});
 
-	it('renders the MVP pages in order', () => {
-		expect(reportPages.map((p) => p.id)).toEqual(['cover', 'census-summary', 'coli-summary']);
+	it('renders the proposal pages in order', () => {
+		expect(reportPages.map((p) => p.id)).toEqual([
+			'cover',
+			'contents',
+			'exec-summary',
+			'objective',
+			'plan',
+			'funding',
+			'assumptions',
+			'census',
+			'projections',
+			'coli-design',
+			'ref-serp',
+			'ref-coli',
+			'ref-accounting',
+			'glossary'
+		]);
 	});
 
 	it('has unique page ids', () => {

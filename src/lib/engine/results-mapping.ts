@@ -59,6 +59,8 @@ export function assembleResults(input: {
 	liability: LiabilityResult;
 	totalDeathBenefit: Big;
 	designed: DesignedPolicy[];
+	/** Valuation date the run used (ISO YYYY-MM-DD); stamped on the snapshot for the report. */
+	asOf?: string;
 }): Results {
 	const byId = new Map<string, ParticipantResult>();
 	for (const p of input.liability.perParticipant) {
@@ -76,6 +78,9 @@ export function assembleResults(input: {
 		entry.deathBenefit = firstYear?.deathBenefit;
 		entry.gptAdjusted = policy.illustration.gptAdjusted;
 		entry.mecAdjusted = policy.illustration.mecAdjusted;
+		// Persist the full illustration stream (already cent-rounded at the adapter boundary) so
+		// life-of-plan cash-flow / accounting figures can be derived and survive serialization.
+		entry.illustrationYears = policy.illustration.years;
 		byId.set(policy.insuredId, entry);
 		totalFirstYearPremium = totalFirstYearPremium.plus(
 			new Big(policy.illustration.solvedAnnualPremium)
@@ -89,6 +94,7 @@ export function assembleResults(input: {
 			netPresentValue: formatMoney(input.liability.aggregate.netPresentValue),
 			totalDeathBenefit: formatMoney(input.totalDeathBenefit),
 			totalFirstYearPremium: formatMoney(totalFirstYearPremium)
-		}
+		},
+		...(input.asOf !== undefined ? { asOf: input.asOf } : {})
 	};
 }

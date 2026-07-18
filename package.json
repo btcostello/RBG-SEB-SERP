@@ -37,6 +37,8 @@
 		"vitest": "^4.1.8"
 	},
 	"dependencies": {
+		"@fontsource/inter": "^5.2.8",
+		"@fontsource/spectral": "^5.2.8",
 		"big.js": "^7.0.1",
 		"valibot": "^1.4.2"
 	}

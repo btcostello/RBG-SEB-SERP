@@ -44,12 +44,6 @@
 - [x] Story 4.3: Generate the Census Summary page
 - [x] Story 4.4: Generate the COLI Summary page
 - [x] Story 4.5: Print and export the proposal to PDF with presentation-grade layout
-  > As the proposal author
-  > I want to print or export the proposal to PDF with stable, presentation-grade pages
-  > So that I can bring the deliverable to a client meeting.
-  > AC: Given a completed report, When I print/export, Then `window.print()` produces page-accurate output using dedicated print CSS (`@page`, page-break control) (FR32, AR14)
-  > AC: Given the three MVP pages, When exported to PDF, Then each renders as a clean, presentation-grade page with stable layout (no clipped or split content) (FR32)
-  > Spec: specs/planning-artifacts/epics.md#story-4-5
 
 ## Completed
 

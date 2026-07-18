@@ -1,0 +1,636 @@
+/* ============================================================================
+   Proposal report design system (FR28–FR32).
+
+   Corporate annual-report styling for the SERP-financed-with-COLI proposal:
+   Spectral (serif display) + Inter (sans text), deep-petrol ink with a copper
+   secondary accent, squared corners and hairline rules, US-Letter sheets with
+   editorial page headers and running footers. Everything is scoped under
+   `.report` so nothing leaks into the app chrome. Print rules live in print.css.
+   ========================================================================= */
+
+@import '@fontsource/spectral/400.css';
+@import '@fontsource/spectral/400-italic.css';
+@import '@fontsource/spectral/500.css';
+@import '@fontsource/spectral/600.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+
+.report {
+	--ink: #0e2530; /* deep petrol, near-black — headings, heavy rules */
+	--ink-soft: #33525f;
+	--accent: #1f7a8c; /* teal — structural rules, table headers */
+	--accent-deep: #155863;
+	--bronze: #b98a45; /* copper — bars, ticks, marks */
+	--bronze-deep: #96692a; /* copper — text (eyebrows, page numbers, headlines) */
+	--paper: #ffffff;
+	--line: #c9d4d8;
+	--line-soft: #e2e9eb;
+	--muted: #5c6d74;
+	--pos-bg: #e9f2ea;
+	--pos-tx: #356b2f;
+	--warn-tx: #a2472a;
+	--fill: #f3f7f8;
+	--serif: 'Spectral', Georgia, 'Times New Roman', serif;
+	--sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+	font-family: var(--sans);
+	color: var(--ink);
+	font-size: 10.5pt;
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* ---- the sheet ---- */
+.report .report-page {
+	width: 7.5in;
+	min-height: 10in;
+	margin: 0 auto;
+	padding: 0.55in 0.6in 0.45in;
+	background: var(--paper);
+	box-shadow: 0 1px 12px rgba(14, 37, 48, 0.22);
+	display: flex;
+	flex-direction: column;
+	position: relative;
+}
+
+/* ---- shared type ---- */
+.report h1,
+.report h2,
+.report h3 {
+	font-family: var(--serif);
+	color: var(--ink);
+	font-weight: 600;
+	margin: 0;
+}
+.report .eyebrow {
+	font-family: var(--sans);
+	font-size: 8pt;
+	font-weight: 600;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--bronze-deep);
+	margin: 0 0 7px;
+}
+.report .eyebrow::before {
+	content: '';
+	display: inline-block;
+	width: 20px;
+	height: 2px;
+	background: var(--bronze);
+	margin-right: 9px;
+	vertical-align: 0.24em;
+}
+.report .page-title {
+	font-size: 22pt;
+	line-height: 1.1;
+	letter-spacing: -0.01em;
+	margin: 0 0 4px;
+}
+.report .page-sub {
+	font-family: var(--sans);
+	color: var(--muted);
+	font-size: 10.5pt;
+	margin: 0;
+}
+.report p {
+	margin: 0 0 11px;
+}
+.report .lead {
+	font-family: var(--serif);
+	font-size: 12pt;
+	line-height: 1.6;
+	color: var(--ink-soft);
+}
+.report strong {
+	font-weight: 600;
+	color: var(--ink);
+}
+.report .small {
+	font-size: 8.5pt;
+	color: var(--muted);
+	line-height: 1.45;
+}
+.report .section-h {
+	font-family: var(--serif);
+	font-size: 12.5pt;
+	margin: 16px 0 6px;
+}
+.report ul.clean {
+	margin: 0 0 12px;
+	padding-left: 18px;
+}
+.report ul.clean li {
+	margin: 0 0 6px;
+}
+
+/* ---- editorial page header (interior pages) ---- */
+.report .page-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-end;
+	gap: 24px;
+	border-bottom: 2px solid var(--ink);
+	padding-bottom: 14px;
+	margin-bottom: 20px;
+	position: relative;
+}
+.report .page-head::after {
+	/* copper keyline segment over the ink rule */
+	content: '';
+	position: absolute;
+	left: 0;
+	bottom: -2px;
+	width: 56px;
+	height: 2px;
+	background: var(--bronze);
+}
+.report .page-head .ph-no {
+	text-align: right;
+	flex: 0 0 auto;
+	line-height: 1;
+	padding-bottom: 2px;
+}
+.report .page-head .ph-no .lbl {
+	display: block;
+	font-size: 6.5pt;
+	font-weight: 600;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	color: var(--muted);
+	margin-bottom: 4px;
+}
+.report .page-head .ph-no .num {
+	font-family: var(--serif);
+	font-size: 21pt;
+	font-weight: 600;
+	color: var(--bronze-deep);
+	font-variant-numeric: tabular-nums;
+}
+
+/* legacy short rule (kept for one-off use) */
+.report .rule {
+	height: 2px;
+	background: var(--bronze);
+	width: 46px;
+	margin: 0 0 18px;
+	border: 0;
+}
+
+/* ---- running footer ---- */
+.report .foot {
+	margin-top: auto;
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	font-size: 7pt;
+	color: var(--muted);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	border-top: 1px solid var(--line);
+	padding-top: 8px;
+}
+.report .foot .brand {
+	font-weight: 600;
+	color: var(--ink-soft);
+}
+.report .foot .brand::before {
+	content: '';
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	background: var(--bronze);
+	margin-right: 8px;
+}
+.report .confid {
+	font-weight: 600;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--warn-tx);
+}
+/* Keep content from sitting on the footer. */
+.report .page-body {
+	padding-bottom: 0.25in;
+}
+
+/* ---- tables (financial-report rules: heavy top, hairline body, heavy totals) ---- */
+.report table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 8.7pt;
+	font-variant-numeric: tabular-nums;
+	border-top: 2.5px solid var(--ink);
+}
+.report th,
+.report td {
+	padding: 4.5px 7px;
+	text-align: right;
+}
+.report th:first-child,
+.report td:first-child {
+	text-align: left;
+}
+.report td.txt,
+.report th.txt {
+	text-align: left;
+}
+.report thead th {
+	font-family: var(--sans);
+	font-weight: 600;
+	font-size: 7.2pt;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+	border-bottom: 1px solid var(--ink);
+	vertical-align: bottom;
+	padding-top: 7px;
+}
+.report tbody td {
+	border-bottom: 1px solid var(--line-soft);
+}
+.report tbody tr:last-child td {
+	border-bottom: 1px solid var(--line);
+}
+.report tr.tot td {
+	font-family: var(--serif);
+	font-weight: 600;
+	font-size: 9.5pt;
+	border-top: 2px solid var(--ink);
+	border-bottom: none;
+	color: var(--ink);
+}
+.report .pos-cell {
+	background: var(--pos-bg);
+	color: var(--pos-tx);
+	font-weight: 600;
+}
+
+/* ============ COVER (full-bleed dark) ============ */
+.report .cover {
+	/* bleed to the sheet edges */
+	margin: -0.55in -0.6in -0.45in;
+	padding: 0.55in 0.6in 0.5in;
+	background: var(--ink);
+	border-left: 6px solid var(--bronze);
+	color: #fff;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+.report .cover .cover-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	font-size: 8pt;
+	font-weight: 600;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	color: #8ea9b4;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+	padding-bottom: 14px;
+}
+.report .cover .cover-top .conf {
+	color: var(--bronze);
+}
+.report .cover .cover-main {
+	margin-top: 1.5in;
+}
+.report .cover .kicker {
+	font-size: 8.5pt;
+	font-weight: 600;
+	letter-spacing: 0.22em;
+	text-transform: uppercase;
+	color: var(--bronze);
+	margin: 0 0 16px;
+}
+.report .cover .kicker::before {
+	content: '';
+	display: block;
+	width: 56px;
+	height: 3px;
+	background: var(--bronze);
+	margin-bottom: 14px;
+}
+.report .cover h1 {
+	color: #fff;
+	font-size: 40pt;
+	line-height: 1.06;
+	letter-spacing: -0.01em;
+	margin: 0 0 22px;
+}
+.report .cover .subtitle {
+	font-family: var(--serif);
+	font-size: 13.5pt;
+	color: #9db7c1;
+	line-height: 1.45;
+	margin: 0;
+	max-width: 5.4in;
+}
+.report .cover .cover-client {
+	margin-top: auto;
+	padding-top: 24px;
+}
+.report .cover .cover-client .lbl {
+	display: block;
+	font-size: 7.5pt;
+	font-weight: 600;
+	letter-spacing: 0.22em;
+	text-transform: uppercase;
+	color: #8ea9b4;
+	margin-bottom: 6px;
+}
+.report .cover .cover-client .name {
+	font-family: var(--serif);
+	font-size: 23pt;
+	font-weight: 600;
+	color: #fff;
+	line-height: 1.15;
+}
+.report .cover .cover-meta {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-end;
+	border-top: 1px solid rgba(255, 255, 255, 0.18);
+	margin-top: 22px;
+	padding-top: 14px;
+}
+.report .cover .cover-meta .note {
+	font-size: 8pt;
+	color: #8ea9b4;
+	max-width: 3.9in;
+	line-height: 1.5;
+	margin: 0;
+}
+.report .cover .cover-meta .date {
+	font-family: var(--serif);
+	font-size: 12pt;
+	color: #fff;
+	white-space: nowrap;
+}
+
+/* ============ TOC ============ */
+.report .toc-part {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	margin: 26px 0 8px;
+	border-bottom: 2px solid var(--ink);
+	padding-bottom: 7px;
+	position: relative;
+}
+.report .toc-part::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	bottom: -2px;
+	width: 34px;
+	height: 2px;
+	background: var(--bronze);
+}
+.report .toc-part .pn {
+	font-family: var(--serif);
+	font-size: 17pt;
+	font-weight: 600;
+	color: var(--bronze-deep);
+	line-height: 1;
+}
+.report .toc-part .pt {
+	font-family: var(--sans);
+	font-size: 8pt;
+	font-weight: 600;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+.report .toc-row {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	padding: 5.5px 0;
+	font-size: 10.5pt;
+}
+.report .toc-row .n {
+	font-family: var(--serif);
+	color: var(--bronze-deep);
+	font-weight: 600;
+	width: 34px;
+}
+.report .toc-row .t {
+	color: var(--ink);
+}
+.report .toc-row .d {
+	flex: 1;
+	border-bottom: 1px dotted var(--line);
+	margin: 0 6px;
+	transform: translateY(-3px);
+}
+.report .toc-row .lbl {
+	color: var(--bronze-deep);
+	font-size: 7.5pt;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+/* ============ EXEC DASHBOARD ============ */
+.report .dash {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+}
+.report .card {
+	border: 1px solid var(--line);
+	background: var(--paper);
+}
+.report .card .head {
+	background: var(--ink);
+	color: #fff;
+	padding: 8px 14px;
+	font-family: var(--sans);
+	font-weight: 600;
+	font-size: 8.5pt;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	border-bottom: 2px solid var(--bronze);
+}
+.report .card .body {
+	padding: 12px 14px;
+}
+.report .kv {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 12px;
+	padding: 5px 0;
+	border-bottom: 1px solid var(--line-soft);
+	font-size: 10pt;
+}
+.report .kv:last-child {
+	border-bottom: none;
+}
+.report .kv .k {
+	color: var(--ink-soft);
+}
+.report .kv .v {
+	font-family: var(--serif);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+.report .kv .v.neg {
+	color: var(--warn-tx);
+}
+.report .kv .v.pos {
+	color: var(--accent-deep);
+}
+.report .kv.sum {
+	border-top: 2px solid var(--ink);
+	margin-top: 4px;
+	padding-top: 7px;
+}
+.report .kv.sum .v {
+	font-size: 11pt;
+}
+.report .subhead {
+	font-family: var(--sans);
+	font-weight: 600;
+	font-size: 8pt;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--bronze-deep);
+	margin: 12px 0 4px;
+}
+
+/* ============ CALLOUT (dark statement block) / SPEC GRID ============ */
+.report .callout {
+	--ink-soft: #a9c2cc; /* children referencing --ink-soft resolve light on dark */
+	background: var(--ink);
+	color: #fff;
+	border-left: 4px solid var(--bronze);
+	padding: 16px 20px;
+	margin: 0 0 16px;
+}
+.report .callout .big {
+	font-family: var(--serif);
+	font-size: 14.5pt;
+	font-weight: 600;
+	color: #fff;
+}
+.report .spec-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px 26px;
+	margin: 8px 0 16px;
+}
+.report .spec {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	border-bottom: 1px solid var(--line-soft);
+	padding: 5px 0;
+	font-size: 10pt;
+}
+.report .spec .k {
+	color: var(--ink-soft);
+}
+.report .spec .v {
+	font-weight: 600;
+	font-family: var(--serif);
+	text-align: right;
+}
+
+/* ============ SAMPLE CHIPS ============ */
+.report .chips {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 12px;
+	margin-top: 6px;
+}
+.report .chip {
+	border: 1px solid var(--line);
+	border-top: 2.5px solid var(--ink);
+	padding: 12px 13px;
+}
+.report .chip .nm {
+	font-family: var(--serif);
+	font-size: 11.5pt;
+	font-weight: 600;
+}
+.report .chip .mini {
+	font-size: 8pt;
+	color: var(--muted);
+	margin: 1px 0 8px;
+}
+.report .chip .brow {
+	display: flex;
+	justify-content: space-between;
+	font-size: 8.6pt;
+	padding: 2px 0;
+	border-top: 1px solid var(--line-soft);
+}
+.report .chip .brow b {
+	font-variant-numeric: tabular-nums;
+}
+.report .chip .headline {
+	font-family: var(--serif);
+	font-size: 16pt;
+	font-weight: 600;
+	margin-top: 8px;
+	color: var(--bronze-deep);
+}
+.report .chip .headline small {
+	font-family: var(--sans);
+	font-size: 7pt;
+	color: var(--muted);
+	font-weight: 600;
+	display: block;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	margin-top: 2px;
+}
+
+/* ============ NOTE BOX / REFERENCE / GLOSSARY ============ */
+.report .note-box {
+	border-left: 3px solid var(--accent);
+	background: var(--fill);
+	padding: 12px 16px;
+	font-size: 9pt;
+	color: var(--ink-soft);
+	margin-top: 14px;
+}
+.report .note-box .h {
+	font-weight: 600;
+	font-size: 8pt;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--accent-deep);
+	margin-bottom: 4px;
+}
+.report .reftext p {
+	font-size: 9.5pt;
+	line-height: 1.55;
+}
+.report .reftext .lead-in {
+	font-family: var(--serif);
+	font-size: 11.5pt;
+	color: var(--ink-soft);
+}
+.report .gloss {
+	display: grid;
+	grid-template-columns: 1.7in 1fr;
+	gap: 0;
+	border-top: 2.5px solid var(--ink);
+}
+.report .gloss .term {
+	font-weight: 600;
+	color: var(--ink);
+	padding: 8px 12px 8px 0;
+	border-bottom: 1px solid var(--line-soft);
+	font-size: 9.5pt;
+}
+.report .gloss .def {
+	color: var(--ink-soft);
+	font-size: 9.5pt;
+	padding: 8px 0;
+	border-bottom: 1px solid var(--line-soft);
+}

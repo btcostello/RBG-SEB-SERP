@@ -8,7 +8,8 @@
  * therefore optional. All monetary values are decimal strings (AR2).
  */
 import * as v from 'valibot';
-import { MoneyStringSchema } from './value-objects';
+import { IsoDateSchema, MoneyStringSchema } from './value-objects';
+import { IllustrationYearSchema } from './illustration';
 
 /** One year of a benefit or illustration stream. */
 export const StreamYearSchema = v.object({
@@ -35,7 +36,14 @@ export const ParticipantResultSchema = v.object({
 	cashSurrenderValue: v.optional(MoneyStringSchema),
 	deathBenefit: v.optional(MoneyStringSchema),
 	gptAdjusted: v.optional(v.boolean()),
-	mecAdjusted: v.optional(v.boolean())
+	mecAdjusted: v.optional(v.boolean()),
+	/**
+	 * Full COLI illustration stream, one entry per policy year (premium, account value, cash
+	 * surrender value, death benefit). Present for COLI participants; enables life-of-plan
+	 * cash-flow and accounting derivations (e.g. total premiums) that single-point values cannot.
+	 * Optional so pre-existing result snapshots still validate.
+	 */
+	illustrationYears: v.optional(v.array(IllustrationYearSchema))
 });
 export type ParticipantResult = v.InferOutput<typeof ParticipantResultSchema>;
 
@@ -50,6 +58,8 @@ export type AggregateResult = v.InferOutput<typeof AggregateResultSchema>;
 
 export const ResultsSchema = v.object({
 	perParticipant: v.array(ParticipantResultSchema),
-	aggregate: AggregateResultSchema
+	aggregate: AggregateResultSchema,
+	/** Valuation date the run used (ISO YYYY-MM-DD). Optional for pre-existing snapshots. */
+	asOf: v.optional(IsoDateSchema)
 });
 export type Results = v.InferOutput<typeof ResultsSchema>;

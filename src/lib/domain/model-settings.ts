@@ -1,40 +1,43 @@
 /**
- * Model settings — the plan-level parameters that drive the calculation (FR2, FR3).
+ * Model settings — the remaining plan-level parameters that drive the calculation (FR2, FR3).
  *
- * Documented defaults are pre-populated when a quote is created and may be overridden per
- * quote without affecting other quotes. Only three defaults are mandated by the spec
- * (salary growth 3%, NPV discount 0%, assumed death age 84); the remaining defaults are
- * sensible MVP starting points and are clearly labeled below.
+ * Most calculation assumptions are now per-participant (retirement age, waiting period, life
+ * expectancy, salary growth, FAS averaging period — see {@link Insured}). What stays plan-level
+ * are rates and tables that apply uniformly across the census: the NPV discount rate, the policy
+ * crediting rate, and the mortality table. These are data changes, never code (NFR15).
  */
 import * as v from 'valibot';
-import { AgeSchema, NonNegativeRateSchema, RateSchema, YearCountSchema } from './value-objects';
+import { IsoDateSchema, RateSchema, YearCountSchema } from './value-objects';
+
+/** Mortality tables the engine accepts. Seeded with the single supported table for now. */
+export const MORTALITY_TABLES = ['RP-2012U'] as const;
+export const MortalityTableSchema = v.picklist(MORTALITY_TABLES, 'Select a mortality table');
+export type MortalityTable = v.InferOutput<typeof MortalityTableSchema>;
 
 export const ModelSettingsSchema = v.object({
-	/** Age at which benefits begin. */
-	retirementAge: AgeSchema,
-	/** Assumed age at death for the benefit stream (default 84, spec-documented). */
-	assumedDeathBenefitAge: AgeSchema,
-	/** Years after retirement before the first benefit payment. */
-	benefitWaitingPeriod: YearCountSchema,
-	/** Annual salary growth rate (default 0.03 = 3%, spec-documented). */
-	salaryGrowthRate: NonNegativeRateSchema,
 	/** NPV discount rate (default 0 = 0%, spec-documented). A data change, never code (NFR15). */
 	npvDiscountRate: RateSchema,
-	/** Number of trailing years averaged into final average salary (FAS). */
-	fasAveragingPeriod: v.pipe(YearCountSchema, v.minValue(1, 'Must average at least 1 year'))
+	/** Assumed policy crediting rate (default 0.0575 = 5.75%). */
+	creditingRate: RateSchema,
+	/** Mortality table used for the projection. */
+	mortalityTable: MortalityTableSchema,
+	/** Plan effective date, ISO YYYY-MM-DD. Optional so pre-existing quotes still validate. */
+	effectiveDate: v.optional(IsoDateSchema),
+	/**
+	 * Number of years out-of-pocket COLI premiums are paid (the premium-payment period). Used to
+	 * bound life-of-plan premium totals. NOTE: the illustration API has no field for this yet, so
+	 * it is applied in our derivations only; send it to the engine once the API supports it, so
+	 * the returned stream itself stops premiums after this many years. Optional (defaults to 10).
+	 */
+	premiumYears: v.optional(YearCountSchema)
 });
 
 export type ModelSettings = v.InferOutput<typeof ModelSettingsSchema>;
 
-/**
- * Documented default model settings (FR3). Spec-mandated: salaryGrowthRate 3%,
- * npvDiscountRate 0%, assumedDeathBenefitAge 84. Others are reasonable MVP defaults.
- */
+/** Documented default model settings (FR3): npvDiscountRate 0%, creditingRate 5.75%, RP-2012U. */
 export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
-	retirementAge: 65,
-	assumedDeathBenefitAge: 84,
-	benefitWaitingPeriod: 0,
-	salaryGrowthRate: 0.03,
 	npvDiscountRate: 0,
-	fasAveragingPeriod: 3
+	creditingRate: 0.0575,
+	mortalityTable: 'RP-2012U',
+	premiumYears: 10
 };

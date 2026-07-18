@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { LocalStorageQuoteRepository, type KeyValueStorage } from './local-storage-repository';
 import { createQuote, type Quote } from '$lib/domain';
+import { makeInsured } from '$lib/testing/fixtures';
 
 /** In-memory KeyValueStorage fake so the repository is tested without a DOM. */
 class MemoryStorage implements KeyValueStorage {
@@ -24,20 +25,8 @@ class MemoryStorage implements KeyValueStorage {
 
 function makeQuote(id: string, companyName: string): Quote {
 	const quote = createQuote({ id, companyName, corporateTaxRate: 0.21 });
-	quote.census = [
-		{
-			id: 'i1',
-			firstName: 'Jane',
-			lastName: 'Doe',
-			gender: 'F',
-			dateOfBirth: '1970-06-15',
-			dateOfHire: '2005-01-01',
-			currentSalary: '162240.00', // trailing zeros must survive the round-trip (AR18)
-			benefitPercentage: 0.6,
-			riskClass: 'Standard Non Tobacco',
-			planMembership: 'BOTH'
-		}
-	];
+	// trailing zeros on the salary must survive the round-trip (AR18)
+	quote.census = [makeInsured({ dateOfBirth: '1970-06-15', currentSalary: '162240.00' })];
 	return quote;
 }
 

@@ -52,21 +52,25 @@ export function computeLiability(params: ComputeLiabilityParams): LiabilityResul
 	const perParticipant = census.filter(isSerpParticipant).map((insured): ParticipantLiability => {
 		const currentAge = ageNearestBirthday(insured.dateOfBirth, asOf);
 
+		// Timing and salary assumptions are per-participant now (the plan-level NPV discount rate
+		// is the only remaining plan setting). The MVP calc still applies the Factor × FAS
+		// component (`benefitPercentage`); the other component bases (fixed benefit, unit credit),
+		// COLA, min/max clamping, and survivor tiers are captured on Insured but not yet applied.
 		const salaryPath = projectSalary({
 			currentSalary: new Big(insured.currentSalary),
 			dateOfBirth: insured.dateOfBirth,
 			asOf,
-			retirementAge: settings.retirementAge,
-			salaryGrowthRate: settings.salaryGrowthRate
+			retirementAge: insured.retirementAge,
+			salaryGrowthRate: insured.salaryGrowthRate
 		});
 
-		const fas = finalAverageSalary(salaryPath, settings.fasAveragingPeriod);
+		const fas = finalAverageSalary(salaryPath, insured.fasAveragingPeriod);
 		const benefit = annualBenefit(fas, insured.benefitPercentage);
 		const stream = benefitStream({
 			annualBenefit: benefit,
-			retirementAge: settings.retirementAge,
-			benefitWaitingPeriod: settings.benefitWaitingPeriod,
-			assumedDeathBenefitAge: settings.assumedDeathBenefitAge
+			retirementAge: insured.retirementAge,
+			benefitWaitingPeriod: insured.benefitWaitingPeriod,
+			assumedDeathBenefitAge: insured.lifeExpectancy
 		});
 
 		return {

@@ -28,6 +28,8 @@ export interface CostRecoveryDesignParams {
 	faceAmount: string;
 	/** Optional product type; the engine defaults the rest of the design. */
 	productType?: DesignRequest['productType'];
+	/** Plan-level assumed crediting rate (fraction); omitted lets the engine use its default. */
+	creditedRate?: number;
 }
 
 /**
@@ -42,6 +44,7 @@ export function buildCostRecoveryDesignRequest(params: CostRecoveryDesignParams)
 		riskClass: params.riskClass,
 		faceAmount: params.faceAmount,
 		...(params.productType !== undefined ? { productType: params.productType } : {}),
+		...(params.creditedRate !== undefined ? { creditedRate: params.creditedRate } : {}),
 		solve: COST_RECOVERY_SOLVE
 	};
 }

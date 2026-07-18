@@ -1,14 +1,14 @@
 /**
  * Dedicated print stylesheet for the proposal report (FR32, AR14).
  *
- * Produces page-accurate output via window.print(): a defined page size/margin, each registered
- * report page on its own physical page, and page-break control so tables and figures are not
- * split or clipped across pages.
+ * Produces page-accurate output via window.print(): US-Letter pages with @page margins,
+ * each registered report page on its own physical sheet, exact colors for the corporate
+ * palette, and page-break control so tables and figures are not split or clipped.
  */
 @media print {
 	@page {
 		size: Letter;
-		margin: 0.75in;
+		margin: 0.5in;
 	}
 
 	/* Print only the report — app chrome is hidden by the layout's print rules; this hides any
@@ -21,23 +21,45 @@
 		background: #fff;
 	}
 
-	/* Each registered report page starts a new physical page (last one doesn't trail a blank). */
-	.report-page {
+	/* The sheet chrome is the physical page: full width, no shadow, break after each page.
+	   min-height fills the printable area (11in − 2 × 0.5in margins) so running footers sit
+	   at the bottom via flex. */
+	.report .report-page {
+		width: auto;
+		min-height: 10in;
+		margin: 0;
+		padding: 0;
+		box-shadow: none;
 		page-break-after: always;
 		break-after: page;
 	}
-	.report-page:last-child {
+	.report .report-page:last-child {
 		page-break-after: auto;
 		break-after: auto;
 	}
 
-	/* Keep rows and figures whole; repeat table headers on every printed page. */
-	tr,
-	.figure {
+	/* The cover bleeds to the sheet edges on screen via negative margins; in print the sheet
+	   has no padding, so the cover fills the printable area with plain margins. */
+	.report .cover {
+		margin: 0;
+	}
+
+	/* Keep the corporate palette exact in print (header bands, highlights). */
+	.report * {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+
+	/* Keep rows, cards, and chips whole; repeat table headers if a table spans pages. */
+	.report tr,
+	.report .card,
+	.report .chip,
+	.report .note-box,
+	.report .callout {
 		page-break-inside: avoid;
 		break-inside: avoid;
 	}
-	thead {
+	.report thead {
 		display: table-header-group;
 	}
 }

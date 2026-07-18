@@ -2,21 +2,19 @@ import { describe, it, expect, vi } from 'vitest';
 import { runModel, type RunStatus } from './run';
 import type { DesignRequest, IllustrationResult, Insured, Quote } from '$lib/domain';
 import { createQuote } from '$lib/domain';
+import { makeInsured } from '$lib/testing/fixtures';
 
 function insured(overrides: Partial<Insured>): Insured {
-	return {
+	return makeInsured({
 		id: 'i',
 		firstName: 'A',
 		lastName: 'B',
-		gender: 'M',
+		gender: 'Male',
 		dateOfBirth: '1975-06-15',
-		dateOfHire: '2005-01-01',
 		currentSalary: '200000',
-		benefitPercentage: 0.6,
-		riskClass: 'Standard Non Tobacco',
 		planMembership: 'BOTH',
 		...overrides
-	};
+	});
 }
 
 function quoteWith(census: Insured[]): Quote {
@@ -74,6 +72,8 @@ describe('runModel (FR23, AR9, AR12)', () => {
 		expect(output.designed.map((d) => d.insuredId)).toEqual(['a', 'b']);
 		// Each request carries the solve target and a face from the equal split.
 		expect(requests.every((r) => r.solve?.when === 100)).toBe(true);
+		// The plan-level crediting rate is fed through to the illustration (default 0.0575).
+		expect(requests.every((r) => r.creditedRate === 0.0575)).toBe(true);
 		// Status transitions: computing then designing (done is emitted by the caller).
 		expect(statuses).toEqual(['computing', 'designing']);
 		// Progress ends at total/total.
