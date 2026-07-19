@@ -58,6 +58,8 @@ export interface LegacyReportPage {
 	 * entries — e.g. the Appendix C ledgers, which are the same sheet per option and year slice.
 	 */
 	props?: Record<string, unknown>;
+	/** Render this sheet rotated (10in × 7.5in). For pages too wide for a portrait sheet. */
+	landscape?: boolean;
 }
 
 /** Appendix C option titles, verbatim from the source sheets. */
@@ -127,6 +129,8 @@ export const legacyReportPages: LegacyReportPage[] = [
 			id: `g3-ledger-${option.id}-${slice.part}`,
 			title: `Option Ledger — ${option.title} (${slice.part} of 2)`,
 			component: LegacyOptionLedgerPage,
+			// Ten currency columns do not fit a portrait sheet; the source is wide too.
+			landscape: true,
 			props: {
 				pageNo: `Appendix C.${index * 2 + slice.part}`,
 				strategyId: option.id,

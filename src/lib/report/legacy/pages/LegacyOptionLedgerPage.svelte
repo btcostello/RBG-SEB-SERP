@@ -115,6 +115,11 @@
 	}
 	table {
 		font-size: 7.2pt;
+		/* Ten currency columns exceed a portrait sheet's width. The sheet is registered
+		   landscape, which gives them room; constraining the width too means that if anything
+		   renders this portrait, columns compress instead of clipping off the page edge. */
+		width: 100%;
+		table-layout: auto;
 	}
 	th,
 	td {

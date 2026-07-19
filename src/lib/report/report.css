@@ -42,6 +42,16 @@
 }
 
 /* ---- the sheet ---- */
+/*
+ * Landscape sheets. A few source pages are genuinely wide — the Appendix C ledgers carry ten
+ * currency columns, which give ~0.6in each in portrait. Rotating swaps the printable area to
+ * 10in x 7.5in; those tables are short enough that the lost height costs nothing.
+ */
+.report .report-page.landscape {
+	width: 10in;
+	min-height: 7.5in;
+}
+
 .report .report-page {
 	width: 7.5in;
 	min-height: 10in;

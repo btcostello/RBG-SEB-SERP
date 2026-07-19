@@ -11,6 +11,18 @@
 		margin: 0.5in;
 	}
 
+	/* Wide sheets (Appendix C ledgers) print rotated. Named pages let one document mix
+	   orientations; a print path that ignores them falls back to portrait, where the table
+	   compresses to fit rather than clipping (it is width-constrained, not fixed-width). */
+	@page landscape-sheet {
+		size: Letter landscape;
+		margin: 0.5in;
+	}
+	.report .report-page.landscape {
+		page: landscape-sheet;
+		min-height: 7.5in;
+	}
+
 	/* Print only the report — app chrome is hidden by the layout's print rules; this hides any
 	   element explicitly marked no-print (e.g. the Print button). */
 	.no-print {

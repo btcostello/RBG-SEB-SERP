@@ -424,11 +424,22 @@ npm run check      # svelte-check — must be 0 errors
 npm test           # vitest — currently 191 passing
 ```
 
-**Verification pattern used throughout** (screenshots time out in this environment):
+**Verification pattern used throughout:**
 1. Start the dev server via the preview tool, open `/report/legacy`.
-2. Inspect via `javascript_tool` DOM queries — assert on rendered values, and check each page's
-   height ≤ **960px** (10in) so it fits one printed sheet. Tighten spacing if it overflows.
-3. Console errors must be clean.
+2. Inspect via `javascript_tool` DOM queries — assert on rendered values, and check **both**
+   dimensions against the sheet:
+   - height ≤ **960px** portrait / **720px** landscape
+   - **width**: content `scrollWidth` ≤ the page's `clientWidth` minus padding
+   Checking height alone missed the Appendix C ledgers overflowing horizontally for two commits.
+3. Console errors must be clean — and note that a Svelte render error (e.g. a duplicate
+   `{#each}` key) **fails silently**: the URL changes, the old page stays, nothing logs. Install
+   a `window.addEventListener('error', …)` before navigating if a page mysteriously does not load.
+4. Verify with a quote that **has results** — an unrun quote leaves data-driven pages nearly
+   empty, which hides layout problems.
+
+**Landscape sheets:** a registry entry can set `landscape: true` (see the Appendix C ledgers).
+That renders 10in × 7.5in on screen and uses a named `@page` rule in print. Wide tables should
+also carry `width: 100%` so they compress rather than clip if a print path ignores named pages.
 
 **Gotchas learned:**
 - Svelte re-renders **asynchronously** — set an input value in one JS call, then click/read in a
