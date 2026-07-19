@@ -233,7 +233,8 @@ export interface LegacyProjectionRow {
  * illustration streams. Grouped whole-dollar strings; outflows/losses are parenthesized. Cost
  * recovery is a percentage. Options 2–4 still require additional illustrations (rendered "—").
  */
-export interface CashFlowOption1Display {
+/** Life-of-plan cash-flow totals for one funding option (page 4.5 column). */
+export interface CashFlowOptionDisplay {
 	netBenefitsCompanyCashFlow: string;
 	netBenefitsColiAssets: string;
 	netBenefitsTotal: string;
@@ -243,6 +244,34 @@ export interface CashFlowOption1Display {
 	netColiGainLoss: string;
 	aggregateCashFlow: string;
 	costRecovery: string;
+}
+
+/**
+ * The four funding options in report order. Ids match the funding strategy registry, so a
+ * design keyed under `ParticipantResult.designs` lines up with the column that displays it.
+ */
+export const REPORT_FUNDING_OPTIONS = [
+	{ id: 'cost-recovery', number: 1, label: 'Cost Recovery' },
+	{ id: 'benefit-distribution', number: 2, label: 'Benefit Funding' },
+	{ id: 'premium-deposit', number: 3, label: 'Funding Wherewithal' },
+	{ id: 'premium-recovery', number: 4, label: 'Bene Funding + Cost Recov' }
+] as const;
+
+/** Headline figures for one funding option (page 4.3). */
+export interface FundingOptionSummary {
+	/** Total first-year premium across the option's policies. Null when not reportable. */
+	premium: string | null;
+	/** Initial face ÷ policies designed for this option. Null when not reportable. */
+	averageFace: string | null;
+	/** Policies designed. Options can cover different numbers of lives — see HANDOFF backlog. */
+	policyCount: number;
+	/**
+	 * Policies whose solve failed. **A design that missed its target still returns a number**, so
+	 * these totals are not reportable at all when this is non-zero — the engine's best effort can
+	 * be wildly out of range, and averaging it in would print a plausible-looking figure that is
+	 * not a design anyone could buy.
+	 */
+	infeasibleCount: number;
 }
 
 export interface ReportModel {
@@ -292,7 +321,11 @@ export interface ReportModel {
 	/** Option 1 average face per COLI participant (total face ÷ COLI count), or null pre-run. */
 	option1AvgFace: string | null;
 	/** Option 1 cash-flow totals for the life of the plan (page 4.5), or null pre-run. */
-	cashFlow: CashFlowOption1Display | null;
+	cashFlow: CashFlowOptionDisplay | null;
+	/** Headline premium / average face per funding option, keyed by strategy id (page 4.3). */
+	fundingOptions: Record<string, FundingOptionSummary>;
+	/** Life-of-plan cash-flow totals per funding option, keyed by strategy id (page 4.5). */
+	cashFlowByOption: Record<string, CashFlowOptionDisplay>;
 
 	/** Reference date for the legacy census/projections (plan effective date, else valuation date). */
 	legacyAsOfDisplay: string;
@@ -443,46 +476,74 @@ function legacyProjectionsFrom(
 }
 
 /**
- * Option 1 (Cost Recovery) cash-flow totals for the life of the plan, from the persisted
- * illustration streams. Premiums are summed over the premium-payment period (`premiumYears`);
- * death benefits are taken at each participant's life-expectancy age. Returns null pre-run.
+ * Life-of-plan cash-flow totals for ONE funding option, from that option's persisted
+ * illustration streams. Death benefits are taken at each participant's life-expectancy age.
+ * Returns null when no participant carries a design for this option.
+ *
+ * Options differ in *where* the benefit money comes from, not in how much is paid — so the
+ * benefits total is constant across options and is split between company cash flow and COLI
+ * assets by however much the policies distributed.
+ *
+ * For Option 1 there are no distributions, so this reduces exactly to the previous Option-1-only
+ * derivation: company pays it all, and net COLI gain is death benefits less premiums.
+ *
+ * Returns null if ANY contributing design failed its solve. An infeasible solve still returns a
+ * full stream built on a premium the engine never reached, and summing it produces a column of
+ * numbers that look real. One bad participant invalidates the option's totals, not just its row.
  */
-function cashFlowOption1(
+function cashFlowForOption(
 	census: Insured[],
 	resultById: Map<string, ParticipantResult>,
 	afterTaxCost: Big,
-	premiumYears: number
-): CashFlowOption1Display | null {
+	strategyId: string
+): CashFlowOptionDisplay | null {
 	let totalPremiums = new Big(0);
 	let totalDeathAtLE = new Big(0);
+	let totalDistributions = new Big(0);
 	let anyStream = false;
+
 	for (const insured of census.filter(isColiParticipant)) {
-		const years = resultById.get(insured.id)?.illustrationYears;
+		const design = resultById.get(insured.id)?.designs?.[strategyId];
+		if (design?.solveFeasible === false) return null;
+		const years = design?.illustrationYears;
 		if (!years || years.length === 0) continue;
 		anyStream = true;
-		const n = Math.min(premiumYears, years.length);
-		for (let i = 0; i < n; i++) totalPremiums = totalPremiums.plus(new Big(years[i].premium));
+		for (const year of years) {
+			// The engine bounds the premium window itself, so years past the pay period are 0.
+			totalPremiums = totalPremiums.plus(new Big(year.premium));
+			// Withdrawals and loans can both be non-zero in the crossover year of the hybrid
+			// distribution types, so they sum rather than one superseding the other.
+			totalDistributions = totalDistributions
+				.plus(new Big(year.withdrawal ?? '0'))
+				.plus(new Big(year.loan ?? '0'));
+		}
 		const leYear = years.find((y) => y.age === insured.lifeExpectancy) ?? years[years.length - 1];
 		totalDeathAtLE = totalDeathAtLE.plus(new Big(leYear.deathBenefit));
 	}
 	if (!anyStream) return null;
 
 	// Sign convention: outflows negative; grouped whole dollars, parentheses for negatives.
-	const grouped = (b: Big) => (b.lt(0) ? `(${formatMoneyDisplay(b.abs(), 0)})` : formatMoneyDisplay(b, 0));
-	const netBenefits = afterTaxCost.times(-1); // company pays after-tax SERP benefits (outflow)
-	const netColiGain = totalDeathAtLE.minus(totalPremiums); // death proceeds less premiums (Opt 1)
-	const aggregate = netBenefits.plus(netColiGain);
+	const grouped = (b: Big) =>
+		b.lt(0) ? `(${formatMoneyDisplay(b.abs(), 0)})` : formatMoneyDisplay(b, 0);
+
+	// Benefits met from policy distributions never exceed the benefits actually owed.
+	const fromColi = totalDistributions.gt(afterTaxCost) ? afterTaxCost : totalDistributions;
+	const fromCompany = afterTaxCost.minus(fromColi);
+	const netBenefitsTotal = afterTaxCost.times(-1);
+	// What the policies returned (death proceeds + distributions) less what went in.
+	const netColiGain = totalDeathAtLE.plus(totalDistributions).minus(totalPremiums);
+	const aggregate = netBenefitsTotal.plus(netColiGain);
 	const costRecovery = netColiGain.eq(0)
 		? '—'
-		: `${netBenefits.times(-1).div(netColiGain).times(100).round(0).toString()}%`;
+		: `${netBenefitsTotal.times(-1).div(netColiGain).times(100).round(0).toString()}%`;
 
 	return {
-		netBenefitsCompanyCashFlow: grouped(netBenefits),
-		netBenefitsColiAssets: formatMoneyDisplay(new Big(0), 0),
-		netBenefitsTotal: grouped(netBenefits),
+		netBenefitsCompanyCashFlow: grouped(fromCompany.times(-1)),
+		netBenefitsColiAssets: grouped(fromColi.times(-1)),
+		netBenefitsTotal: grouped(netBenefitsTotal),
 		coliPremiums: grouped(totalPremiums.times(-1)),
 		coliDeathBenefits: formatMoneyDisplay(totalDeathAtLE, 0),
-		coliLoansWithdrawals: formatMoneyDisplay(new Big(0), 0),
+		coliLoansWithdrawals: formatMoneyDisplay(totalDistributions, 0),
 		netColiGainLoss: grouped(netColiGain),
 		aggregateCashFlow: grouped(aggregate),
 		costRecovery
@@ -545,10 +606,32 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	const taxDeduction = wholeDollars(totalCost.times(taxRate));
 	const afterTaxCost = wholeDollars(afterTaxCostBig);
 
-	// Life-of-plan cash flow (Option 1) from the persisted illustration streams.
-	const cashFlow = results
-		? cashFlowOption1(census, resultById, afterTaxCostBig, quote.modelSettings.premiumYears ?? 10)
-		: null;
+	// Life-of-plan cash flow per funding option, from that option's persisted illustration
+	// streams. An option a run did not design simply has no entry, and its column shows "—".
+	const cashFlowByOption: Record<string, CashFlowOptionDisplay> = {};
+	const fundingOptions: Record<string, FundingOptionSummary> = {};
+	if (results) {
+		for (const option of REPORT_FUNDING_OPTIONS) {
+			const flow = cashFlowForOption(census, resultById, afterTaxCostBig, option.id);
+			if (flow) cashFlowByOption[option.id] = flow;
+
+			const totals = results.aggregate.byOption?.[option.id];
+			if (totals && totals.policyCount > 0) {
+				const infeasibleCount = totals.infeasibleCount ?? 0;
+				const reportable = infeasibleCount === 0;
+				fundingOptions[option.id] = {
+					premium: reportable ? wholeDollars(totals.totalFirstYearPremium) : null,
+					averageFace: reportable
+						? wholeDollars(new Big(totals.totalFaceAmount).div(totals.policyCount))
+						: null,
+					policyCount: totals.policyCount,
+					infeasibleCount
+				};
+			}
+		}
+	}
+	// Legacy alias: page 4.5 and existing bindings read Option 1 through this field.
+	const cashFlow = cashFlowByOption[REPORT_FUNDING_OPTIONS[0].id] ?? null;
 
 	// Census rows
 	const censusRows: CensusRow[] = census.map((i) => ({
@@ -659,6 +742,8 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 				? wholeDollars(new Big(results.aggregate.totalDeathBenefit).div(coli.length))
 				: null,
 		cashFlow,
+		fundingOptions,
+		cashFlowByOption,
 
 		legacyAsOfDisplay: longDate(legacyRefDate),
 		legacyCensus,

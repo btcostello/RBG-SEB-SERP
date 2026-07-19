@@ -229,6 +229,12 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 		tick();
 		const option2Premium = benefitDistribution.solvedAnnualPremium;
 
+		// Options 3 and 4 are both anchored to Option 2's premium, so an infeasible Option 2 has
+		// nothing valid to hand them. Stop the chain rather than design two more policies off a
+		// number the engine could not reach — they would carry no solve of their own and so would
+		// look clean while being built on a failed solve.
+		if (benefitDistribution.solve?.feasible === false) return out;
+
 		// Option 3 — Option 2's premium, no distributions.
 		const premiumDeposit = await illustrateWithTimeout(
 			buildPremiumDepositDesignRequest({

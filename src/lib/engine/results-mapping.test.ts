@@ -162,6 +162,30 @@ describe('assembleResults (FR20, FR21)', () => {
 		expect(parsed.perParticipant[0].faceAmount).toBe('474000.00');
 	});
 
+	it('counts infeasible solves so a report can refuse to print their totals', () => {
+		const liability = computeLiability({ census: [], settings, asOf: '2027-06-15' });
+		const failed = illustration('99999999.00');
+		const designed: DesignedPolicy[] = [
+			{
+				insuredId: 'a',
+				strategyId: 'benefit-distribution',
+				faceAmount: new Big('100000'),
+				illustration: { ...illustration('4000.00'), solve: { feasible: true } }
+			},
+			{
+				insuredId: 'b',
+				strategyId: 'benefit-distribution',
+				faceAmount: new Big('999999999'),
+				illustration: { ...failed, solve: { feasible: false, reason: 'no_solve_period' } }
+			}
+		];
+		const results = assembleResults({ liability, totalDeathBenefit: new Big('0'), designed });
+		expect(results.aggregate.byOption?.['benefit-distribution']?.infeasibleCount).toBe(1);
+		expect(results.perParticipant.find((p) => p.insuredId === 'b')?.designs?.[
+			'benefit-distribution'
+		].solveFeasible).toBe(false);
+	});
+
 	it('totals each option across participants independently', () => {
 		const liability = computeLiability({ census: [], settings, asOf: '2027-06-15' });
 		const designed: DesignedPolicy[] = ['a', 'b'].flatMap((id) => [

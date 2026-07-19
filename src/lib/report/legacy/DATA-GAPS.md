@@ -164,8 +164,10 @@ Operator mapping:
 Model change: added `hasResults` + `option1AvgFace` to `ReportModel`. Results-gated values show "—" pre-run.
 **Excluded per operator:** the two buy-sell lines ("Includes $467,000 … buy-sell arrangement" and "SERP participants includes 2 Buy-Sell participants") — sample errors; also dropped the associated `**` marker.
 Gaps:
-- ☐ **Option 2 / 3 / 4 premiums** — require new illustrations (funding strategies 2–4). Rendered "—".
-- ☐ **Option 2 & 3 / Option 4 average face** — same (new illustrations). Rendered "—".
+- ☑ **Option 2 / 3 / 4 premiums** — RESOLVED (2026-07-18). Bound to `ReportModel.fundingOptions` (per-option totals from `Results.aggregate.byOption`).
+- ☑ **Option 2 & 3 / Option 4 average face** — RESOLVED. Shown per option (that option's total face ÷ its policy count), no longer grouped as "2 & 3".
+- Note: options can cover **different numbers of policies** (COLI-only lives get Option 1 only), so the page prints a footnote disclosing the per-option counts rather than implying a like-for-like comparison. See the mixed-membership backlog item in [HANDOFF.md](./HANDOFF.md) §5.
+- Note: an option with any **infeasible solve** prints "—" plus a "Not shown" line instead of a figure. An infeasible solve still returns 200 with a best-effort number that can be wildly out of range (live: an engine overflow of ~1.8e22), so averaging it in would print a plausible-looking figure that is not a buyable design.
 - Notes: "Projected Annual COLI Premium **Range**" low/high endpoints from the source were not rendered — ambiguous derivation; the four Option rows carry the premiums. Premium payment period shown as static "ten years" (source); ideally sourced from the illustration later. Tax-rate label uses whole-percent ("20%") vs source "21.0%".
 
 ### 15. Cash Flow Summary — Life of Plan — `pages/LegacyCashFlowSummaryPage.svelte` (section page 4.5)
@@ -186,7 +188,7 @@ Resolved (2026-07-17): illustration streams are now persisted (`ParticipantResul
 Remaining gaps:
 - ☑ **COLI policy loans & withdrawals** — RESOLVED (2026-07-18). lifeproj v1 returns `loans[]`; the adapter folds it into the year rows as `withdrawal` / `loan` / `loanBalance`. Still 0 for Option 1; the data is there for Options 2/4.
 - ☑ **`premiumYears` → illustration API** — RESOLVED (2026-07-18). Sent as a `premium_periods` window (`{1..premiumYears, kind:"solve"}`), so the engine's stream now stops premiums after N years and our summation matches the returned cash values.
-- ☐ **Options 2 / 3 / 4** — require new illustrations (funding strategies 2–4). Now fully expressible against the v1 API (`distribution_periods`, `distribution_type`, and the `premium_recovery` solve target) — see [HANDOFF.md](./HANDOFF.md) §5 for the per-option mapping, including the outer face loop Option 4 needs.
+- ☑ **Options 2 / 3 / 4** — RESOLVED (2026-07-18). All four columns derive from their own persisted illustration streams via `ReportModel.cashFlowByOption`. The benefits total is constant across options (they differ in *where* the money comes from), split between company cash flow and COLI assets by however much the policies distributed. A column whose option had any infeasible solve is suppressed entirely, with a "Not shown" note.
 - Note: face sizing (cost-recovery) targets after-tax benefits only, not benefits + premiums, so Option 1 aggregate/cost-recovery won't hit exactly 0 / 100% (a face-sizing calibration item). "Net Benefits Paid" uses `afterTaxCost` as an approximation of actual net cash flow.
 
 ### 16. Earnings Impact — `pages/LegacyEarningsImpactPage.svelte` (section page 5.1)

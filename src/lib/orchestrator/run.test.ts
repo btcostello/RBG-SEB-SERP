@@ -111,6 +111,33 @@ describe('runModel (FR23, AR9, AR12)', () => {
 		expect(requests[4].premiumPeriods?.[0]).toMatchObject({ kind: 'specify', amount: '9000.00' });
 	});
 
+	it('stops the chain when Option 2 is infeasible rather than anchoring 3 and 4 to it', async () => {
+		// An infeasible solve still returns 200 with a best-effort premium that can be wildly out
+		// of range. Options 3 and 4 carry no solve of their own, so building them on it would
+		// produce two designs that look clean while resting on a failed solve.
+		const requests: DesignRequest[] = [];
+		const illustrate = vi.fn(async (request: DesignRequest) => {
+			requests.push(request);
+			const result = illustrationFor('99999999.00');
+			return request.solve
+				? { ...result, solve: { feasible: request.solve.target === 'specify' ? false : true } }
+				: result;
+		});
+
+		const output = await runModel({
+			quote: quoteWith([insured({ id: 'a', planMembership: 'BOTH' })]),
+			asOf,
+			illustrate
+		});
+
+		// Option 1 and the failed Option 2 are kept — the infeasibility must stay visible.
+		expect(output.designed.map((d) => d.strategyId)).toEqual([
+			'cost-recovery',
+			'benefit-distribution'
+		]);
+		expect(requests).toHaveLength(2);
+	});
+
 	it('leaves Option 4 on its own solve when it already funds above Option 2', async () => {
 		const requests: DesignRequest[] = [];
 		const illustrate = vi.fn(async (request: DesignRequest) => {

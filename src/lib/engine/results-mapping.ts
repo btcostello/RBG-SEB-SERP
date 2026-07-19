@@ -124,6 +124,8 @@ export function assembleResults(input: {
 		byId.set(policy.insuredId, entry);
 
 		const running = byOption[policy.strategyId];
+		const infeasibleCount =
+			(running?.infeasibleCount ?? 0) + (design.solveFeasible === false ? 1 : 0);
 		byOption[policy.strategyId] = {
 			totalFaceAmount: formatMoney(
 				new Big(running?.totalFaceAmount ?? '0').plus(new Big(design.faceAmount))
@@ -131,7 +133,8 @@ export function assembleResults(input: {
 			totalFirstYearPremium: formatMoney(
 				new Big(running?.totalFirstYearPremium ?? '0').plus(new Big(design.firstYearPremium))
 			),
-			policyCount: (running?.policyCount ?? 0) + 1
+			policyCount: (running?.policyCount ?? 0) + 1,
+			...(infeasibleCount > 0 ? { infeasibleCount } : {})
 		};
 	}
 

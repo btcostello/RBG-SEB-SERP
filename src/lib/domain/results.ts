@@ -98,6 +98,11 @@ export const AggregateDesignSchema = v.object({
 	totalFaceAmount: MoneyStringSchema,
 	totalFirstYearPremium: MoneyStringSchema,
 	policyCount: v.pipe(v.number(), v.integer()),
+	/**
+	 * Policies whose solve did not reach its target. An infeasible solve still returns 200 with a
+	 * best-effort number, so the totals above include it — they are only meaningful at zero.
+	 */
+	infeasibleCount: v.optional(v.pipe(v.number(), v.integer())),
 	/** Present for benefit-sized options (Option 1); absent when face falls out of the premium. */
 	totalDeathBenefit: v.optional(MoneyStringSchema)
 });
