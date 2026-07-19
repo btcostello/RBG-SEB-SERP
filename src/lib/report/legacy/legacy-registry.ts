@@ -44,6 +44,7 @@ import LegacyCostAllocationPage from './pages/LegacyCostAllocationPage.svelte';
 import LegacyBenefitStatementPage from './pages/LegacyBenefitStatementPage.svelte';
 import LegacyFaceSurvivorOption1Page from './pages/LegacyFaceSurvivorOption1Page.svelte';
 import LegacyFaceSurvivorOption2Page from './pages/LegacyFaceSurvivorOption2Page.svelte';
+import LegacyOptionLedgerPage from './pages/LegacyOptionLedgerPage.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -52,7 +53,20 @@ export interface LegacyReportPage {
 	title: string;
 	/** The Svelte component that renders the page; receives the `ReportModel`. */
 	component: Component<{ report: ReportModel }>;
+	/**
+	 * Extra props merged in alongside `report`. Lets one component serve several registry
+	 * entries — e.g. the Appendix C ledgers, which are the same sheet per option and year slice.
+	 */
+	props?: Record<string, unknown>;
 }
+
+/** Appendix C option titles, verbatim from the source sheets. */
+const LEDGER_OPTIONS = [
+	{ id: 'cost-recovery', title: 'Option 1 — Recovery of Net Program Costs from COLI upon Mortality' },
+	{ id: 'benefit-distribution', title: 'Option 2 — SERP Benefit Funding from COLI Assets' },
+	{ id: 'premium-deposit', title: 'Option 3 — SERP Benefit Funding Wherewithal Based on COLI Assets' },
+	{ id: 'premium-recovery', title: 'Option 4 — SERP Benefit Funding from COLI Assets & Cost Recovery' }
+] as const;
 
 /** The registered Legacy Report pages, rendered in this order. Appended one section at a time. */
 export const legacyReportPages: LegacyReportPage[] = [
@@ -102,5 +116,25 @@ export const legacyReportPages: LegacyReportPage[] = [
 	{ id: 'f4-cost-allocation', title: 'Pension Expense Allocation by Participant', component: LegacyCostAllocationPage },
 	{ id: 'g1-benefit-statement', title: 'Summary of Benefits (Appendix A)', component: LegacyBenefitStatementPage },
 	{ id: 'g2-face-survivor-1', title: 'COLI Face vs Survivor Liability — Option 1', component: LegacyFaceSurvivorOption1Page },
-	{ id: 'g2-face-survivor-2', title: 'COLI Face vs Survivor Liability — Option 2', component: LegacyFaceSurvivorOption2Page }
+	{ id: 'g2-face-survivor-2', title: 'COLI Face vs Survivor Liability — Option 2', component: LegacyFaceSurvivorOption2Page },
+	// Appendix C — one ledger per funding option, split across two sheets at the source's
+	// pagination (plan years 1-21 and 22-45). One component serves all eight via registry props.
+	...LEDGER_OPTIONS.flatMap((option, index) =>
+		[
+			{ part: 1, fromYear: 1, toYear: 21 },
+			{ part: 2, fromYear: 22, toYear: 45 }
+		].map((slice) => ({
+			id: `g3-ledger-${option.id}-${slice.part}`,
+			title: `Option Ledger — ${option.title} (${slice.part} of 2)`,
+			component: LegacyOptionLedgerPage,
+			props: {
+				pageNo: `Appendix C.${index * 2 + slice.part}`,
+				strategyId: option.id,
+				optionTitle: option.title,
+				fromYear: slice.fromYear,
+				toYear: slice.toYear,
+				showTotals: slice.part === 1
+			}
+		}))
+	)
 ];

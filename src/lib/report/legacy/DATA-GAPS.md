@@ -378,6 +378,41 @@ Notes:
   `faceSurvivorByOption` is keyed for all four, so adding sheets is a two-line registration if
   continuation pages exist. Same open question as the COLI worksheet (6.4).
 
+### 21. Option Ledgers (8 sheets) — `pages/LegacyOptionLedgerPage.svelte`
+Source: `G3 Ledgers.pdf` (Appendix C.1 … C.8 — two sheets per funding option)
+Operator notes: "I think we get all we need for this one." — confirmed, no gaps.
+
+Year-by-year ledger per option: gross benefits, tax deduction, net paid split between company
+cash flow and COLI assets, then premiums, death proceeds, loans/withdrawals, cash surrender
+value and face amount.
+
+Everything aggregates by **plan year**. Policies are issued at plan start, so a policy year and
+a plan year are the same; a benefit at attained age A falls in plan year `A − currentAge`, the
+same mapping the illustration stream uses. Death proceeds land in the plan year containing each
+participant's life expectancy — the same mortality assumption page 4.5 totals against.
+
+**Cross-page reconciliation** (a useful regression check — these are computed independently):
+
+| Ledger total (Option 1) | Matches |
+|---|---|
+| Gross benefits (13,108,939) | page 4.3 "Projected SERP Benefit Payments" |
+| Tax deduction 2,621,788 | page 4.3 |
+| Net benefits paid (10,487,151) | page 4.3 "After-Tax SERP Benefit Costs" |
+| COLI premiums (2,644,666) | page 4.5 |
+| Death proceeds 10,487,151 | page 4.5 "COLI Death Benefits" |
+
+Notes / decisions:
+- **All four options are built** (8 sheets), unlike Appendix B and the COLI worksheet where the
+  source only supplied two. Here the source supplies all four.
+- **Registry gained an optional `props`** so one component serves all eight sheets. Previously a
+  registry entry could only pass `report`, which would have meant eight near-identical wrappers.
+- **Balance columns (CSV, face) are not totalled** — the source leaves those blank on the totals
+  row, correctly: they are balances, not flows.
+- ☐ **Pagination is fixed at the source's windows** (plan years 1–21 and 22–45). Our streams can
+  run longer — Option 1 lapses around year 56 — so years past 45 are not displayed. The totals
+  row is life-of-program regardless, matching the source's own behaviour. Revisit if the report
+  gains a real paginator.
+
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`
 Source: <pdf name>

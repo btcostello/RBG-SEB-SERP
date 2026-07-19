@@ -335,6 +335,31 @@ export interface FaceSurvivorAnalysis {
 	totalRatioCurrent: string | null;
 }
 
+/**
+ * One plan year of the Appendix C ledger, for a single funding option. Sign convention follows
+ * the source: outflows (benefits, premiums) are negative, inflows positive.
+ */
+export interface LedgerRow {
+	planYear: number;
+	grossBenefits: string;
+	taxDeduction: string;
+	netBenefitsPaid: string;
+	netFromCompanyCashFlow: string;
+	netFromColiAssets: string;
+	coliPremiums: string;
+	coliDeathProceeds: string;
+	coliLoansWithdrawals: string;
+	coliCashSurrenderValue: string;
+	coliFaceAmount: string;
+}
+
+/** Appendix C ledger for one funding option: year rows plus life-of-program totals. */
+export interface OptionLedger {
+	rows: LedgerRow[];
+	/** Totals over the whole program, not just the years a sheet displays. */
+	totals: Omit<LedgerRow, 'planYear'>;
+}
+
 /** Headline figures for one funding option (page 4.3). */
 export interface FundingOptionSummary {
 	/** Total first-year premium across the option's policies. Null when not reportable. */
@@ -408,6 +433,8 @@ export interface ReportModel {
 	benefitStatement: BenefitStatementDisplay | null;
 	/** COLI face vs survivor liability per funding option, keyed by strategy id (Appendix B). */
 	faceSurvivorByOption: Record<string, FaceSurvivorAnalysis>;
+	/** Year-by-year ledger per funding option, keyed by strategy id (Appendix C). */
+	ledgerByOption: Record<string, OptionLedger>;
 
 	/** Reference date for the legacy census/projections (plan effective date, else valuation date). */
 	legacyAsOfDisplay: string;
@@ -659,6 +686,137 @@ function faceSurvivorFor(
 	};
 }
 
+/**
+ * Appendix C — year-by-year ledger for one funding option.
+ *
+ * Everything is aggregated by **plan year**. Policies are all issued at the plan start, so a
+ * policy year and a plan year are the same thing; a benefit at attained age A falls in plan year
+ * `A − currentAge`, the same mapping the illustration stream uses (its year 1 ends at issue age
+ * + 1).
+ *
+ * Death proceeds land in the plan year containing each participant's life expectancy — the same
+ * mortality assumption page 4.5 totals against.
+ */
+function optionLedgerFor(
+	census: Insured[],
+	refDate: string,
+	resultById: Map<string, ParticipantResult>,
+	taxRate: number,
+	strategyId: string
+): OptionLedger {
+	const zero = new Big(0);
+	type Acc = {
+		gross: Big;
+		premiums: Big;
+		deathProceeds: Big;
+		draws: Big;
+		csv: Big;
+		face: Big;
+	};
+	const byYear = new Map<number, Acc>();
+	const at = (planYear: number): Acc => {
+		let acc = byYear.get(planYear);
+		if (!acc) {
+			acc = { gross: zero, premiums: zero, deathProceeds: zero, draws: zero, csv: zero, face: zero };
+			byYear.set(planYear, acc);
+		}
+		return acc;
+	};
+
+	for (const insured of census) {
+		const currentAge = ageNearestBirthday(insured.dateOfBirth, refDate);
+		const result = resultById.get(insured.id);
+
+		// SERP side: the benefit stream, keyed by attained age.
+		for (const year of result?.benefitStream ?? []) {
+			at(year.age - currentAge).gross = at(year.age - currentAge).gross.plus(new Big(year.amount));
+		}
+
+		// COLI side: this option's illustration stream.
+		const years = result?.designs?.[strategyId]?.illustrationYears ?? [];
+		for (const year of years) {
+			const acc = at(year.policyYear);
+			acc.premiums = acc.premiums.plus(new Big(year.premium));
+			acc.draws = acc.draws
+				.plus(new Big(year.withdrawal ?? '0'))
+				.plus(new Big(year.loan ?? '0'));
+			acc.csv = acc.csv.plus(new Big(year.cashSurrenderValue));
+			acc.face = acc.face.plus(new Big(year.deathBenefit));
+			// Proceeds are received in the year the participant is assumed to die.
+			if (year.age === insured.lifeExpectancy) {
+				acc.deathProceeds = acc.deathProceeds.plus(new Big(year.deathBenefit));
+			}
+		}
+	}
+
+	const money = (b: Big) => formatMoneyDisplay(b, 0);
+	/** Outflow: shown negative, in parentheses when non-zero. */
+	const outflow = (b: Big) => (b.gt(0) ? `(${money(b)})` : money(b));
+
+	const running = {
+		gross: zero,
+		tax: zero,
+		net: zero,
+		company: zero,
+		coli: zero,
+		premiums: zero,
+		proceeds: zero,
+		draws: zero
+	};
+
+	const planYears = [...byYear.keys()].filter((y) => y >= 1).sort((a, b) => a - b);
+	const rows = planYears.map((planYear): LedgerRow => {
+		const acc = at(planYear);
+		const tax = acc.gross.times(taxRate);
+		const net = acc.gross.minus(tax);
+		// Benefits met from policy distributions that year, never more than the benefits owed.
+		const fromColi = acc.draws.gt(net) ? net : acc.draws;
+		const fromCompany = net.minus(fromColi);
+
+		running.gross = running.gross.plus(acc.gross);
+		running.tax = running.tax.plus(tax);
+		running.net = running.net.plus(net);
+		running.company = running.company.plus(fromCompany);
+		running.coli = running.coli.plus(fromColi);
+		running.premiums = running.premiums.plus(acc.premiums);
+		running.proceeds = running.proceeds.plus(acc.deathProceeds);
+		running.draws = running.draws.plus(acc.draws);
+
+		return {
+			planYear,
+			grossBenefits: outflow(acc.gross),
+			taxDeduction: money(tax),
+			netBenefitsPaid: outflow(net),
+			netFromCompanyCashFlow: outflow(fromCompany),
+			netFromColiAssets: outflow(fromColi),
+			coliPremiums: outflow(acc.premiums),
+			coliDeathProceeds: money(acc.deathProceeds),
+			coliLoansWithdrawals: money(acc.draws),
+			// Balances, not flows — shown as at the end of the year.
+			coliCashSurrenderValue: money(acc.csv),
+			coliFaceAmount: money(acc.face)
+		};
+	});
+
+	const last = rows.length > 0 ? at(planYears[planYears.length - 1]) : undefined;
+	return {
+		rows,
+		totals: {
+			grossBenefits: outflow(running.gross),
+			taxDeduction: money(running.tax),
+			netBenefitsPaid: outflow(running.net),
+			netFromCompanyCashFlow: outflow(running.company),
+			netFromColiAssets: outflow(running.coli),
+			coliPremiums: outflow(running.premiums),
+			coliDeathProceeds: money(running.proceeds),
+			coliLoansWithdrawals: money(running.draws),
+			// Balance columns do not total — the source leaves them blank on the totals row.
+			coliCashSurrenderValue: last ? '' : '',
+			coliFaceAmount: ''
+		}
+	};
+}
+
 /** The participant's pre-retirement survivor stream, from their own schedule inputs. */
 function survivorStreamFor(insured: Insured, refDate: string) {
 	return survivorBenefitStream({
@@ -869,8 +1027,16 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	// Appendix B compares each option's face against the survivor liability. The survivor and
 	// after-tax columns are pure, so these build with or without a run.
 	const faceSurvivorByOption: Record<string, FaceSurvivorAnalysis> = {};
+	const ledgerByOption: Record<string, OptionLedger> = {};
 	for (const option of REPORT_FUNDING_OPTIONS) {
 		faceSurvivorByOption[option.id] = faceSurvivorFor(
+			census,
+			legacyRefDate,
+			resultById,
+			taxRate,
+			option.id
+		);
+		ledgerByOption[option.id] = optionLedgerFor(
 			census,
 			legacyRefDate,
 			resultById,
@@ -993,6 +1159,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		// Appendix A samples the first census member, per operator.
 		benefitStatement: benefitStatementFor(census[0], legacyRefDate, resultById),
 		faceSurvivorByOption,
+		ledgerByOption,
 
 		legacyAsOfDisplay: longDate(legacyRefDate),
 		legacyRefDate,

@@ -23,9 +23,9 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 31 pages built
+## 2. Progress — 39 pages built
 
-Source sections A1 → G2. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
+Source sections A1 → G3. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 
 | # | Page | Section | Source PDF |
 |---|---|---|---|
@@ -52,6 +52,7 @@ Source sections A1 → G2. Registered in [legacy-registry.ts](./legacy-registry.
 | 28 | Pension Expense Allocation by Participant — **placeholder** | 6.6 | F4 Cost Allocation |
 | 29 | Summary of Benefits (sample, census[0]) | Appendix A | G1 Ben Statement |
 | 30–31 | COLI Face vs Survivor Liability (Options 1, 2) | Appendix B.1–B.2 | G2 Face Survivor |
+| 32–39 | Option Ledgers (4 options × 2 sheets) | Appendix C.1–C.8 | G3 Ledgers |
 
 **Next up:** the Appendix set (TOC D–H: participant summaries, survivor indemnification,
 cash-flow options, accounting for SERP programs, informational overviews, hypothetical COLI
