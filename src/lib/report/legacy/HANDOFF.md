@@ -286,9 +286,7 @@ and `assembleResults` keys them under `designs` / `aggregate.byOption`.
   in a bounded pool (`DEFAULT_RUN_CONCURRENCY = 4`, overridable per run).
 - **Face for Options 2–4 is read back** off `summary.initial_face_amount` (now parsed as
   `IllustrationResult.initialFaceAmount`) — it is the *answer*, not an input.
-- **COLI-only participants get Option 1 only.** With no SERP benefit there is nothing to
-  distribute, and Options 2/4 would collapse to a trivial design. (The SERP-only / COLI-only
-  wrinkle is otherwise still deferred per operator.)
+- **COLI-only participants get Option 1 only** — ⚠ **placeholder, see Backlog below.**
 - **Progress counts options, not participants**, so a large census does not appear to stall.
 - **Output is ordered by census, not completion**, so a re-run reproduces an identical snapshot
   despite the parallelism (NFR11).
@@ -302,6 +300,40 @@ age-driven divergence predicted above, showing up in a real run.
 
 **Next:** bind report pages 4.3 / 4.5 to `aggregate.byOption`, and surface `solveFeasible` /
 `gptAdjusted` / `lapseYear` so a capped or infeasible design cannot reach a page looking clean.
+
+### ⚠ BACKLOG — mixed-membership participants (SERP-only / COLI-only)
+
+**Not designed yet. The current behaviour is a placeholder chosen to keep the orchestrator
+running, not an operator decision** (operator, 2026-07-18: "one of several approaches I want to
+take — not ready to build that just yet").
+
+What ships today, in `run.ts`:
+
+| membership | today's behaviour |
+|---|---|
+| SERP + COLI (`BOTH`) | all four options |
+| COLI-only | **Option 1 only** — skipped for 2–4 |
+| SERP-only | no COLI design at all (correct — there is no policy) |
+
+**Why COLI-only is skipped for Options 2–4:** those options exist to pay a SERP benefit out of
+the policy. A COLI-only participant has no benefit stream, so there is nothing to distribute, and
+the Option 2 solve degenerates — with no distributions pinning the design, a `net_account_value`
+target shrinks face and premium together toward a trivial policy (live: premium $1,612 / face
+$20,496). Skipping avoids printing a meaningless design; it does **not** answer what a COLI-only
+participant *should* contribute to Options 2–4.
+
+**Approaches to weigh when this comes up** (operator has others in mind):
+
+1. Skip, as today — Options 2–4 cover fewer lives than Option 1, so the option comparison on
+   pages 4.3 / 4.5 is not like-for-like. `policyCount` on `aggregate.byOption` already records
+   the difference, so the report *can* disclose it.
+2. Fund COLI-only lives in Options 2–4 with no distributions (effectively Option 3's shape), so
+   every option covers every COLI life.
+3. Allocate a share of the aggregate SERP benefit to COLI-only lives so they carry
+   distributions too.
+
+Whichever is chosen, the like-for-like question on the option comparison needs an answer, since
+Option 1 currently covers more lives than Options 2–4.
 
 **Options 2–4 — how they map** (operator-confirmed 2026-07-18):
 
@@ -377,7 +409,7 @@ cost recovery doesn't land at 100% (currently ~112%). Calibration decision pendi
 # dev server (do NOT use bash for this; use the preview tooling)
 #   .claude/launch.json has: dev (5173), dev-alt (5199), dev-verify (5251)
 npm run check      # svelte-check — must be 0 errors
-npm test           # vitest — currently 167 passing
+npm test           # vitest — currently 191 passing
 ```
 
 **Verification pattern used throughout** (screenshots time out in this environment):
