@@ -308,6 +308,46 @@ Open questions:
 - ☐ **Note 1 / Note 2 references** on 6.1 point at notes not present in the supplied page —
   confirm whether they live on a sheet we have not seen.
 
+### 19. Summary of Benefits (sample statement) — `pages/LegacyBenefitStatementPage.svelte`
+Source: `G1 Ben Statement.pdf` (Appendix A)
+Operator notes: "This page is a sample benefit statement. Produce for the first person in the
+census. Many values can be pulled from input page or existing calcs." — plus: survivor benefits
+are not wired up, but the inputs exist and the calc comes after the report pages are loaded.
+
+Rendered for **`census[0]`**, via `ReportModel.benefitStatement`. Nearly everything resolves:
+
+| Statement line | Source |
+|---|---|
+| Name, date of birth, recognized salary | `Insured` inputs |
+| Statement date | `legacyRefDate` (plan effective date) — matches the accounting sheets' plan start date |
+| Current age (nearest birthday) | computed at the statement date |
+| Normal retirement age, salary growth | `Insured` inputs |
+| Defined benefit % / averaging period | `benefitPercentage`, `fasAveragingPeriod` |
+| Annual SERP benefit, projected FAS | `ParticipantResult` (post-run; "—" before) |
+| Guaranteed / projected totals | annual benefit × `minBenefitYears` / `maxBenefitYears` |
+| Survivor schedule (tier %s and years) | `survivorTier1Pct/Years`, `survivorTier2Pct/Years` |
+
+Gaps:
+- ☐ **Survivor benefit totals** (both lines) — render "— not yet calculated —". The calculation is
+  not written; **all inputs exist**. From the sample, the arithmetic appears to be:
+  - *death this year* = current salary × (tier1Pct × tier1Years + tier2Pct × tier2Years)
+    — sample: 201,760 × (1.0×1 + 0.5×2) = 403,520 ✓
+  - *death in the year prior to retirement* = the same multiple applied to **salary projected to
+    age `retirementAge − 1`** — sample: 201,760 × 1.03^10 × 2 = 542,297 ✓
+  This is unverified inference from one sample, so confirm before implementing. It also needs
+  **projected salary at an arbitrary age**, which is the same missing derivation as "Salary at
+  retirement" on page 3.2 — build once, use twice.
+
+Notes / deviations:
+- Year counts render numerically ("5-year average", "for 5 years") where the source spells them
+  out ("five-year", "for five years") — consistent with pages 2.2 / 3.2.
+- Percentages use the shared `formatPercent` ("60%") vs the source's "20.00%" / "100.0%".
+- `LegacyPageShell` gained a `numbered` prop so this sheet's footer reads "Appendix A" rather
+  than "Page Appendix A"; every other page is unchanged.
+- Statement covers `census[0]` regardless of membership. If the first member were COLI-only they
+  would have no SERP benefit and the post-run figures would be zero — worth revisiting if
+  statements are ever generated for the whole census rather than as a sample.
+
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`
 Source: <pdf name>

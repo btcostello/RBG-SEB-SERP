@@ -23,9 +23,9 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 28 pages built
+## 2. Progress — 29 pages built
 
-Source sections A1 → F4. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
+Source sections A1 → G1. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 
 | # | Page | Section | Source PDF |
 |---|---|---|---|
@@ -50,6 +50,7 @@ Source sections A1 → F4. Registered in [legacy-registry.ts](./legacy-registry.
 | 26 | COLI Accounting Entry Worksheet — **placeholder** | 6.4 | F2 COLI Summary |
 | 27 | FASB ASC 715-30 Audit Trail — **placeholder** | 6.5 | F3 Audit Trail |
 | 28 | Pension Expense Allocation by Participant — **placeholder** | 6.6 | F4 Cost Allocation |
+| 29 | Summary of Benefits (sample, census[0]) | Appendix A | G1 Ben Statement |
 
 **Next up:** the Appendix set (TOC D–H: participant summaries, survivor indemnification,
 cash-flow options, accounting for SERP programs, informational overviews, hypothetical COLI

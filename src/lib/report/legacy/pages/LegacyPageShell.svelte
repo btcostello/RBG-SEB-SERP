@@ -12,25 +12,30 @@
 		report,
 		pageNo,
 		pageNoSide = 'left',
+		numbered = true,
 		children
 	}: {
 		report: ReportModel;
 		pageNo: string;
 		/** Which side the page number sits on; the date takes the other (source mirrors by page). */
 		pageNoSide?: 'left' | 'right';
+		/** False for named sheets like "Appendix A", which the source prints without "Page". */
+		numbered?: boolean;
 		children: Snippet;
 	} = $props();
+
+	const label = $derived(numbered ? `Page ${pageNo}` : pageNo);
 </script>
 
 <div class="legacy-page">
 	<div class="lp-body">{@render children()}</div>
 	<footer class="lp-foot">
 		{#if pageNoSide === 'left'}
-			<span>Page {pageNo}</span>
+			<span>{label}</span>
 			<span>{shortDate(report.asOf)}</span>
 		{:else}
 			<span>{shortDate(report.asOf)}</span>
-			<span>Page {pageNo}</span>
+			<span>{label}</span>
 		{/if}
 	</footer>
 </div>

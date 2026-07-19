@@ -41,6 +41,7 @@ import LegacySerpNotesPage from './pages/LegacySerpNotesPage.svelte';
 import LegacyColiEntriesPage from './pages/LegacyColiEntriesPage.svelte';
 import LegacyAuditTrailPage from './pages/LegacyAuditTrailPage.svelte';
 import LegacyCostAllocationPage from './pages/LegacyCostAllocationPage.svelte';
+import LegacyBenefitStatementPage from './pages/LegacyBenefitStatementPage.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -96,5 +97,6 @@ export const legacyReportPages: LegacyReportPage[] = [
 	{ id: 'f1-serp-notes', title: 'SERP Accounting — Notes', component: LegacySerpNotesPage },
 	{ id: 'f2-coli-entries', title: 'COLI Accounting Entry Worksheet', component: LegacyColiEntriesPage },
 	{ id: 'f3-audit-trail', title: 'FASB ASC 715-30 Audit Trail', component: LegacyAuditTrailPage },
-	{ id: 'f4-cost-allocation', title: 'Pension Expense Allocation by Participant', component: LegacyCostAllocationPage }
+	{ id: 'f4-cost-allocation', title: 'Pension Expense Allocation by Participant', component: LegacyCostAllocationPage },
+	{ id: 'g1-benefit-statement', title: 'Summary of Benefits (Appendix A)', component: LegacyBenefitStatementPage }
 ];

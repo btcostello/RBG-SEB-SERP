@@ -257,6 +257,47 @@ export const REPORT_FUNDING_OPTIONS = [
 	{ id: 'premium-recovery', number: 4, label: 'Bene Funding + Cost Recov' }
 ] as const;
 
+/**
+ * Sample participant benefit statement (Appendix A) — the first census member.
+ *
+ * Inputs and post-run figures are populated; the two survivor **totals** are null because the
+ * survivor benefit calculation is not wired yet (the tier percentages and years below are inputs,
+ * so the schedule prints even while the amounts do not).
+ */
+export interface BenefitStatementDisplay {
+	name: string;
+	dateOfBirth: string;
+	statementDate: string;
+	/** Age nearest birthday at the statement date. */
+	age: number;
+	retirementAge: number;
+	currentSalary: string;
+	/** "20.00%" — the defined-benefit percentage of final average salary. */
+	benefitPercentDisplay: string;
+	/** Trailing years averaged into FAS, e.g. 5. */
+	fasAveragingPeriod: number;
+	salaryGrowthDisplay: string;
+	// --- Post-run (null until a model run populates results) ---
+	annualBenefit: string | null;
+	finalAverageSalary: string | null;
+	/** Annual benefit × the guaranteed minimum payout years. */
+	guaranteedTotal: string | null;
+	guaranteedYears: number;
+	/** Annual benefit × the full payout years. */
+	projectedTotal: string | null;
+	projectedYears: number;
+	// --- Survivor schedule (inputs) ---
+	survivorTier1Display: string;
+	survivorTier1Years: number;
+	survivorTier2Display: string;
+	survivorTier2Years: number;
+	/** Age one year before retirement, used to label the second survivor line. */
+	priorToRetirementAge: number;
+	// --- Survivor totals: NOT YET CALCULATED (see DATA-GAPS.md) ---
+	survivorTotalThisYear: null;
+	survivorTotalPriorToRetirement: null;
+}
+
 /** Headline figures for one funding option (page 4.3). */
 export interface FundingOptionSummary {
 	/** Total first-year premium across the option's policies. Null when not reportable. */
@@ -326,6 +367,8 @@ export interface ReportModel {
 	fundingOptions: Record<string, FundingOptionSummary>;
 	/** Life-of-plan cash-flow totals per funding option, keyed by strategy id (page 4.5). */
 	cashFlowByOption: Record<string, CashFlowOptionDisplay>;
+	/** Sample benefit statement for the first census member, or null on an empty census. */
+	benefitStatement: BenefitStatementDisplay | null;
 
 	/** Reference date for the legacy census/projections (plan effective date, else valuation date). */
 	legacyAsOfDisplay: string;
@@ -410,6 +453,52 @@ function planSpecsFrom(quote: Quote): PlanSpecsDisplay {
  * uniform across SERP participants, else 'varies' (see {@link BenefitFormulaDisplay}). Empty
  * census falls back to the documented defaults.
  */
+/**
+ * Build the sample benefit statement (Appendix A) for the first census member.
+ *
+ * Everything here is either a per-participant input or an already-computed result — except the
+ * two survivor totals, which need the survivor benefit calculation. The inputs for that exist
+ * (tier percentages/years, salary, growth rate), so it is a calc to write, not data to gather.
+ */
+function benefitStatementFor(
+	insured: Insured | undefined,
+	refDate: string,
+	resultById: Map<string, ParticipantResult>
+): BenefitStatementDisplay | null {
+	if (!insured) return null;
+	const result = resultById.get(insured.id);
+	const annual = result?.annualBenefit;
+	const timesYears = (years: number): string | null =>
+		annual === undefined ? null : wholeDollars(new Big(annual).times(years));
+
+	return {
+		name: fullName(insured),
+		dateOfBirth: longDate(insured.dateOfBirth),
+		statementDate: longDate(refDate),
+		age: ageNearestBirthday(insured.dateOfBirth, refDate),
+		retirementAge: insured.retirementAge,
+		currentSalary: wholeDollars(insured.currentSalary),
+		benefitPercentDisplay: formatPercent(insured.benefitPercentage),
+		fasAveragingPeriod: insured.fasAveragingPeriod,
+		salaryGrowthDisplay: formatPercent(insured.salaryGrowthRate, 1),
+		annualBenefit: annual !== undefined ? wholeDollars(annual) : null,
+		finalAverageSalary:
+			result?.finalAverageSalary !== undefined ? wholeDollars(result.finalAverageSalary) : null,
+		guaranteedTotal: timesYears(insured.minBenefitYears),
+		guaranteedYears: insured.minBenefitYears,
+		projectedTotal: timesYears(insured.maxBenefitYears),
+		projectedYears: insured.maxBenefitYears,
+		survivorTier1Display: formatPercent(insured.survivorTier1Pct, 1),
+		survivorTier1Years: insured.survivorTier1Years,
+		survivorTier2Display: formatPercent(insured.survivorTier2Pct, 1),
+		survivorTier2Years: insured.survivorTier2Years,
+		priorToRetirementAge: insured.retirementAge - 1,
+		// Survivor benefit calculation not built yet — see DATA-GAPS.md.
+		survivorTotalThisYear: null,
+		survivorTotalPriorToRetirement: null
+	};
+}
+
 function benefitFormulaFrom(census: Insured[]): BenefitFormulaDisplay {
 	const valueOr = (select: (i: Insured) => number, fallback: number): number | 'varies' => {
 		const v = commonSerpValue(census, select);
@@ -749,6 +838,8 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		cashFlow,
 		fundingOptions,
 		cashFlowByOption,
+		// Appendix A samples the first census member, per operator.
+		benefitStatement: benefitStatementFor(census[0], legacyRefDate, resultById),
 
 		legacyAsOfDisplay: longDate(legacyRefDate),
 		legacyRefDate,
