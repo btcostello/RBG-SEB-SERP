@@ -49,6 +49,7 @@ import LegacyAccountingDescPage from './pages/LegacyAccountingDescPage.svelte';
 import LegacySerpOverviewPage from './pages/LegacySerpOverviewPage.svelte';
 import LegacyColiOverviewPage from './pages/LegacyColiOverviewPage.svelte';
 import LegacyMortalityChartPage from './pages/LegacyMortalityChartPage.svelte';
+import LegacyGlossaryPage from './pages/LegacyGlossaryPage.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -72,6 +73,15 @@ const LEDGER_OPTIONS = [
 	{ id: 'benefit-distribution', title: 'Option 2 — SERP Benefit Funding from COLI Assets' },
 	{ id: 'premium-deposit', title: 'Option 3 — SERP Benefit Funding Wherewithal Based on COLI Assets' },
 	{ id: 'premium-recovery', title: 'Option 4 — SERP Benefit Funding from COLI Assets & Cost Recovery' }
+] as const;
+
+/** Appendix H glossary sheet labels, in source order — content lives in pages/glossary-data.ts. */
+const GLOSSARY_SHEETS = [
+	'Page 3.2',
+	'Pages 5.2-1 through 5.2-4',
+	'Page 6.5',
+	'Appendix B',
+	'Appendix C'
 ] as const;
 
 /** The registered Legacy Report pages, rendered in this order. Appended one section at a time. */
@@ -148,5 +158,12 @@ export const legacyReportPages: LegacyReportPage[] = [
 	{ id: 'g5-accounting-desc', title: 'Accounting for SERP Programs (Appendix D)', component: LegacyAccountingDescPage },
 	{ id: 'g6-serp-overview', title: 'Informational Overview — SERPs (Appendix E.1)', component: LegacySerpOverviewPage },
 	{ id: 'g6-coli-overview', title: 'Informational Overview — COLI (Appendix E.2)', component: LegacyColiOverviewPage },
-	{ id: 'h3-mortality-chart', title: 'Comparison of Mortality Assumptions (Appendix G)', component: LegacyMortalityChartPage }
+	{ id: 'h3-mortality-chart', title: 'Comparison of Mortality Assumptions (Appendix G)', component: LegacyMortalityChartPage },
+	// Appendix H — five glossary sheets, one component driven by registry props.
+	...GLOSSARY_SHEETS.map((sheet, index) => ({
+		id: `i1-glossary-${index + 1}`,
+		title: `Glossary — ${sheet}`,
+		component: LegacyGlossaryPage,
+		props: { sheetIndex: index }
+	}))
 ];

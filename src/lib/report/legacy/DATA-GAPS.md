@@ -495,6 +495,28 @@ Chart design notes (first chart, so conventions set here):
 - Gridlines and axes are recessive (`--line-soft` / `--line`) and carry no series meaning.
 - `.foot` overrides a global uppercase rule; the source sets that line sentence-case.
 
+### 25. Glossary (5 sheets) — `pages/LegacyGlossaryPage.svelte` + `pages/glossary-data.ts`
+Source: `I1 Glossary.pdf` (Appendix H.1–H.5: for page 3.2, pages 5.2-1…5.2-4, page 6.5,
+Appendix B, Appendix C)
+Operator notes: "definitions page. other than the first definition. I think this is all static"
+
+One component driven by registry props; content in `glossary-data.ts` as a function of the report,
+so a single dynamic value does not push the whole glossary into markup.
+Gaps:
+- ☑ _None._ Definitions are static except the one below.
+- ☑ **Salary increase rate** in "Salary at Retirement Age" binds to `planSpecs.salaryScale`,
+  which is already "Varies"-aware. Source hardcodes "3.00%".
+
+⚠ **Observation, left as-is pending your call:** the second entry, "**5-Year** Final Average
+Salary (FAS) — the average of the projected highest consecutive **five** years of salary", is
+also plan-dependent. `Insured.fasAveragingPeriod` is per-participant and the report already
+applies the "Varies" rule to comparable terms on page 2.2. The source hardcodes five, and the
+operator called only the first definition dynamic, so it is reproduced verbatim — but it will be
+wrong for a plan averaging a different number of years. Two words to change if you want it bound.
+
+Note the source's PDF extraction interleaves the two columns badly; term/definition pairs were
+reconstructed by hand and should be spot-checked against the PDF if any read oddly.
+
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`
 Source: <pdf name>
