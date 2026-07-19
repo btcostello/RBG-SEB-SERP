@@ -13,17 +13,20 @@
 		title,
 		blocks,
 		pageNo,
-		pageNoSide = 'left'
+		pageNoSide = 'left',
+		numbered = true
 	}: {
 		report: ReportModel;
 		title: string;
 		blocks: ProseBlock[];
 		pageNo: string;
 		pageNoSide?: 'left' | 'right';
+		/** False for named sheets like "Appendix D", which print without a "Page" prefix. */
+		numbered?: boolean;
 	} = $props();
 </script>
 
-<LegacyPageShell {report} {pageNo} {pageNoSide}>
+<LegacyPageShell {report} {pageNo} {pageNoSide} {numbered}>
 	<div class="prose">
 		<h1 class="prose-title">{title}</h1>
 		{#each blocks as block, i (i)}

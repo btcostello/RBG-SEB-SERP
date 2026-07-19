@@ -413,6 +413,19 @@ Notes / decisions:
   row is life-of-program regardless, matching the source's own behaviour. Revisit if the report
   gains a real paginator.
 
+### 22. Accounting for SERP Programs — `pages/LegacyAccountingDescPage.svelte`
+Source: `G5 Acct Desc.pdf` (Appendix D)
+Operator notes: "just static stuff"
+Bindings: company/date via `LegacyPageShell`. Title and both sections (SERP Accounting Treatment,
+COLI Accounting Treatment) are fixed boilerplate, reproduced verbatim via `LegacyRichProsePage`.
+Gaps:
+- ☑ _None._ Static text only.
+- Fixed a source encoding artifact: "SERP&#65533;PLUS" → "SERP-PLUS", matching the wording used
+  on the other pages. Em dashes normalised in the ASC titles ("Compensation — Retirement
+  Benefits").
+- Note: this page *describes* the treatment the GAAP layer will implement; the placeholder
+  worksheets on 6.1–6.6 are the numbers behind this narrative.
+
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`
 Source: <pdf name>

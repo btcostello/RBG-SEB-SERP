@@ -45,6 +45,7 @@ import LegacyBenefitStatementPage from './pages/LegacyBenefitStatementPage.svelt
 import LegacyFaceSurvivorOption1Page from './pages/LegacyFaceSurvivorOption1Page.svelte';
 import LegacyFaceSurvivorOption2Page from './pages/LegacyFaceSurvivorOption2Page.svelte';
 import LegacyOptionLedgerPage from './pages/LegacyOptionLedgerPage.svelte';
+import LegacyAccountingDescPage from './pages/LegacyAccountingDescPage.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -140,5 +141,6 @@ export const legacyReportPages: LegacyReportPage[] = [
 				showTotals: slice.part === 1
 			}
 		}))
-	)
+	),
+	{ id: 'g5-accounting-desc', title: 'Accounting for SERP Programs (Appendix D)', component: LegacyAccountingDescPage }
 ];

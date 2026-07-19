@@ -23,9 +23,9 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 39 pages built
+## 2. Progress — 40 pages built
 
-Source sections A1 → G3. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
+Source sections A1 → G5. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 
 | # | Page | Section | Source PDF |
 |---|---|---|---|
@@ -52,11 +52,11 @@ Source sections A1 → G3. Registered in [legacy-registry.ts](./legacy-registry.
 | 28 | Pension Expense Allocation by Participant — **placeholder** | 6.6 | F4 Cost Allocation |
 | 29 | Summary of Benefits (sample, census[0]) | Appendix A | G1 Ben Statement |
 | 30–31 | COLI Face vs Survivor Liability (Options 1, 2) | Appendix B.1–B.2 | G2 Face Survivor |
-| 32–39 | Option Ledgers (4 options × 2 sheets) | Appendix C.1–C.8 | G3 Ledgers |
+| 32–39 | Option Ledgers (4 options × 2 sheets, **landscape**) | Appendix C.1–C.8 | G3 Ledgers |
+| 40 | Accounting for SERP Programs (static) | Appendix D | G5 Acct Desc |
 
-**Next up:** the Appendix set (TOC D–H: participant summaries, survivor indemnification,
-cash-flow options, accounting for SERP programs, informational overviews, hypothetical COLI
-value, mortality comparison, glossary).
+**Next up:** the remaining Appendix set (TOC E–H: informational overviews, hypothetical COLI
+value, mortality comparison, glossary). Appendix A–D are built.
 
 The accounting worksheets are now roughed in, but **ten pages are placeholders blocked on the
 GAAP layer** (5.2-1…5.2-4 and 6.1–6.6). See the "Missing subsystem" section at the top of
