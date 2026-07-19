@@ -88,7 +88,8 @@
 					</td>
 					<td></td>
 				</tr>
-				{#each analysis.rows as row (row.name)}
+				<!-- Keyed by id, not name: names are not unique, and a duplicate key throws. -->
+				{#each analysis.rows as row (row.insuredId)}
 					<tr>
 						<td class="txt">{row.name}</td>
 						<td class="num">{row.age}</td>

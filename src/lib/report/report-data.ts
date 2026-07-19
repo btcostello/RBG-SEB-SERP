@@ -121,6 +121,8 @@ export interface PolicyRow {
 }
 
 export interface SampleChip {
+	/** Stable key. Names are NOT unique — two executives can share one. */
+	insuredId: string;
 	name: string;
 	age: number;
 	retirementAge: number;
@@ -309,6 +311,8 @@ export interface BenefitStatementDisplay {
  * to cover, for a death now and for one in the year before retirement.
  */
 export interface FaceSurvivorRow {
+	/** Stable key. Names are NOT unique — two participants can share one, and blank rows do. */
+	insuredId: string;
 	/** Abbreviated name, e.g. "J. Thren". */
 	name: string;
 	age: number;
@@ -660,6 +664,7 @@ function faceSurvivorFor(
 		};
 
 		return {
+			insuredId: insured.id,
 			name: `${insured.firstName.charAt(0)}. ${insured.lastName}`,
 			age,
 			nra,
@@ -1106,6 +1111,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		.sort((a, b) => new Big(b.result.annualBenefit).minus(a.result.annualBenefit).toNumber())
 		.slice(0, 3)
 		.map(({ insured, result }) => ({
+			insuredId: insured.id,
 			name: fullName(insured),
 			age: ageNearestBirthday(insured.dateOfBirth, asOf),
 			retirementAge: insured.retirementAge,
