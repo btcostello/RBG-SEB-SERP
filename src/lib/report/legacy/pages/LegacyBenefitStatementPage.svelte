@@ -2,11 +2,13 @@
 	/**
 	 * Legacy Report — G1 Summary of Benefits (Appendix A): a sample participant benefit statement.
 	 *
-	 * Operator: "Produce for the first person in the census." Almost everything is a per-participant
-	 * input or an already-computed result. The two **survivor totals** are the exception — the
-	 * survivor benefit calculation is not written yet, though all its inputs exist. They render
-	 * "— not yet calculated —" rather than a bare dash, so a reader is not left wondering whether
-	 * the participant is simply ineligible.
+	 * Operator: "Produce for the first person in the census."
+	 *
+	 * Every value is either a per-participant input, a pure derivation, or a computed result. The
+	 * survivor totals come from `engine/survivor-benefit.ts` and need no model run — they are zero
+	 * for anyone already at or past normal retirement age, since this is a *pre-retirement*
+	 * benefit. Only the SERP figures (annual benefit, FAS and the totals built on them) are
+	 * results-gated, showing "—" until a run populates them.
 	 */
 	import type { ReportModel } from '../../report-data';
 	import LegacyPageShell from './LegacyPageShell.svelte';
@@ -16,7 +18,6 @@
 
 	/** Results-gated: present after a run, else an em dash. */
 	const val = (v: string | null) => v ?? '—';
-	const PENDING = '— not yet calculated —';
 	const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 	/** "five-year average salary" in the source; rendered numerically to match pages 2.2 / 3.2. */
 	const spanYears = (n: number) => `${n}-year`;
@@ -90,14 +91,14 @@
 
 		<div class="line">
 			<span>Total survivor benefits payable if death were to occur this year:</span>
-			<span class="v gap">{PENDING}</span>
+			<span class="v">{s.survivorTotalThisYear}</span>
 		</div>
 		<div class="line">
 			<span>
 				Total survivor benefits payable if death were to occur in the year prior to your Projected
 				Retirement Age (age {s.priorToRetirementAge}):
 			</span>
-			<span class="v gap">{PENDING}</span>
+			<span class="v">{s.survivorTotalPriorToRetirement}</span>
 		</div>
 
 		<div class="notes">

@@ -10,6 +10,7 @@
  */
 import { Big, formatMoneyDisplay } from '$lib/money/money';
 import { ageNearestBirthday, completedYearsBetween } from '$lib/dates/age';
+import { survivorBenefitAtAge, survivorBenefitStream } from '$lib/engine/survivor-benefit';
 import {
 	isColiParticipant,
 	isSerpParticipant,
@@ -293,9 +294,13 @@ export interface BenefitStatementDisplay {
 	survivorTier2Years: number;
 	/** Age one year before retirement, used to label the second survivor line. */
 	priorToRetirementAge: number;
-	// --- Survivor totals: NOT YET CALCULATED (see DATA-GAPS.md) ---
-	survivorTotalThisYear: null;
-	survivorTotalPriorToRetirement: null;
+	/**
+	 * Total survivor benefit for a death this year, and for one in the year before retirement.
+	 * Both are pure derivations from inputs, so they are present without a model run — and both
+	 * are zero for a participant already at or past normal retirement age.
+	 */
+	survivorTotalThisYear: string;
+	survivorTotalPriorToRetirement: string;
 }
 
 /** Headline figures for one funding option (page 4.3). */
@@ -471,11 +476,14 @@ function benefitStatementFor(
 	const timesYears = (years: number): string | null =>
 		annual === undefined ? null : wholeDollars(new Big(annual).times(years));
 
+	const age = ageNearestBirthday(insured.dateOfBirth, refDate);
+	const survivor = survivorStreamFor(insured, refDate);
+
 	return {
 		name: fullName(insured),
 		dateOfBirth: longDate(insured.dateOfBirth),
 		statementDate: longDate(refDate),
-		age: ageNearestBirthday(insured.dateOfBirth, refDate),
+		age,
 		retirementAge: insured.retirementAge,
 		currentSalary: wholeDollars(insured.currentSalary),
 		benefitPercentDisplay: formatPercent(insured.benefitPercentage),
@@ -493,9 +501,10 @@ function benefitStatementFor(
 		survivorTier2Display: formatPercent(insured.survivorTier2Pct, 1),
 		survivorTier2Years: insured.survivorTier2Years,
 		priorToRetirementAge: insured.retirementAge - 1,
-		// Survivor benefit calculation not built yet — see DATA-GAPS.md.
-		survivorTotalThisYear: null,
-		survivorTotalPriorToRetirement: null
+		survivorTotalThisYear: wholeDollars(survivorBenefitAtAge(survivor, age)),
+		survivorTotalPriorToRetirement: wholeDollars(
+			survivorBenefitAtAge(survivor, insured.retirementAge - 1)
+		)
 	};
 }
 
@@ -539,6 +548,23 @@ function legacyCensusFrom(census: Insured[], refDate: string): LegacyCensusRow[]
 	}));
 }
 
+/** The participant's pre-retirement survivor stream, from their own schedule inputs. */
+function survivorStreamFor(insured: Insured, refDate: string) {
+	return survivorBenefitStream({
+		currentSalary: new Big(insured.currentSalary),
+		dateOfBirth: insured.dateOfBirth,
+		asOf: refDate,
+		retirementAge: insured.retirementAge,
+		salaryGrowthRate: insured.salaryGrowthRate,
+		schedule: {
+			tier1Pct: insured.survivorTier1Pct,
+			tier1Years: insured.survivorTier1Years,
+			tier2Pct: insured.survivorTier2Pct,
+			tier2Years: insured.survivorTier2Years
+		}
+	});
+}
+
 /** Legacy projections rows (page 3.2). Calculable columns filled; results/gap columns may be null. */
 function legacyProjectionsFrom(
 	census: Insured[],
@@ -552,6 +578,8 @@ function legacyProjectionsFrom(
 		const ageAtRetirement = Math.max(insured.retirementAge, age + insured.benefitWaitingPeriod);
 		const isFixed = insured.benefitPercentage === 0 && new Big(insured.benefitAmount).gt(0);
 		const result = resultById.get(insured.id);
+		// Survivor benefit for a death in the current year — pure, so it needs no run.
+		const survivorNow = survivorBenefitAtAge(survivorStreamFor(insured, refDate), age);
 		return {
 			index: idx + 1,
 			name: `${insured.firstName.charAt(0)}. ${insured.lastName}`,
@@ -562,7 +590,7 @@ function legacyProjectionsFrom(
 			percentFas: isFixed ? 'Fixed Benefit' : `${(insured.benefitPercentage * 100).toFixed(2)} %`,
 			salaryAtRetirement: null,
 			finalAvgSalary: money0(result?.finalAverageSalary),
-			initialSurvivorBenefit: null,
+			initialSurvivorBenefit: formatMoneyDisplay(survivorNow, 0),
 			annualSerpBenefit: money0(result?.annualBenefit),
 			totalSerpBenefit: money0(result?.totalBenefitCost)
 		};

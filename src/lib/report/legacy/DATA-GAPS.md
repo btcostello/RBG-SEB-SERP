@@ -68,7 +68,7 @@ page 4.5 cash-flow derivation and is available to the accounting pages still to 
 Still needed by page 3.2 (Projections). Some are available post-run; others need new pure derivations so they show without requiring a full model run.
 - ☐ **Salary at retirement** — projected salary at retirement age = recognized salary × (1+growth)^(years to retirement). Engine computes the salary path internally but it is not exposed. Needs a derivation (or exposure) → `LegacyProjectionRow.salaryAtRetirement`.
 - ☐ **5-Year Final Average Salary** — the engine's FAS (`finalAverageSalary`). Currently only present after a run (via results). Needs a pure derivation to show pre-run.
-- ☐ **Initial pre-retirement survivor benefit** — not computed anywhere yet (uses recognized salary × survivor tiers, death in current year). Needs an engine calc.
+- ☑ **Initial pre-retirement survivor benefit** — RESOLVED (2026-07-18). `engine/survivor-benefit.ts` computes the survivor stream from the per-participant durational schedule; page 3.2 shows the current-year value. Pure, so it fills pre-run.
 - ⧗ **Annual SERP benefit** & **Total SERP benefit to life expectancy** — available from results after a run (`annualBenefit`, `totalBenefitCost`); shown when present, else "—". A pure pre-run derivation would let them show without a run.
 - Note: "Fixed Benefit" participants (benefitPercentage 0 & benefitAmount > 0) show "Fixed Benefit" in the % FAS column; their benefit amounts aren't calculated yet (fixed-benefit calc is post-MVP).
 
@@ -328,15 +328,16 @@ Rendered for **`census[0]`**, via `ReportModel.benefitStatement`. Nearly everyth
 | Survivor schedule (tier %s and years) | `survivorTier1Pct/Years`, `survivorTier2Pct/Years` |
 
 Gaps:
-- ☐ **Survivor benefit totals** (both lines) — render "— not yet calculated —". The calculation is
-  not written; **all inputs exist**. From the sample, the arithmetic appears to be:
-  - *death this year* = current salary × (tier1Pct × tier1Years + tier2Pct × tier2Years)
-    — sample: 201,760 × (1.0×1 + 0.5×2) = 403,520 ✓
-  - *death in the year prior to retirement* = the same multiple applied to **salary projected to
-    age `retirementAge − 1`** — sample: 201,760 × 1.03^10 × 2 = 542,297 ✓
-  This is unverified inference from one sample, so confirm before implementing. It also needs
-  **projected salary at an arbitrary age**, which is the same missing derivation as "Salary at
-  retirement" on page 3.2 — build once, use twice.
+- ☑ **Survivor benefit totals** (both lines) — RESOLVED (2026-07-18), operator-specified:
+  *"For each projection year… survivor benefits, if death were to occur in that year. T1% of
+  salary for the first T1 years, then T2% for the next T2 years… until the employee hits NRA, at
+  which point the benefits are 0."*
+
+  Built as `engine/survivor-benefit.ts` — pure, so both lines fill without a model run. Two
+  properties of the plan definition shape it: the base is **salary at death and does not grow
+  afterwards** (so the total collapses to `salary × multiple`), and it is a **pre-retirement**
+  benefit, so the last year carrying one is NRA − 1 and it is zero from NRA onward. Reproduces
+  the source sample exactly (403,520 and 542,297), covered by tests.
 
 Notes / deviations:
 - Year counts render numerically ("5-year average", "for 5 years") where the source spells them
