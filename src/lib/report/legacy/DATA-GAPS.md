@@ -426,6 +426,20 @@ Gaps:
 - Note: this page *describes* the treatment the GAAP layer will implement; the placeholder
   worksheets on 6.1–6.6 are the numbers behind this narrative.
 
+### 23. Informational Overview — SERPs / COLI (2 sheets) — `pages/Legacy{Serp,Coli}OverviewPage.svelte`
+Source: `G6 Info Overview.pdf` (Appendix E.1 SERPs, E.2 COLI)
+Operator notes: "more static stuff"
+Bindings: company/date via `LegacyPageShell`. All bullets are fixed boilerplate, reproduced
+verbatim. New shared `LegacyBulletPage` (centered title + bullets, optional nested sub-list) —
+the existing prose components handle paragraphs, not bullets.
+Gaps:
+- ☑ _None._ Static text only.
+- ⚠ **Dated statutory figure.** E.2 states the IRC §101(j) compensation threshold as
+  "$160,000 for 2025", which is **inflation-adjusted annually**. It is hardcoded boilerplate and
+  will go stale — the source itself was already a year behind when supplied. Options when it
+  matters: drop the figure and cite only the section, or make it a model setting. Flagged rather
+  than silently updated, since picking a current number is an operator call.
+
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`
 Source: <pdf name>
