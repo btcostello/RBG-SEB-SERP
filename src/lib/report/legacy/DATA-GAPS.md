@@ -249,8 +249,9 @@ The **only** column that resolves today is the calendar year (30 years from the 
   is new. The page currently prints the sentence without figures.
 
 Notes / decisions:
-- Year range is 30 calendar years starting at the valuation year (source: 2026–2055). Confirm
-  whether the start should instead be the **plan effective date** year, as pages 3.1/3.2 use.
+- ☑ **Year range keys off the plan effective date** (operator-confirmed 2026-07-18), falling back
+  to the valuation date when none is set — the same `legacyRefDate` reference pages 3.1/3.2 use,
+  so the ledger lines up with the census and projections. 30 calendar years (source: 2026–2055).
 - The source's "SERP-PLUS Program" wording is reproduced verbatim in the closing note.
 - Option 1's note says COLI generates credits "in the second year"; Options 3 and 4 say "first
   year". Reproduced per option. The source also asserts the combined impact "turns positive by

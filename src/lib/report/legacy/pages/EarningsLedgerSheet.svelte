@@ -26,9 +26,13 @@
 		closingNote: { marker: string; text: string };
 	} = $props();
 
-	/** The source shows 30 calendar years from the valuation year; totals cover the full program. */
+	/**
+	 * 30 calendar years from the plan effective date (falling back to the valuation date when no
+	 * effective date is set) — the same reference the census and projections pages key off, so the
+	 * ledger lines up with them. Totals cover the whole program, not just these years.
+	 */
 	const LEDGER_YEARS = 30;
-	const firstYear = $derived(new Date(`${report.asOf}T00:00:00`).getFullYear());
+	const firstYear = $derived(new Date(`${report.legacyRefDate}T00:00:00`).getFullYear());
 	const years = $derived(Array.from({ length: LEDGER_YEARS }, (_, i) => firstYear + i));
 
 	/** Placeholder until the accounting engine lands — see DATA-GAPS.md. */

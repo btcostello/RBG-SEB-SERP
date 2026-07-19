@@ -329,6 +329,11 @@ export interface ReportModel {
 
 	/** Reference date for the legacy census/projections (plan effective date, else valuation date). */
 	legacyAsOfDisplay: string;
+	/**
+	 * The same reference date as an ISO YYYY-MM-DD — the plan effective date when set, else the
+	 * valuation date. Legacy pages that need to compute from it (rather than print it) use this.
+	 */
+	legacyRefDate: string;
 	legacyCensus: LegacyCensusRow[];
 	legacyProjections: LegacyProjectionRow[];
 	/** Grouped whole-dollar total recognized salary of SERP participants (legacy census total). */
@@ -746,6 +751,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		cashFlowByOption,
 
 		legacyAsOfDisplay: longDate(legacyRefDate),
+		legacyRefDate,
 		legacyCensus,
 		legacyProjections,
 		legacyCensusSalaryTotal: coveredPayroll,
