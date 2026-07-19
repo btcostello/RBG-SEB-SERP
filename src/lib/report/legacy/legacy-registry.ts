@@ -35,6 +35,12 @@ import LegacyEarningsLedgerOption1Page from './pages/LegacyEarningsLedgerOption1
 import LegacyEarningsLedgerOption2Page from './pages/LegacyEarningsLedgerOption2Page.svelte';
 import LegacyEarningsLedgerOption3Page from './pages/LegacyEarningsLedgerOption3Page.svelte';
 import LegacyEarningsLedgerOption4Page from './pages/LegacyEarningsLedgerOption4Page.svelte';
+import LegacySerpEntriesPage from './pages/LegacySerpEntriesPage.svelte';
+import LegacySerpReconciliationPage from './pages/LegacySerpReconciliationPage.svelte';
+import LegacySerpNotesPage from './pages/LegacySerpNotesPage.svelte';
+import LegacyColiEntriesPage from './pages/LegacyColiEntriesPage.svelte';
+import LegacyAuditTrailPage from './pages/LegacyAuditTrailPage.svelte';
+import LegacyCostAllocationPage from './pages/LegacyCostAllocationPage.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -84,5 +90,11 @@ export const legacyReportPages: LegacyReportPage[] = [
 		id: 'e3-earnings-ledger-4',
 		title: 'Annual Impact on Earnings — Option 4',
 		component: LegacyEarningsLedgerOption4Page
-	}
+	},
+	{ id: 'f1-serp-entries', title: 'SERP Accounting Entry Worksheet', component: LegacySerpEntriesPage },
+	{ id: 'f1-serp-reconciliation', title: 'SERP Accounting — Reconciliation', component: LegacySerpReconciliationPage },
+	{ id: 'f1-serp-notes', title: 'SERP Accounting — Notes', component: LegacySerpNotesPage },
+	{ id: 'f2-coli-entries', title: 'COLI Accounting Entry Worksheet', component: LegacyColiEntriesPage },
+	{ id: 'f3-audit-trail', title: 'FASB ASC 715-30 Audit Trail', component: LegacyAuditTrailPage },
+	{ id: 'f4-cost-allocation', title: 'Pension Expense Allocation by Participant', component: LegacyCostAllocationPage }
 ];

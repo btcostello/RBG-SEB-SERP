@@ -28,14 +28,36 @@ A running checklist of data points the Legacy Report needs but the app cannot ye
 
 ## ⚠ Missing subsystem — GAAP accounting engine
 
-Page 5.2 (Annual Impact on Earnings, 4 sheets) is a **full-page placeholder** because the app has
-no accounting layer. The engine computes the *cash* benefit stream and the COLI illustration; it
-does not compute the **accounting** view — benefit expense accrual, deferred tax, mortality
-weighting, or COLI earnings recognition. Every column of that page depends on it, and the
-remaining accounting-entry worksheets (TOC sections A–C) will too.
+**Ten pages are full-page placeholders** because the app has no accounting layer: 5.2-1…5.2-4
+(Annual Impact on Earnings) and 6.1…6.6 (SERP/COLI entry worksheets, audit trail, cost
+allocation). The engine computes the *cash* benefit stream and the COLI illustration; it does not
+compute the **accounting** view.
 
-This is the largest single gap left in the report. See page 17 below for the column-by-column
-breakdown.
+Rather than repeat a gap list per page, the underlying quantities are listed once here. Every
+placeholder column on those ten pages is one of these, or arithmetic on them:
+
+| Quantity | Notes |
+|---|---|
+| **Service cost** | Annual accrual of benefit earned. Per participant *and* consolidated (6.6 needs the split). |
+| **Interest cost / accrual** | On the projected benefit obligation. |
+| **Projected Benefit Obligation (PBO)** | Balance, rolled forward — distinct from the NPV the engine already computes. |
+| **Prior service cost** | Initial recognition, plus level amortisation and the unrecognised balance (BOY/EOY). |
+| **Pension expense** | Service + interest + amortisation. |
+| **Deferred tax asset / expense** | Tax effect of the above at `corporateTaxRate`. |
+| **AOCI balance & amortisation** | Accumulated other comprehensive income, before and after tax benefit. |
+| **Unfunded accrued pension cost** | Annual and EOY balances (audit trail columns 6–7). |
+| **Mortality weighting** | Survival-weighted expense; also the "% living at average life expectancy" footnote on 5.2. |
+| **COLI earnings recognition** | Per FASB ASC 325-30 cash-surrender-value method: premium, CSV change, death proceeds → earnings. The **inputs already exist** on `ParticipantResult.designs[].illustrationYears`; only the accounting treatment is missing. |
+
+Two structural notes that will matter when this is built:
+
+- **Totals are life-of-program, not the displayed window.** 5.2's totals row is explicitly "not
+  limited to the 30 years displayed", so the projection horizon must exceed the print horizon.
+- **Per-participant allocation is required**, not just consolidated figures — page 6.6 splits
+  pension expense by participant with a percentage-of-total column.
+
+This is the largest remaining gap in the report. Per-page detail below is deliberately brief:
+the structure is reproduced, and every figure traces back to this table.
 
 ## Calculations to add (engine / derivations)
 
@@ -256,6 +278,35 @@ Notes / decisions:
 - Option 1's note says COLI generates credits "in the second year"; Options 3 and 4 say "first
   year". Reproduced per option. The source also asserts the combined impact "turns positive by
   2056" — that is a **sample-specific claim**, so it is omitted rather than hardcoded.
+
+### 18. Accounting worksheets (6 sheets) — `pages/Legacy{SerpEntries,SerpReconciliation,SerpNotes,ColiEntries,AuditTrail,CostAllocation}Page.svelte`
+Source: `F1 SERP Summary.pdf` (6.1–6.3), `F2 COLI Summary.pdf` (6.4), `F3 Audit Trail.pdf` (6.5),
+`F4 Cost Allocation.pdf` (6.6)
+Operator notes: "4 accounting heavy pages in a row… I want the accounting pages roughed-in, but
+don't overbuild until we have a chance to build the GAAP layer."
+
+**Status: placeholder pages — every figure renders "—".** All six share one config-driven
+component, `pages/LegacyAccountingSheet.svelte` (label column + N numeric columns, optional
+period group headers, notes). Six near-identical tables would have been the wrong trade while
+the contents are all placeholders.
+
+**What is real today** (so it does not get rebuilt later):
+- **Period columns** on 6.1–6.4 — First Month / first Calendar Year / next Calendar Year, derived
+  from the plan effective date via `accounting-periods.ts`.
+- **Calendar years** on 6.5 — 30 from the same reference date, matching the 5.2 ledger.
+- **Participant names and the year** on 6.6 — from `legacyCensus` (SERP participants only; a
+  COLI-only life carries no pension expense to allocate).
+- **Option labels** on 6.4 — from the funding registry, so they track the options the app designs.
+- **Row labels, entry descriptions and the ASC 325-30 note** — reproduced from the source.
+
+**All figures** → see the GAAP accounting engine table at the top of this file.
+
+Open questions:
+- ☐ **Does the COLI worksheet need continuation sheets for Options 3 and 4?** The source sheet
+  (6.4) shows **only Options 1 and 2**, so only those are rendered. Rendering all four overflows
+  the page, which suggests the source splits them onto sheets we have not been given.
+- ☐ **Note 1 / Note 2 references** on 6.1 point at notes not present in the supplied page —
+  confirm whether they live on a sheet we have not seen.
 
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`

@@ -23,9 +23,9 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 22 pages built
+## 2. Progress — 28 pages built
 
-Source sections A1 → E3. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
+Source sections A1 → F4. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 
 | # | Page | Section | Source PDF |
 |---|---|---|---|
@@ -46,10 +46,18 @@ Source sections A1 → E3. Registered in [legacy-registry.ts](./legacy-registry.
 | 17 | Cash Flow Summary — Life of Plan | 4.5 | D5 CF Summary |
 | 18 | Earnings Impact | 5.1 | E1 Earnings Imp Desc |
 | 19–22 | Annual Impact on Earnings (4 sheets, one per option) — **placeholder** | 5.2-1…5.2-4 | E3 Earnings Imp Ledger |
+| 23–25 | SERP Accounting Entry Worksheet (entries, reconciliation, notes) — **placeholder** | 6.1–6.3 | F1 SERP Summary |
+| 26 | COLI Accounting Entry Worksheet — **placeholder** | 6.4 | F2 COLI Summary |
+| 27 | FASB ASC 715-30 Audit Trail — **placeholder** | 6.5 | F3 Audit Trail |
+| 28 | Pension Expense Allocation by Participant — **placeholder** | 6.6 | F4 Cost Allocation |
 
-**Next up:** remaining sections per the TOC — accounting entry worksheets (A/B/C), and the
-Appendix set (D–H: participant summaries, survivor indemnification, cash-flow options, accounting
-for SERP programs, informational overviews, hypothetical COLI value, mortality comparison, glossary).
+**Next up:** the Appendix set (TOC D–H: participant summaries, survivor indemnification,
+cash-flow options, accounting for SERP programs, informational overviews, hypothetical COLI
+value, mortality comparison, glossary).
+
+The accounting worksheets are now roughed in, but **ten pages are placeholders blocked on the
+GAAP layer** (5.2-1…5.2-4 and 6.1–6.6). See the "Missing subsystem" section at the top of
+[DATA-GAPS.md](./DATA-GAPS.md) for the single list of quantities they all need.
 
 ---
 
