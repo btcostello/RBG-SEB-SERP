@@ -31,6 +31,10 @@ import LegacyFinOverviewPageB from './pages/LegacyFinOverviewPageB.svelte';
 import LegacyFundingOverviewPage from './pages/LegacyFundingOverviewPage.svelte';
 import LegacyCashFlowSummaryPage from './pages/LegacyCashFlowSummaryPage.svelte';
 import LegacyEarningsImpactPage from './pages/LegacyEarningsImpactPage.svelte';
+import LegacyEarningsLedgerOption1Page from './pages/LegacyEarningsLedgerOption1Page.svelte';
+import LegacyEarningsLedgerOption2Page from './pages/LegacyEarningsLedgerOption2Page.svelte';
+import LegacyEarningsLedgerOption3Page from './pages/LegacyEarningsLedgerOption3Page.svelte';
+import LegacyEarningsLedgerOption4Page from './pages/LegacyEarningsLedgerOption4Page.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -60,5 +64,25 @@ export const legacyReportPages: LegacyReportPage[] = [
 	{ id: 'd1-fin-overview-2', title: 'Financial Overview (continued)', component: LegacyFinOverviewPageB },
 	{ id: 'd2-funding-overview', title: 'Overview — SERP Benefit Financing', component: LegacyFundingOverviewPage },
 	{ id: 'd5-cash-flow-summary', title: 'Cash Flow Summary — Life of Plan', component: LegacyCashFlowSummaryPage },
-	{ id: 'e1-earnings-impact', title: 'Earnings Impact', component: LegacyEarningsImpactPage }
+	{ id: 'e1-earnings-impact', title: 'Earnings Impact', component: LegacyEarningsImpactPage },
+	{
+		id: 'e3-earnings-ledger-1',
+		title: 'Annual Impact on Earnings — Option 1',
+		component: LegacyEarningsLedgerOption1Page
+	},
+	{
+		id: 'e3-earnings-ledger-2',
+		title: 'Annual Impact on Earnings — Option 2',
+		component: LegacyEarningsLedgerOption2Page
+	},
+	{
+		id: 'e3-earnings-ledger-3',
+		title: 'Annual Impact on Earnings — Option 3',
+		component: LegacyEarningsLedgerOption3Page
+	},
+	{
+		id: 'e3-earnings-ledger-4',
+		title: 'Annual Impact on Earnings — Option 4',
+		component: LegacyEarningsLedgerOption4Page
+	}
 ];

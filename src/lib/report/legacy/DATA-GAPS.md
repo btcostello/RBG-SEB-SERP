@@ -26,6 +26,17 @@ A running checklist of data points the Legacy Report needs but the app cannot ye
 - ☑ **Boilerplate/disclosure text** → leave hardcoded (firm-standard, not per-quote).
 - ☑ **Section page numbers** ("1.1", "2.1"…) → hardcoded per page is fine for now.
 
+## ⚠ Missing subsystem — GAAP accounting engine
+
+Page 5.2 (Annual Impact on Earnings, 4 sheets) is a **full-page placeholder** because the app has
+no accounting layer. The engine computes the *cash* benefit stream and the COLI illustration; it
+does not compute the **accounting** view — benefit expense accrual, deferred tax, mortality
+weighting, or COLI earnings recognition. Every column of that page depends on it, and the
+remaining accounting-entry worksheets (TOC sections A–C) will too.
+
+This is the largest single gap left in the report. See page 17 below for the column-by-column
+breakdown.
+
 ## Calculations to add (engine / derivations)
 
 ☑ **Foundational step done (2026-07-17):** the full per-policy-year illustration stream is now
@@ -197,6 +208,53 @@ Operator notes: "Earnings impact. static text only page."
 Bindings: footer date → `shortDate(report.asOf)`. Title + five paragraphs are fixed boilerplate (uses `LegacyProsePage`).
 Gaps:
 - ☑ _None._
+
+### 17. Annual Impact on Earnings — Summary (4 sheets) — `pages/LegacyEarningsLedgerOption{1,2,3,4}Page.svelte`
+Source: `E3 Earnings Imp Ledger.pdf` (section pages 5.2-1 … 5.2-4, one per funding option)
+Operator notes: "dependent on accounting calcs we haven't built yet, so just put in the placeholder
+for the page, and note each of the columns as a data gap for us to build."
+
+**Status: placeholder page — every figure renders "—".** Shared layout in
+`pages/EarningsLedgerSheet.svelte`; the four option pages are thin wrappers differing only in
+title, page number, and closing note. Structure, column headers, totals row and footnotes are
+reproduced from the source so only the numbers need wiring.
+
+The **only** column that resolves today is the calendar year (30 years from the valuation year).
+
+**Columns to build — each needs a GAAP accounting derivation the app does not have:**
+- ☐ **[1] Pre-Tax SERP Earnings Impact** — annual accrual of SERP benefit expense under GAAP.
+  Needs the accounting liability roll-forward (service cost + interest cost on the projected
+  benefit obligation), which is distinct from the cash benefit stream the engine already
+  produces. Sign convention in the source is negative (an expense).
+- ☐ **[2] Benefit Tax Deduction** — the tax effect of column [1] at the corporate rate.
+  `corporateTaxRate` exists; the base ([1]) does not. Source shows a flat ~21% of [1].
+- ☐ **[3] Net SERP Earnings Impact** — `[1] + [2]`. Falls out once [1] and [2] exist, but note
+  the source marks it `**`: it "reflects impact of actuarial mortality projections required under
+  GAAP", i.e. it is mortality-weighted, not a plain sum of the two columns for a single life.
+- ☐ **[4] Hypothetical COLI Earnings Impact** — annual earnings from the policy: cash-value
+  growth less premium expense, plus death-benefit gains, per option. The per-year illustration
+  stream needed for this **is already persisted** (`ParticipantResult.designs[].illustrationYears`,
+  carrying account value, CSV, death benefit, premium, withdrawals and loans), so this is the
+  closest column to buildable — it needs the accounting treatment defined, not new engine data.
+- ☐ **[5] Combined Earnings Impact** — `[3] + [4]`. Falls out once both exist.
+- ☐ **Totals row (`^`)** — totals over the **life of the program**, explicitly *not* the sum of
+  the 30 displayed years. Needs the full-horizon projection, not just the displayed window.
+- ☐ **Mortality-survival percentage** (footnote `**`) — the source states "64.3% of plan
+  participants are projected to be living at the beginning of the year of average life
+  expectancy". Needs a survival calculation from the mortality table. The page currently prints a
+  neutral wording instead of a number.
+- ☐ **Option 2's `~` note figures** — total premiums paid, net benefits paid from Company cash
+  flow, and COLI mortality gains in excess of those expenses. All three are per-option totals;
+  the first two are close to values already derived for page 4.5 (`cashFlowByOption`), the third
+  is new. The page currently prints the sentence without figures.
+
+Notes / decisions:
+- Year range is 30 calendar years starting at the valuation year (source: 2026–2055). Confirm
+  whether the start should instead be the **plan effective date** year, as pages 3.1/3.2 use.
+- The source's "SERP-PLUS Program" wording is reproduced verbatim in the closing note.
+- Option 1's note says COLI generates credits "in the second year"; Options 3 and 4 say "first
+  year". Reproduced per option. The source also asserts the combined impact "turns positive by
+  2056" — that is a **sample-specific claim**, so it is omitted rather than hardcoded.
 
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`

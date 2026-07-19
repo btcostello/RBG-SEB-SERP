@@ -23,9 +23,9 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 18 pages built (~half the report)
+## 2. Progress — 22 pages built
 
-Source sections A1 → E1. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
+Source sections A1 → E3. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 
 | # | Page | Section | Source PDF |
 |---|---|---|---|
@@ -45,6 +45,7 @@ Source sections A1 → E1. Registered in [legacy-registry.ts](./legacy-registry.
 | 16 | Overview — SERP Benefit Financing | 4.3 | D2 Funding Options - 2 |
 | 17 | Cash Flow Summary — Life of Plan | 4.5 | D5 CF Summary |
 | 18 | Earnings Impact | 5.1 | E1 Earnings Imp Desc |
+| 19–22 | Annual Impact on Earnings (4 sheets, one per option) — **placeholder** | 5.2-1…5.2-4 | E3 Earnings Imp Ledger |
 
 **Next up:** remaining sections per the TOC — accounting entry worksheets (A/B/C), and the
 Appendix set (D–H: participant summaries, survivor indemnification, cash-flow options, accounting
