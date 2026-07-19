@@ -48,6 +48,7 @@ import LegacyOptionLedgerPage from './pages/LegacyOptionLedgerPage.svelte';
 import LegacyAccountingDescPage from './pages/LegacyAccountingDescPage.svelte';
 import LegacySerpOverviewPage from './pages/LegacySerpOverviewPage.svelte';
 import LegacyColiOverviewPage from './pages/LegacyColiOverviewPage.svelte';
+import LegacyMortalityChartPage from './pages/LegacyMortalityChartPage.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -146,5 +147,6 @@ export const legacyReportPages: LegacyReportPage[] = [
 	),
 	{ id: 'g5-accounting-desc', title: 'Accounting for SERP Programs (Appendix D)', component: LegacyAccountingDescPage },
 	{ id: 'g6-serp-overview', title: 'Informational Overview — SERPs (Appendix E.1)', component: LegacySerpOverviewPage },
-	{ id: 'g6-coli-overview', title: 'Informational Overview — COLI (Appendix E.2)', component: LegacyColiOverviewPage }
+	{ id: 'g6-coli-overview', title: 'Informational Overview — COLI (Appendix E.2)', component: LegacyColiOverviewPage },
+	{ id: 'h3-mortality-chart', title: 'Comparison of Mortality Assumptions (Appendix G)', component: LegacyMortalityChartPage }
 ];

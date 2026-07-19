@@ -23,9 +23,9 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 42 pages built
+## 2. Progress — 43 pages built
 
-Source sections A1 → G6. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
+Source sections A1 → H3. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 
 | # | Page | Section | Source PDF |
 |---|---|---|---|
@@ -55,9 +55,10 @@ Source sections A1 → G6. Registered in [legacy-registry.ts](./legacy-registry.
 | 32–39 | Option Ledgers (4 options × 2 sheets, **landscape**) | Appendix C.1–C.8 | G3 Ledgers |
 | 40 | Accounting for SERP Programs (static) | Appendix D | G5 Acct Desc |
 | 41–42 | Informational Overview — SERPs, COLI (static) | Appendix E.1–E.2 | G6 Info Overview |
+| 43 | Comparison of Mortality Assumptions (chart) — **placeholder** | Appendix G | H3 Mortality Chart |
 
-**Next up:** the remaining Appendix set (TOC F–H: hypothetical COLI
-value, mortality comparison, glossary). Appendix A–E are built.
+**Next up:** the remaining Appendix set (TOC F, H: hypothetical COLI
+value, glossary). Appendix A–E and G are built.
 
 The accounting worksheets are now roughed in, but **ten pages are placeholders blocked on the
 GAAP layer** (5.2-1…5.2-4 and 6.1–6.6). See the "Missing subsystem" section at the top of

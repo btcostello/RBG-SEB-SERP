@@ -364,6 +364,17 @@ export interface OptionLedger {
 	totals: Omit<LedgerRow, 'planYear'>;
 }
 
+/**
+ * Census age span and mortality assumption for the Appendix G chart footnote. Derived from
+ * inputs, so it fills pre-run even though the chart itself awaits a mortality table.
+ */
+export interface MortalityAssumptions {
+	youngestAge: number | null;
+	oldestAge: number | null;
+	/** Single life expectancy across SERP participants, or "Varies" (the shared rule). */
+	lifeExpectancyDisplay: string;
+}
+
 /** Headline figures for one funding option (page 4.3). */
 export interface FundingOptionSummary {
 	/** Total first-year premium across the option's policies. Null when not reportable. */
@@ -439,6 +450,8 @@ export interface ReportModel {
 	faceSurvivorByOption: Record<string, FaceSurvivorAnalysis>;
 	/** Year-by-year ledger per funding option, keyed by strategy id (Appendix C). */
 	ledgerByOption: Record<string, OptionLedger>;
+	/** Census age span + life expectancy for the mortality chart footnote (Appendix G). */
+	mortalityAssumptions: MortalityAssumptions;
 
 	/** Reference date for the legacy census/projections (plan effective date, else valuation date). */
 	legacyAsOfDisplay: string;
@@ -500,6 +513,21 @@ function commonSerpValue(census: Insured[], select: (i: Insured) => number): num
 	if (serp.length === 0) return null;
 	const first = select(serp[0]);
 	return serp.every((p) => select(p) === first) ? first : 'varies';
+}
+
+/**
+ * Census age span and the assumed life expectancy, for the Appendix G chart footnote. Ages are
+ * nearest-birthday at the plan reference date, matching the census and projections pages.
+ */
+function mortalityAssumptionsFrom(census: Insured[], refDate: string): MortalityAssumptions {
+	const serp = census.filter(isSerpParticipant);
+	const ages = serp.map((insured) => ageNearestBirthday(insured.dateOfBirth, refDate));
+	const le = commonSerpValue(census, (insured) => insured.lifeExpectancy);
+	return {
+		youngestAge: ages.length > 0 ? Math.min(...ages) : null,
+		oldestAge: ages.length > 0 ? Math.max(...ages) : null,
+		lifeExpectancyDisplay: le === null ? '—' : le === 'varies' ? 'Varies' : `Age ${le}`
+	};
 }
 
 /** Plan-specification display strings for the Plan Specs Overview page (section 2.4). */
@@ -1166,6 +1194,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		benefitStatement: benefitStatementFor(census[0], legacyRefDate, resultById),
 		faceSurvivorByOption,
 		ledgerByOption,
+		mortalityAssumptions: mortalityAssumptionsFrom(census, legacyRefDate),
 
 		legacyAsOfDisplay: longDate(legacyRefDate),
 		legacyRefDate,

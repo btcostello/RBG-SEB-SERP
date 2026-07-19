@@ -26,6 +26,28 @@ A running checklist of data points the Legacy Report needs but the app cannot ye
 - ☑ **Boilerplate/disclosure text** → leave hardcoded (firm-standard, not per-quote).
 - ☑ **Section page numbers** ("1.1", "2.1"…) → hardcoded per page is fine for now.
 
+## ⚠ Missing subsystem — mortality table data
+
+`ModelSettings.mortalityTable` is an **enum with no data behind it**. It offers a single value
+(`RP-2012U`) which is stored and displayed but never used in a calculation — the engine assumes
+death at each participant's `lifeExpectancy` age instead of applying survival rates.
+
+Blocks the Appendix G mortality chart (page 24 below), and would be needed for anything
+survival-weighted — including the "% of participants living at average life expectancy" footnote
+on 5.2 and the mortality-weighted pension expense in the GAAP layer.
+
+To resolve, three separate things are needed:
+1. ☐ **Table data** — the source uses **RP-2000 "white collar" with scale AA improvements
+   projected to the current year**, which is *not* the RP-2012U the app names. Confirm which
+   table(s) to support; the enum will need extending either way.
+2. ☐ **Projection scale** — scale AA is applied "through to current year", so the loader needs
+   the improvement scale and a projection year, not just base rates.
+3. ☐ **Survival calculations** — BOY living / deaths per year from a starting cohort, which is
+   what the chart plots and what mortality-weighting needs.
+
+Note the source's own caveat on the supporting table sheet: *"First whole life projected to have
+matured by the end of year 7"* — the sample's figures assume a specific product maturity.
+
 ## ⚠ Missing subsystem — GAAP accounting engine
 
 **Ten pages are full-page placeholders** because the app has no accounting layer: 5.2-1…5.2-4
@@ -439,6 +461,39 @@ Gaps:
   will go stale — the source itself was already a year behind when supplied. Options when it
   matters: drop the figure and cite only the section, or make it a model setting. Flagged rather
   than silently updated, since picking a current number is an operator call.
+
+### 24. Comparison of Impact of Mortality Assumptions — `pages/LegacyMortalityChartPage.svelte`
+Source: `H3 Mortality Chart.pdf` (Appendix G — 2 sheets in the source: the chart, and the
+supporting living/deaths table)
+Operator notes: "This page has a chart. new. It also depends on a mortality table that we
+probably need to load up separately."
+
+**The report's first chart.** Two stacked panels (Annual Impact, Cumulative Impact) comparing
+deaths under an assumed-life-expectancy basis against an actuarial table.
+
+What is built: titles, axes with the source's 5-year gridlines out to year 65, per-panel y-scales
+(0–3.5 annual, 0–25 cumulative), legend, and the footnote. **Plot areas are empty** pending the
+mortality table.
+
+What is real today:
+- ☑ **Footnote** — "Youngest Participant = Age X; Oldest Participant = Age Y; Life Expectancy =
+  Z", from the census at the plan reference date. Life expectancy uses the shared "Varies" rule.
+
+Gaps:
+- ☐ **Both series** → see the **mortality table** subsystem note at the top of this file.
+- ☐ **Supporting table sheet not built.** The source's second Appendix G sheet is the raw
+  living/deaths table behind the chart. Deliberately skipped: with no mortality data it would be
+  ~68 rows × 6 columns of "—" with nothing derivable. Easy to add once the table loads — say if
+  you want the empty scaffold sooner.
+
+Chart design notes (first chart, so conventions set here):
+- Series colours are the report's own teal/copper, with the teal nudged from `#1f7a8c` to
+  `#00809a` so the pair passes the categorical palette checks — the report teal fails the chroma
+  floor (0.085, reads gray). Validated: CVD separation ΔE 61.7 worst-case (target 12), contrast
+  and lightness band pass.
+- Identity is not colour-alone — both series are labelled in the legend.
+- Gridlines and axes are recessive (`--line-soft` / `--line`) and carry no series meaning.
+- `.foot` overrides a global uppercase rule; the source sets that line sentence-case.
 
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`
