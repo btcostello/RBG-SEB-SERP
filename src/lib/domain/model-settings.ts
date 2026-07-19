@@ -14,6 +14,11 @@ export const MORTALITY_TABLES = ['RP-2012U'] as const;
 export const MortalityTableSchema = v.picklist(MORTALITY_TABLES, 'Select a mortality table');
 export type MortalityTable = v.InferOutput<typeof MortalityTableSchema>;
 
+/** COLI product types the engine supports — this selects the crediting method. */
+export const PRODUCT_TYPES = ['IUL', 'VUL'] as const;
+export const ProductTypeSchema = v.picklist(PRODUCT_TYPES, 'Select a product type');
+export type ProductType = v.InferOutput<typeof ProductTypeSchema>;
+
 export const ModelSettingsSchema = v.object({
 	/** NPV discount rate (default 0 = 0%, spec-documented). A data change, never code (NFR15). */
 	npvDiscountRate: RateSchema,
@@ -21,6 +26,12 @@ export const ModelSettingsSchema = v.object({
 	creditingRate: RateSchema,
 	/** Mortality table used for the projection. */
 	mortalityTable: MortalityTableSchema,
+	/**
+	 * COLI product type, which selects the engine's crediting method. Optional so pre-existing
+	 * quotes still validate; absent means the engine default (VUL), so callers that intend IUL
+	 * must send it explicitly.
+	 */
+	productType: v.optional(ProductTypeSchema),
 	/** Plan effective date, ISO YYYY-MM-DD. Optional so pre-existing quotes still validate. */
 	effectiveDate: v.optional(IsoDateSchema),
 	/**
@@ -39,5 +50,6 @@ export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
 	npvDiscountRate: 0,
 	creditingRate: 0.0575,
 	mortalityTable: 'RP-2012U',
+	productType: 'IUL',
 	premiumYears: 10
 };

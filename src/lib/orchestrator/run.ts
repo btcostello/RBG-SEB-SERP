@@ -20,6 +20,7 @@
 import { Big, formatMoney } from '$lib/money/money';
 import { ageNearestBirthday } from '$lib/dates/age';
 import {
+	DEFAULT_MODEL_SETTINGS,
 	isColiParticipant,
 	toWireGender,
 	type DesignRequest,
@@ -142,6 +143,11 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 	});
 	const faceById = new Map(funding.allocations.map((a) => [a.insuredId, a.faceAmount]));
 
+	// The engine falls back to VUL when product_type is absent, but the settings form shows the
+	// documented default for a quote saved before the field existed. Resolve it here so the wire
+	// matches what the operator is looking at rather than silently differing.
+	const productType = quote.modelSettings.productType ?? DEFAULT_MODEL_SETTINGS.productType;
+
 	const benefitStreamById = new Map(
 		liability.perParticipant.map((p) => [
 			p.insuredId,
@@ -187,6 +193,7 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 			gender: toWireGender(insured.gender),
 			riskClass: insured.riskClass,
 			creditedRate: quote.modelSettings.creditingRate,
+			productType,
 			...(quote.modelSettings.premiumYears !== undefined
 				? { payYears: quote.modelSettings.premiumYears }
 				: {})
@@ -202,6 +209,7 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 				riskClass: shared.riskClass,
 				faceAmount: formatMoney(allocatedFace),
 				creditedRate: shared.creditedRate,
+				productType,
 				...(quote.modelSettings.premiumYears !== undefined
 					? { premiumYears: quote.modelSettings.premiumYears }
 					: {})

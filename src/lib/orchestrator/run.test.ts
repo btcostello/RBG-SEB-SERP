@@ -111,6 +111,21 @@ describe('runModel (FR23, AR9, AR12)', () => {
 		expect(requests[4].premiumPeriods?.[0]).toMatchObject({ kind: 'specify', amount: '9000.00' });
 	});
 
+	it('sends the product type on every option — the engine defaults to VUL without it', async () => {
+		const requests: DesignRequest[] = [];
+		const illustrate = vi.fn(async (request: DesignRequest) => {
+			requests.push(request);
+			return illustrationFor('5000.00');
+		});
+		const quote = quoteWith([insured({ id: 'a', planMembership: 'BOTH' })]);
+		quote.modelSettings = { ...quote.modelSettings, productType: 'IUL' };
+
+		await runModel({ quote, asOf, illustrate });
+
+		expect(requests).toHaveLength(4);
+		expect(requests.every((r) => r.productType === 'IUL')).toBe(true);
+	});
+
 	it('stops the chain when Option 2 is infeasible rather than anchoring 3 and 4 to it', async () => {
 		// An infeasible solve still returns 200 with a best-effort premium that can be wildly out
 		// of range. Options 3 and 4 carry no solve of their own, so building them on it would
