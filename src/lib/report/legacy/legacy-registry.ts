@@ -42,6 +42,8 @@ import LegacyColiEntriesPage from './pages/LegacyColiEntriesPage.svelte';
 import LegacyAuditTrailPage from './pages/LegacyAuditTrailPage.svelte';
 import LegacyCostAllocationPage from './pages/LegacyCostAllocationPage.svelte';
 import LegacyBenefitStatementPage from './pages/LegacyBenefitStatementPage.svelte';
+import LegacyFaceSurvivorOption1Page from './pages/LegacyFaceSurvivorOption1Page.svelte';
+import LegacyFaceSurvivorOption2Page from './pages/LegacyFaceSurvivorOption2Page.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -98,5 +100,7 @@ export const legacyReportPages: LegacyReportPage[] = [
 	{ id: 'f2-coli-entries', title: 'COLI Accounting Entry Worksheet', component: LegacyColiEntriesPage },
 	{ id: 'f3-audit-trail', title: 'FASB ASC 715-30 Audit Trail', component: LegacyAuditTrailPage },
 	{ id: 'f4-cost-allocation', title: 'Pension Expense Allocation by Participant', component: LegacyCostAllocationPage },
-	{ id: 'g1-benefit-statement', title: 'Summary of Benefits (Appendix A)', component: LegacyBenefitStatementPage }
+	{ id: 'g1-benefit-statement', title: 'Summary of Benefits (Appendix A)', component: LegacyBenefitStatementPage },
+	{ id: 'g2-face-survivor-1', title: 'COLI Face vs Survivor Liability — Option 1', component: LegacyFaceSurvivorOption1Page },
+	{ id: 'g2-face-survivor-2', title: 'COLI Face vs Survivor Liability — Option 2', component: LegacyFaceSurvivorOption2Page }
 ];

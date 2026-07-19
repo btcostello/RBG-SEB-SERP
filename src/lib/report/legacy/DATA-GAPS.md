@@ -349,6 +349,35 @@ Notes / deviations:
   would have no SERP benefit and the post-run figures would be zero — worth revisiting if
   statements are ever generated for the whole census rather than as a sample.
 
+### 20. COLI Face Amount vs Pre-Retirement Survivor Liability (2 sheets) — `pages/LegacyFaceSurvivorOption{1,2}Page.svelte`
+Source: `G2 Face Survivor.pdf` (Appendix — Page B.1 Option 1, B.2 Option 2)
+Operator notes: "I believe all values are available and the Ratio columns can be derived from the
+others." — confirmed, no gaps.
+
+Shared layout in `pages/FaceSurvivorSheet.svelte`, parameterised by strategy id. Asks whether the
+COLI death benefit would cover the after-tax survivor liability for a death **now** and for one in
+the **year before NRA** — a ratio under 100% means it would not, at that point.
+
+All columns derive from data we hold; each was reconciled against the source before building:
+
+| Column | Source | Check against the sample |
+|---|---|---|
+| Age, NRA | `Insured` at the reference date | — |
+| Total survivor benefit (current / NRA − 1) | `engine/survivor-benefit.ts` | Thren 403,520 / 542,297 ✓ |
+| After-tax survivor benefit | × (1 − `corporateTaxRate`) | 403,520 × 0.79 = 318,781 ✓ |
+| COLI face (current / NRA − 1) | that option's `illustrationYears` death benefit at policy year 1 and at age NRA − 1 | — |
+| Ratio | face ÷ after-tax survivor | Opt 1 Thren 40% / 27%, Opt 2 Richardson 115% ✓ |
+| Totals row | current-year columns only, per the source | Opt 1 44%, Opt 2 95% ✓ |
+
+Notes:
+- **Survivor and after-tax columns are pure** and render pre-run; face and ratio are
+  results-gated and show "—" until a model run exists.
+- A **SERP participant with no COLI policy** has no face and no ratio. The source prints `0`;
+  we print "—", which distinguishes "no policy" from "a policy worth zero".
+- ☐ **Options 3 and 4** — the source supplies only B.1 and B.2, so only those are built.
+  `faceSurvivorByOption` is keyed for all four, so adding sheets is a two-line registration if
+  continuation pages exist. Same open question as the COLI worksheet (6.4).
+
 <!-- template — copied per page as sections arrive
 ### <n>. <Page title>  — `pages/<Component>.svelte`
 Source: <pdf name>

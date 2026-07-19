@@ -303,6 +303,38 @@ export interface BenefitStatementDisplay {
 	survivorTotalPriorToRetirement: string;
 }
 
+/**
+ * One participant's row on the face-vs-survivor analysis (Appendix B), for a single funding
+ * option. Compares the COLI death benefit against the after-tax survivor liability it would have
+ * to cover, for a death now and for one in the year before retirement.
+ */
+export interface FaceSurvivorRow {
+	/** Abbreviated name, e.g. "J. Thren". */
+	name: string;
+	age: number;
+	nra: number;
+	survivorCurrent: string;
+	survivorAtNra: string;
+	afterTaxCurrent: string;
+	afterTaxAtNra: string;
+	/** Null for a SERP participant with no COLI policy — the source prints 0 for these. */
+	faceCurrent: string | null;
+	faceAtNra: string | null;
+	/** "40 %" — COLI face ÷ after-tax survivor benefit. Null when either side is missing. */
+	ratioCurrent: string | null;
+	ratioAtNra: string | null;
+}
+
+/** Appendix B sheet for one funding option: participant rows plus the current-year totals. */
+export interface FaceSurvivorAnalysis {
+	rows: FaceSurvivorRow[];
+	/** The source totals only the current-year columns, not the NRA − 1 ones. */
+	totalSurvivorCurrent: string;
+	totalAfterTaxCurrent: string;
+	totalFaceCurrent: string | null;
+	totalRatioCurrent: string | null;
+}
+
 /** Headline figures for one funding option (page 4.3). */
 export interface FundingOptionSummary {
 	/** Total first-year premium across the option's policies. Null when not reportable. */
@@ -374,6 +406,8 @@ export interface ReportModel {
 	cashFlowByOption: Record<string, CashFlowOptionDisplay>;
 	/** Sample benefit statement for the first census member, or null on an empty census. */
 	benefitStatement: BenefitStatementDisplay | null;
+	/** COLI face vs survivor liability per funding option, keyed by strategy id (Appendix B). */
+	faceSurvivorByOption: Record<string, FaceSurvivorAnalysis>;
 
 	/** Reference date for the legacy census/projections (plan effective date, else valuation date). */
 	legacyAsOfDisplay: string;
@@ -546,6 +580,83 @@ function legacyCensusFrom(census: Insured[], refDate: string): LegacyCensusRow[]
 		serviceYears: Math.max(0, completedYearsBetween(insured.dateOfHire, refDate)),
 		salary: formatMoneyDisplay(insured.currentSalary, 0)
 	}));
+}
+
+/**
+ * Appendix B — COLI face amount against pre-retirement survivor liability, for one funding
+ * option. For each SERP participant: the survivor benefit for a death now and for one in the
+ * year before NRA, the after-tax cost of each, the option's death benefit at those two points,
+ * and the ratio between them.
+ *
+ * Face comes from the persisted illustration stream, so it is results-gated; the survivor and
+ * after-tax columns are pure and fill pre-run. A SERP participant with no COLI policy has no
+ * face and no ratio — the source prints 0 for those rows.
+ */
+function faceSurvivorFor(
+	census: Insured[],
+	refDate: string,
+	resultById: Map<string, ParticipantResult>,
+	taxRate: number,
+	strategyId: string
+): FaceSurvivorAnalysis {
+	const afterTaxFactor = new Big(1).minus(taxRate);
+	let totalSurvivor = new Big(0);
+	let totalAfterTax = new Big(0);
+	let totalFace = new Big(0);
+	let anyFace = false;
+
+	const rows = census.filter(isSerpParticipant).map((insured): FaceSurvivorRow => {
+		const age = ageNearestBirthday(insured.dateOfBirth, refDate);
+		const nra = insured.retirementAge;
+		const stream = survivorStreamFor(insured, refDate);
+		const survivorCurrent = survivorBenefitAtAge(stream, age);
+		const survivorAtNra = survivorBenefitAtAge(stream, nra - 1);
+		const afterTaxCurrent = survivorCurrent.times(afterTaxFactor);
+		const afterTaxAtNra = survivorAtNra.times(afterTaxFactor);
+
+		// The option's death benefit now (policy year 1) and in the year before retirement.
+		const years = resultById.get(insured.id)?.designs?.[strategyId]?.illustrationYears;
+		const faceCurrent = years?.[0]?.deathBenefit;
+		const faceAtNra = years?.find((year) => year.age === nra - 1)?.deathBenefit;
+
+		totalSurvivor = totalSurvivor.plus(survivorCurrent);
+		totalAfterTax = totalAfterTax.plus(afterTaxCurrent);
+		if (faceCurrent !== undefined) {
+			totalFace = totalFace.plus(new Big(faceCurrent));
+			anyFace = true;
+		}
+
+		/** Ratio of cover to liability; undefined when either side is unavailable. */
+		const ratio = (face: string | undefined, afterTax: Big): string | null => {
+			if (face === undefined || afterTax.eq(0)) return null;
+			return `${new Big(face).div(afterTax).times(100).round(0).toString()} %`;
+		};
+
+		return {
+			name: `${insured.firstName.charAt(0)}. ${insured.lastName}`,
+			age,
+			nra,
+			survivorCurrent: formatMoneyDisplay(survivorCurrent, 0),
+			survivorAtNra: formatMoneyDisplay(survivorAtNra, 0),
+			afterTaxCurrent: formatMoneyDisplay(afterTaxCurrent, 0),
+			afterTaxAtNra: formatMoneyDisplay(afterTaxAtNra, 0),
+			faceCurrent: faceCurrent !== undefined ? formatMoneyDisplay(faceCurrent, 0) : null,
+			faceAtNra: faceAtNra !== undefined ? formatMoneyDisplay(faceAtNra, 0) : null,
+			ratioCurrent: ratio(faceCurrent, afterTaxCurrent),
+			ratioAtNra: ratio(faceAtNra, afterTaxAtNra)
+		};
+	});
+
+	return {
+		rows,
+		totalSurvivorCurrent: formatMoneyDisplay(totalSurvivor, 0),
+		totalAfterTaxCurrent: formatMoneyDisplay(totalAfterTax, 0),
+		totalFaceCurrent: anyFace ? formatMoneyDisplay(totalFace, 0) : null,
+		totalRatioCurrent:
+			anyFace && !totalAfterTax.eq(0)
+				? `${totalFace.div(totalAfterTax).times(100).round(0).toString()} %`
+				: null
+	};
 }
 
 /** The participant's pre-retirement survivor stream, from their own schedule inputs. */
@@ -755,6 +866,19 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	// Legacy alias: page 4.5 and existing bindings read Option 1 through this field.
 	const cashFlow = cashFlowByOption[REPORT_FUNDING_OPTIONS[0].id] ?? null;
 
+	// Appendix B compares each option's face against the survivor liability. The survivor and
+	// after-tax columns are pure, so these build with or without a run.
+	const faceSurvivorByOption: Record<string, FaceSurvivorAnalysis> = {};
+	for (const option of REPORT_FUNDING_OPTIONS) {
+		faceSurvivorByOption[option.id] = faceSurvivorFor(
+			census,
+			legacyRefDate,
+			resultById,
+			taxRate,
+			option.id
+		);
+	}
+
 	// Census rows
 	const censusRows: CensusRow[] = census.map((i) => ({
 		name: fullName(i),
@@ -868,6 +992,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		cashFlowByOption,
 		// Appendix A samples the first census member, per operator.
 		benefitStatement: benefitStatementFor(census[0], legacyRefDate, resultById),
+		faceSurvivorByOption,
 
 		legacyAsOfDisplay: longDate(legacyRefDate),
 		legacyRefDate,
