@@ -20,13 +20,14 @@
  * money module, the date utility, and domain types — no Svelte, no I/O. Each GAAP formula will be
  * built behind its own named function as specs arrive, one feature at a time.
  */
-import { Big } from '$lib/money/money';
+import { Big, formatMoney } from '$lib/money/money';
 import { ageNearestBirthday } from '$lib/dates/age';
 import {
 	isSerpParticipant,
 	type Company,
 	type Insured,
 	type ModelSettings,
+	type ParticipantResult,
 	type Results
 } from '$lib/domain';
 
@@ -78,23 +79,33 @@ export interface SerpAccountingYear {
 }
 
 /**
- * One plan year of the COLI asset accounting view (ASC 325-30, cash-surrender-value method), for
- * ONE funding option. Report 5.2 column [4]. The *inputs* already exist on
- * `Results.perParticipant[].designs[optionId].illustrationYears` (premium, CSV, death benefit) —
- * only the accounting treatment is unbuilt, which makes this the closest column to buildable.
+ * One plan year of the COLI asset accounting view, for ONE funding option — BUILT.
+ *
+ * Operator spec (2026-07-25): death is assumed at each participant's life expectancy; the annual
+ * COLI earnings impact is **change in account value − premium**, plus the **death benefit** in the
+ * life-expectancy year. The account value is **released at death** — in the LE year its change is
+ * `0 − prior-year AV` — so lifetime earnings net to `death benefit − premiums` with no double
+ * count of the account value (report 5.2 column [4]). Uses account value, not cash surrender value.
+ *
+ * All figures are per plan year, summed across the option's COLI policies. `premium` and
+ * `deathProceeds` are stored as positive magnitudes; `accountValueChange` and `coliEarningsImpact`
+ * are signed (income positive). Zero in a year with no cash flow; never null once built.
  */
 export interface ColiAccountingYear {
 	planYear: number;
 	calendarYear: number;
-	/** Premium paid into the policies this year (an expense under the CSV method). */
+	/** Premium paid into the policies this year (a positive magnitude; an expense in the formula). */
 	premium: Pending;
-	/** Change in cash surrender value this year (income when positive). */
-	cashSurrenderValueChange: Pending;
-	/** Death proceeds received in excess of CSV this year. */
+	/** Change in account value this year — signed. Released to `0 − prior AV` in the death year. */
+	accountValueChange: Pending;
+	/** Death benefit received this year (positive), in each participant's life-expectancy year. */
 	deathProceeds: Pending;
-	/** COLI earnings impact = CSV change − premium + death proceeds. Report 5.2 column [4]. */
+	/** COLI earnings impact = accountValueChange − premium + deathProceeds. Report 5.2 column [4]. */
 	coliEarningsImpact: Pending;
-	/** Combined earnings impact = net SERP [3] + COLI [4]. Report 5.2 column [5]. */
+	/**
+	 * Combined earnings impact = net SERP [3] + COLI [4]. Report 5.2 column [5]. Still `null` — it
+	 * needs the SERP pension side, which is not built yet.
+	 */
 	combinedEarningsImpact: Pending;
 }
 
@@ -112,8 +123,11 @@ export interface ParticipantPensionAllocation {
 
 /** The accounting module's output. Axis fields are real; monetary fields are pending the GAAP build. */
 export interface AccountingResult {
-	/** `'not-built'` until the first real column lands; flip per-feature as specs arrive. */
-	status: 'not-built';
+	/**
+	 * Build state. `'partial'` today: the COLI earnings side is built; the SERP pension side is
+	 * still pending. Flips to `'complete'` once every section lands.
+	 */
+	status: 'not-built' | 'partial' | 'complete';
 	/** Calendar year of plan year 1 (the plan reference year). */
 	referenceYear: number;
 	/**
@@ -173,13 +187,118 @@ export function lifeOfProgramHorizon(results: Results, census: Insured[], refDat
 	return horizon;
 }
 
+/** Per-plan-year COLI accumulator (full precision until the output boundary). */
+interface ColiYearAccumulator {
+	premium: Big;
+	accountValueChange: Big;
+	deathProceeds: Big;
+}
+
 /**
- * Compute the accounting (GAAP) projection from a completed run — STUB.
+ * COLI earnings recognition per funding option (report 5.2 column [4]) — BUILT.
  *
- * Returns the real plan-year/calendar-year axis, the life-of-program horizon, and the
- * per-participant allocation keys, with every monetary figure `null` and `status: 'not-built'`.
- * The report pages keep rendering their "—" placeholders; nothing is wired to consume this yet.
- * Each GAAP formula is filled in behind its own named function as specs arrive.
+ * Operator spec: assume death at each participant's life expectancy. For each COLI policy, walk
+ * its illustration through the LE year and, per plan year, accumulate premium, change in account
+ * value, and — in the LE year — the death benefit. The account value is **released at death**: in
+ * the LE year its change is `0 − prior-year AV`, so the account value nets out and lifetime
+ * earnings equal `death benefit − premiums` with no double count.
+ *
+ * The LE year and death benefit are keyed off `age === lifeExpectancy`, the same mapping the
+ * report's Appendix C ledger and page 4.5 cash flow use, so the totals reconcile.
+ *
+ * A policy that never reaches its LE age in the stream (e.g. it lapsed earlier) contributes its
+ * premiums and account-value changes but no death benefit — an honest loss, not a manufactured
+ * gain.
+ */
+export function coliEarningsByOption(
+	results: Results,
+	census: Insured[],
+	referenceYear: number,
+	horizonPlanYears: number
+): Record<string, ColiAccountingYear[]> {
+	const lifeExpectancyById = new Map(census.map((i) => [i.id, i.lifeExpectancy]));
+	const planYears = Array.from({ length: horizonPlanYears }, (_, i) => i + 1);
+
+	// Gather every option id the run designed, so the result tracks the app's options.
+	const optionIds = new Set<string>();
+	for (const p of results.perParticipant) for (const id of Object.keys(p.designs ?? {})) optionIds.add(id);
+
+	const out: Record<string, ColiAccountingYear[]> = {};
+	for (const optionId of optionIds) {
+		const byYear = new Map<number, ColiYearAccumulator>();
+		const at = (planYear: number): ColiYearAccumulator => {
+			let acc = byYear.get(planYear);
+			if (!acc) {
+				acc = { premium: new Big(0), accountValueChange: new Big(0), deathProceeds: new Big(0) };
+				byYear.set(planYear, acc);
+			}
+			return acc;
+		};
+
+		for (const p of results.perParticipant) {
+			accumulateColiPolicy(at, p, optionId, lifeExpectancyById.get(p.insuredId));
+		}
+
+		out[optionId] = planYears.map((planYear) => {
+			const acc = byYear.get(planYear);
+			const premium = acc?.premium ?? new Big(0);
+			const accountValueChange = acc?.accountValueChange ?? new Big(0);
+			const deathProceeds = acc?.deathProceeds ?? new Big(0);
+			const earnings = accountValueChange.minus(premium).plus(deathProceeds);
+			return {
+				planYear,
+				calendarYear: referenceYear + planYear - 1,
+				premium: formatMoney(premium),
+				accountValueChange: formatMoney(accountValueChange),
+				deathProceeds: formatMoney(deathProceeds),
+				coliEarningsImpact: formatMoney(earnings),
+				// Needs the SERP net impact [3], which is not built yet.
+				combinedEarningsImpact: null
+			};
+		});
+	}
+	return out;
+}
+
+/** Accumulate one participant's policy for one option into the per-year buckets (death at LE). */
+function accumulateColiPolicy(
+	at: (planYear: number) => ColiYearAccumulator,
+	participant: ParticipantResult,
+	optionId: string,
+	lifeExpectancy: number | undefined
+): void {
+	const years = participant.designs?.[optionId]?.illustrationYears;
+	if (!years || years.length === 0) return;
+
+	// The death (life-expectancy) year, keyed by attained age — the same rule the report uses.
+	const leRow = lifeExpectancy === undefined ? undefined : years.find((y) => y.age === lifeExpectancy);
+	const lePlanYear = leRow?.policyYear;
+
+	const ordered = [...years].sort((a, b) => a.policyYear - b.policyYear);
+	let priorAccountValue = new Big(0);
+	for (const year of ordered) {
+		// Death is assumed at LE — the participant contributes nothing after that year.
+		if (lePlanYear !== undefined && year.policyYear > lePlanYear) break;
+		const isDeathYear = year.policyYear === lePlanYear;
+		const accountValue = new Big(year.accountValue);
+		// Released at death: the account value change is the full give-back of the prior balance.
+		const change = isDeathYear ? new Big(0).minus(priorAccountValue) : accountValue.minus(priorAccountValue);
+
+		const acc = at(year.policyYear);
+		acc.premium = acc.premium.plus(new Big(year.premium));
+		acc.accountValueChange = acc.accountValueChange.plus(change);
+		if (isDeathYear && leRow) acc.deathProceeds = acc.deathProceeds.plus(new Big(leRow.deathBenefit));
+
+		priorAccountValue = isDeathYear ? new Big(0) : accountValue;
+	}
+}
+
+/**
+ * Compute the accounting (GAAP) projection from a completed run — PARTIAL.
+ *
+ * The COLI earnings side is built (report 5.2 column [4]); the SERP pension side is still pending,
+ * so its figures remain `null`. Returns the real plan-year/calendar-year axis, the life-of-program
+ * horizon, and the per-participant allocation keys. Not wired to the report yet.
  */
 export function computeAccounting(params: ComputeAccountingParams): AccountingResult {
 	const { results, census, refDate } = params;
@@ -206,24 +325,8 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		netSerpEarningsImpact: null
 	}));
 
-	// One COLI series per funding option the run actually designed — so this tracks the options
-	// the app produces rather than a hardcoded list. Axis real; figures pending.
-	const coliByOption: Record<string, ColiAccountingYear[]> = {};
-	const optionIds = new Set<string>();
-	for (const p of results.perParticipant) {
-		for (const id of Object.keys(p.designs ?? {})) optionIds.add(id);
-	}
-	for (const optionId of optionIds) {
-		coliByOption[optionId] = planYears.map((planYear) => ({
-			planYear,
-			calendarYear: calendarYearOf(planYear),
-			premium: null,
-			cashSurrenderValueChange: null,
-			deathProceeds: null,
-			coliEarningsImpact: null,
-			combinedEarningsImpact: null
-		}));
-	}
+	// COLI earnings side — BUILT (report 5.2 column [4]). One series per option the run designed.
+	const coliByOption = coliEarningsByOption(results, census, referenceYear, horizonPlanYears);
 
 	// 6.6 allocates consolidated pension expense across SERP participants (a COLI-only life carries
 	// no pension expense). Keys are real; the split awaits the pension expense calc.
@@ -231,9 +334,5 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		.filter(isSerpParticipant)
 		.map((insured) => ({ insuredId: insured.id, pensionExpense: null, percentOfTotal: null }));
 
-	// Reference `Big` so the money module (and its rounding policy) is loaded here too, keeping this
-	// file's import surface identical to the other calc modules for when the real figures land.
-	void Big;
-
-	return { status: 'not-built', referenceYear, horizonPlanYears, serp, coliByOption, byParticipant };
+	return { status: 'partial', referenceYear, horizonPlanYears, serp, coliByOption, byParticipant };
 }
