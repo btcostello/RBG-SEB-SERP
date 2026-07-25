@@ -48,28 +48,27 @@ To resolve, three separate things are needed:
 Note the source's own caveat on the supporting table sheet: *"First whole life projected to have
 matured by the end of year 7"* — the sample's figures assume a specific product maturity.
 
-## ⚠ Missing subsystem — GAAP accounting engine
+## ⚠ Missing subsystem — GAAP accounting engine (partial: `src/lib/accounting/`)
 
-**Ten pages are full-page placeholders** because the app has no accounting layer: 5.2-1…5.2-4
-(Annual Impact on Earnings) and 6.1…6.6 (SERP/COLI entry worksheets, audit trail, cost
-allocation). The engine computes the *cash* benefit stream and the COLI illustration; it does not
-compute the **accounting** view.
+The accounting module now exists and the **5.2 earnings ledger (5.2-1…5.2-4) is fully wired** — all
+five columns are live (SERP [1][2][3], COLI [4], combined [5]). **Six pages remain placeholders:**
+6.1…6.6 (SERP/COLI entry worksheets, audit trail, cost allocation), which need the balance-sheet
+items (AOCI, deferred tax asset, unfunded accrued pension cost) and the 6.6 per-participant split.
 
-Rather than repeat a gap list per page, the underlying quantities are listed once here. Every
-placeholder column on those ten pages is one of these, or arithmetic on them:
+Underlying quantities, with build status:
 
-| Quantity | Notes |
+| Quantity | Status |
 |---|---|
-| **Service cost** | Annual accrual of benefit earned. Per participant *and* consolidated (6.6 needs the split). |
-| **Interest cost / accrual** | On the projected benefit obligation. |
-| **Projected Benefit Obligation (PBO)** | Balance, rolled forward — distinct from the NPV the engine already computes. |
-| **Prior service cost** | Initial recognition, plus level amortisation and the unrecognised balance (BOY/EOY). |
-| **Pension expense** | Service + interest + amortisation. |
-| **Deferred tax asset / expense** | Tax effect of the above at `corporateTaxRate`. |
-| **AOCI balance & amortisation** | Accumulated other comprehensive income, before and after tax benefit. |
-| **Unfunded accrued pension cost** | Annual and EOY balances (audit trail columns 6–7). |
-| **Mortality weighting** | Survival-weighted expense; also the "% living at average life expectancy" footnote on 5.2. |
-| ~~**COLI earnings recognition**~~ | ☑ **BUILT (2026-07-25)** — `src/lib/accounting/coliEarningsByOption`, wired to page 5.2 column [4]. Operator formula: ΔAV − premium + death benefit at LE, account value released at death (nets to DB − premiums). Uses account value, not CSV. |
+| **Service cost** | ☑ BUILT — straight-line accrual of the PBO over total service (`serp-pension.ts`). 6.6 per-participant split still to do. |
+| **Interest cost / accrual** | ☑ BUILT — discount rate × beginning-of-year PBO. |
+| **Projected Benefit Obligation (PBO)** | ☑ BUILT — rolled forward `BOY + service + interest − benefits`. |
+| **Prior service cost** | ☑ BUILT — past-service share of PBO, amortised over average future service; unrecognised balance carried. |
+| **Pension expense** | ☑ BUILT — service + interest + amortisation. |
+| **Deferred tax asset / expense** | ◑ Partial — the P&L tax deduction (column [2]) is built; the balance-sheet deferred tax **asset** (6.x) is not. |
+| **AOCI balance & amortisation** | ☐ Not built (6.x). |
+| **Unfunded accrued pension cost** | ☐ Not built (6.5 audit-trail balances). |
+| **Mortality weighting** | ☐ Not built — current basis is death-at-LE, unweighted; awaits the mortality table. |
+| **COLI earnings recognition** | ☑ BUILT — `coliEarningsByOption`, page 5.2 column [4]. ΔAV − premium + death benefit at LE, account value released at death (nets to DB − premiums). Account value, not CSV. |
 
 Two structural notes that will matter when this is built:
 
@@ -270,16 +269,18 @@ reproduced from the source so only the numbers need wiring.
 
 The **only** column that resolves today is the calendar year (30 years from the valuation year).
 
-**Columns to build — each needs a GAAP accounting derivation the app does not have:**
-- ☐ **[1] Pre-Tax SERP Earnings Impact** — annual accrual of SERP benefit expense under GAAP.
-  Needs the accounting liability roll-forward (service cost + interest cost on the projected
-  benefit obligation), which is distinct from the cash benefit stream the engine already
-  produces. Sign convention in the source is negative (an expense).
-- ☐ **[2] Benefit Tax Deduction** — the tax effect of column [1] at the corporate rate.
-  `corporateTaxRate` exists; the base ([1]) does not. Source shows a flat ~21% of [1].
-- ☐ **[3] Net SERP Earnings Impact** — `[1] + [2]`. Falls out once [1] and [2] exist, but note
-  the source marks it `**`: it "reflects impact of actuarial mortality projections required under
-  GAAP", i.e. it is mortality-weighted, not a plain sum of the two columns for a single life.
+**Columns to build:**
+- ☑ **[1] Pre-Tax SERP Earnings Impact — RESOLVED (2026-07-25).** `= −pension expense`, from the
+  accounting module's PBO roll-forward (`src/lib/accounting/serp-pension.ts`). Operator spec:
+  service cost = straight-line accrual of the PBO over total service (PV of the benefit stream at
+  NRA → discounted to today → split past/future by service years); prior service cost (the past
+  share) amortised straight-line over the **average** future service across SERP participants;
+  interest cost = discount rate × beginning-of-year PBO, with the roll-forward
+  `PBO_EOY = PBO_BOY + service + interest − benefits paid`. Negative (an expense). Live-verified.
+- ☑ **[2] Benefit Tax Deduction — RESOLVED (2026-07-25).** `= pension expense × corporateTaxRate`.
+- ☑ **[3] Net SERP Earnings Impact — RESOLVED (2026-07-25).** `= [1] + [2] = [1] × (1 − tax rate)`.
+  ⚠ Mortality basis is **death-at-LE, unweighted** — the source `**` note marks it as
+  survival-weighted; that refinement waits on the mortality table (see the subsystem note above).
 - ☑ **[4] Hypothetical COLI Earnings Impact — RESOLVED (2026-07-25).** Built in the accounting
   module (`src/lib/accounting/`, `coliEarningsByOption`) and wired to the ledger via
   `ReportModel.earningsLedgerByOption`. Operator formula: assume death at each participant's life
@@ -288,9 +289,10 @@ The **only** column that resolves today is the calendar year (30 years from the 
   `0 − prior AV`), so lifetime earnings net to `death benefit − premiums` with no double count.
   Uses account value, not CSV. An option with any infeasible solve is suppressed (shows "—"), and
   the totals row is life-of-program (not the 30 displayed years). Live-verified.
-- ☐ **[5] Combined Earnings Impact** — `[3] + [4]`. Falls out once both exist.
-- ☐ **Totals row (`^`)** — totals over the **life of the program**, explicitly *not* the sum of
-  the 30 displayed years. Needs the full-horizon projection, not just the displayed window.
+- ☑ **[5] Combined Earnings Impact — RESOLVED (2026-07-25).** `= net SERP [3] + COLI [4]`, per
+  option (`ColiAccountingYear.combinedEarningsImpact`).
+- ☑ **Totals row (`^`) — RESOLVED (2026-07-25).** Life-of-program totals (the accounting horizon,
+  not the 30 displayed years). Verified: at a 0% discount rate, total [1] equals −PBO.
 - ☐ **Mortality-survival percentage** (footnote `**`) — the source states "64.3% of plan
   participants are projected to be living at the beginning of the year of average life
   expectancy". Needs a survival calculation from the mortality table. The page currently prints a

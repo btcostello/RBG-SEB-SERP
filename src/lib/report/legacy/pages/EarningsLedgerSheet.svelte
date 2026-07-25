@@ -4,10 +4,11 @@
 	 * (source: "E3 Earnings Imp Ledger.pdf", section pages 5.2-1 … 5.2-4) — one per funding
 	 * option, identical in structure and differing only in title, page number, and closing note.
 	 *
-	 * **Column [4] (Hypothetical COLI Earnings Impact) is live** — bound to the accounting module
-	 * via `report.earningsLedgerByOption[optionId]`. The SERP columns [1]–[3], the combined column
-	 * [5], and their totals still render "—" pending the pension side (see DATA-GAPS.md). Calendar
-	 * years are real. Column [4] shows "—" until a run, or when the option's solve was infeasible.
+	 * **All five columns are live**, from the accounting module: the SERP columns [1][2][3] via
+	 * `report.earningsLedgerSerp` (option-independent), and COLI [4] + combined [5] via
+	 * `report.earningsLedgerByOption[optionId]`. Columns show "—" before a run; the per-option
+	 * columns also show "—" when that option's solve was infeasible (the SERP columns still show).
+	 * The `**` mortality-weighting footnote is not yet applied (death-at-LE basis).
 	 */
 	import type { ReportModel } from '../../report-data';
 	import LegacyPageShell from './LegacyPageShell.svelte';
@@ -21,7 +22,7 @@
 	}: {
 		report: ReportModel;
 		pageNo: string;
-		/** Funding strategy id this sheet displays — keys column [4] into the accounting series. */
+		/** Funding strategy id this sheet displays — keys columns [4]/[5] into the accounting series. */
 		optionId: string;
 		/** e.g. "Option 1 - Recovery of Net Program Costs from COLI upon Mortality". */
 		optionTitle: string;
@@ -38,12 +39,15 @@
 	const firstYear = $derived(new Date(`${report.legacyRefDate}T00:00:00`).getFullYear());
 	const years = $derived(Array.from({ length: LEDGER_YEARS }, (_, i) => firstYear + i));
 
-	/** COLI earnings impact for this option, or undefined pre-run / when the option is suppressed. */
-	const coli = $derived(report.earningsLedgerByOption?.[optionId]);
-	/** Column [4] for a calendar year: the option's value, "0" once run but past program end, else "—". */
-	const coliFor = (year: number): string => (coli ? (coli.coliByYear[year] ?? '0') : GAP);
+	/** SERP columns [1][2][3] — option-independent; undefined pre-run / when there are no SERP lives. */
+	const serp = $derived(report.earningsLedgerSerp);
+	/** COLI [4] + combined [5] for this option; undefined pre-run / when the option is suppressed. */
+	const opt = $derived(report.earningsLedgerByOption?.[optionId]);
+	/** A value once run (falling back to "0" past program end), else the placeholder "—". */
+	const val = (map: Record<number, string> | undefined, year: number): string =>
+		map ? (map[year] ?? '0') : GAP;
 
-	/** Placeholder for the columns still awaiting the GAAP accounting layer — see DATA-GAPS.md. */
+	/** Placeholder for a column with no data yet (pre-run, or a suppressed option). */
 	const GAP = '—';
 </script>
 
@@ -76,20 +80,20 @@
 		<tbody>
 			<tr class="totals">
 				<td class="txt">Totals <sup>^</sup></td>
-				<td class="num gap">{GAP}</td>
-				<td class="num gap">{GAP}</td>
-				<td class="num gap">{GAP}</td>
-				<td class="num" class:gap={!coli}>{coli ? coli.coliTotal : GAP}</td>
-				<td class="num gap">{GAP}</td>
+				<td class="num" class:gap={!serp}>{serp ? serp.col1Total : GAP}</td>
+				<td class="num" class:gap={!serp}>{serp ? serp.col2Total : GAP}</td>
+				<td class="num" class:gap={!serp}>{serp ? serp.col3Total : GAP}</td>
+				<td class="num" class:gap={!opt}>{opt ? opt.coliTotal : GAP}</td>
+				<td class="num" class:gap={!opt}>{opt ? opt.combinedTotal : GAP}</td>
 			</tr>
 			{#each years as year (year)}
 				<tr>
 					<td class="txt">{year}</td>
-					<td class="num gap">{GAP}</td>
-					<td class="num gap">{GAP}</td>
-					<td class="num gap">{GAP}</td>
-					<td class="num" class:gap={!coli}>{coliFor(year)}</td>
-					<td class="num gap">{GAP}</td>
+					<td class="num" class:gap={!serp}>{val(serp?.col1ByYear, year)}</td>
+					<td class="num" class:gap={!serp}>{val(serp?.col2ByYear, year)}</td>
+					<td class="num" class:gap={!serp}>{val(serp?.col3ByYear, year)}</td>
+					<td class="num" class:gap={!opt}>{val(opt?.coliByYear, year)}</td>
+					<td class="num" class:gap={!opt}>{val(opt?.combinedByYear, year)}</td>
 				</tr>
 			{/each}
 		</tbody>

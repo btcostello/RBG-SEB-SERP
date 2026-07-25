@@ -366,16 +366,37 @@ export interface OptionLedger {
 }
 
 /**
- * COLI earnings impact for one funding option (report page 5.2, column [4]), from the accounting
- * module. Keyed by calendar year so the ledger sheet binds each of its displayed years directly.
- * An option present here is feasible and run; infeasible or undesigned options are omitted (the
- * sheet then shows "—"). Signed display: a charge to earnings is parenthesized.
+ * SERP pension columns of the 5.2 earnings ledger ([1] pre-tax impact, [2] tax deduction, [3] net
+ * impact) — **option-independent**, so one of these serves all four option sheets. Keyed by
+ * calendar year; grouped whole dollars, charges to earnings parenthesized. Present only when there
+ * are SERP participants and a run exists.
  */
-export interface EarningsLedgerColiDisplay {
-	/** Column [4] per calendar year — grouped whole dollars, negatives parenthesized. */
+export interface EarningsLedgerSerpDisplay {
+	/** [1] Pre-tax SERP earnings impact (an expense, parenthesized). */
+	col1ByYear: Record<number, string>;
+	/** [2] Benefit tax deduction. */
+	col2ByYear: Record<number, string>;
+	/** [3] Net SERP earnings impact. */
+	col3ByYear: Record<number, string>;
+	col1Total: string;
+	col2Total: string;
+	col3Total: string;
+}
+
+/**
+ * COLI and combined columns of the 5.2 ledger for one funding option ([4] COLI earnings impact,
+ * [5] combined = net SERP [3] + COLI [4]), from the accounting module. An option present here is
+ * feasible and run; infeasible or undesigned options are omitted (columns [4]/[5] then show "—",
+ * while the option-independent SERP columns still show). Grouped whole dollars, charges parenthesized.
+ */
+export interface EarningsLedgerOptionDisplay {
+	/** Column [4] per calendar year. */
 	coliByYear: Record<number, string>;
-	/** Life-of-program total for column [4] — not limited to the years the sheet displays. */
+	/** Column [5] per calendar year. */
+	combinedByYear: Record<number, string>;
+	/** Life-of-program totals — not limited to the years the sheet displays. */
 	coliTotal: string;
+	combinedTotal: string;
 }
 
 /**
@@ -464,11 +485,13 @@ export interface ReportModel {
 	faceSurvivorByOption: Record<string, FaceSurvivorAnalysis>;
 	/** Year-by-year ledger per funding option, keyed by strategy id (Appendix C). */
 	ledgerByOption: Record<string, OptionLedger>;
+	/** SERP pension columns [1][2][3] of the 5.2 ledger (option-independent), or null pre-run / no SERP. */
+	earningsLedgerSerp: EarningsLedgerSerpDisplay | null;
 	/**
-	 * COLI earnings impact per funding option (page 5.2 column [4]), keyed by strategy id. Only
-	 * feasible, run options appear; others are absent and the sheet renders "—".
+	 * COLI [4] and combined [5] columns of the 5.2 ledger per funding option, keyed by strategy id.
+	 * Only feasible, run options appear; others are absent and those columns render "—".
 	 */
-	earningsLedgerByOption: Record<string, EarningsLedgerColiDisplay>;
+	earningsLedgerByOption: Record<string, EarningsLedgerOptionDisplay>;
 	/** Census age span + life expectancy for the mortality chart footnote (Appendix G). */
 	mortalityAssumptions: MortalityAssumptions;
 
@@ -1097,10 +1120,12 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		);
 	}
 
-	// Page 5.2 column [4] — COLI earnings impact, from the accounting module. Computed only after a
-	// run (it reads the illustration streams); an option with any infeasible solve is suppressed,
-	// matching how pages 4.3 / 4.5 refuse to total a design built on a solve that missed its target.
-	const earningsLedgerByOption: Record<string, EarningsLedgerColiDisplay> = {};
+	// Page 5.2 earnings ledger, from the accounting module. Computed only after a run. The SERP
+	// columns [1][2][3] are option-independent; the COLI [4] and combined [5] columns are per option
+	// and an option with any infeasible solve is suppressed, matching how pages 4.3 / 4.5 refuse to
+	// total a design built on a solve that missed its target.
+	let earningsLedgerSerp: EarningsLedgerSerpDisplay | null = null;
+	const earningsLedgerByOption: Record<string, EarningsLedgerOptionDisplay> = {};
 	if (results) {
 		const accounting = computeAccounting({
 			results,
@@ -1111,18 +1136,59 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		});
 		const grouped = (b: Big) =>
 			b.lt(0) ? `(${formatMoneyDisplay(b.abs(), 0)})` : formatMoneyDisplay(b, 0);
+
+		// SERP columns [1][2][3] — [1] is the pre-tax impact (an expense = −pension expense).
+		if (serp.length > 0) {
+			const col1: Record<number, string> = {};
+			const col2: Record<number, string> = {};
+			const col3: Record<number, string> = {};
+			let t1 = new Big(0);
+			let t2 = new Big(0);
+			let t3 = new Big(0);
+			for (const year of accounting.serp) {
+				const pre = new Big(year.pensionExpense ?? '0').times(-1);
+				const ded = new Big(year.benefitTaxDeduction ?? '0');
+				const net = new Big(year.netSerpEarningsImpact ?? '0');
+				col1[year.calendarYear] = grouped(pre);
+				col2[year.calendarYear] = grouped(ded);
+				col3[year.calendarYear] = grouped(net);
+				t1 = t1.plus(pre);
+				t2 = t2.plus(ded);
+				t3 = t3.plus(net);
+			}
+			earningsLedgerSerp = {
+				col1ByYear: col1,
+				col2ByYear: col2,
+				col3ByYear: col3,
+				col1Total: grouped(t1),
+				col2Total: grouped(t2),
+				col3Total: grouped(t3)
+			};
+		}
+
+		// COLI [4] and combined [5] per option.
 		for (const option of REPORT_FUNDING_OPTIONS) {
 			const series = accounting.coliByOption[option.id];
 			if (!series) continue;
 			if ((results.aggregate.byOption?.[option.id]?.infeasibleCount ?? 0) > 0) continue;
 			const coliByYear: Record<number, string> = {};
-			let total = new Big(0);
+			const combinedByYear: Record<number, string> = {};
+			let coliTotal = new Big(0);
+			let combinedTotal = new Big(0);
 			for (const year of series) {
-				const impact = new Big(year.coliEarningsImpact ?? '0');
-				coliByYear[year.calendarYear] = grouped(impact);
-				total = total.plus(impact);
+				const coli = new Big(year.coliEarningsImpact ?? '0');
+				const combined = new Big(year.combinedEarningsImpact ?? '0');
+				coliByYear[year.calendarYear] = grouped(coli);
+				combinedByYear[year.calendarYear] = grouped(combined);
+				coliTotal = coliTotal.plus(coli);
+				combinedTotal = combinedTotal.plus(combined);
 			}
-			earningsLedgerByOption[option.id] = { coliByYear, coliTotal: grouped(total) };
+			earningsLedgerByOption[option.id] = {
+				coliByYear,
+				combinedByYear,
+				coliTotal: grouped(coliTotal),
+				combinedTotal: grouped(combinedTotal)
+			};
 		}
 	}
 
@@ -1242,6 +1308,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		benefitStatement: benefitStatementFor(census[0], legacyRefDate, resultById),
 		faceSurvivorByOption,
 		ledgerByOption,
+		earningsLedgerSerp,
 		earningsLedgerByOption,
 		mortalityAssumptions: mortalityAssumptionsFrom(census, legacyRefDate),
 

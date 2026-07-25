@@ -141,9 +141,10 @@ describe('computeAccounting (partial: COLI built, SERP pending)', () => {
 		]);
 	});
 
-	it('leaves the SERP pension figures and the combined column null (not built)', () => {
+	it('computes the SERP pension figures (zero here — the one life has no benefit stream)', () => {
 		const result = computeAccounting(params());
-		const serpMoneyFields = [
+		// The built pension columns resolve to values (0.00 for an empty benefit stream), not null.
+		const builtFields = [
 			'serviceCost',
 			'interestCost',
 			'priorServiceCostAmortization',
@@ -151,18 +152,19 @@ describe('computeAccounting (partial: COLI built, SERP pending)', () => {
 			'pboBoy',
 			'pboEoy',
 			'unrecognizedPriorServiceCostEoy',
-			'aociEoy',
-			'unfundedAccruedPensionCostEoy',
 			'benefitTaxDeduction',
-			'deferredTaxAssetEoy',
 			'netSerpEarningsImpact'
 		] as const;
-		for (const year of result.serp) {
-			for (const field of serpMoneyFields) expect(year[field]).toBeNull();
-		}
-		// Combined [5] needs the SERP net [3], so it stays null even though COLI [4] is built.
-		for (const year of result.coliByOption['cost-recovery']) {
-			expect(year.combinedEarningsImpact).toBeNull();
-		}
+		for (const field of builtFields) expect(result.serp[0][field]).toBe('0.00');
+		// The 6.x balance items are not specced yet — still null.
+		expect(result.serp[0].aociEoy).toBeNull();
+		expect(result.serp[0].unfundedAccruedPensionCostEoy).toBeNull();
+		expect(result.serp[0].deferredTaxAssetEoy).toBeNull();
+	});
+
+	it('fills the combined column [5] = net SERP [3] + COLI [4]', () => {
+		const result = computeAccounting(params());
+		// Net SERP is 0 (no benefit stream), so combined equals COLI: 83,000 in the death year.
+		expect(result.coliByOption['cost-recovery'][2].combinedEarningsImpact).toBe('83000.00');
 	});
 });

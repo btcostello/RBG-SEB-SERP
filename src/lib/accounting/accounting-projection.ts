@@ -21,7 +21,7 @@
  * built behind its own named function as specs arrive, one feature at a time.
  */
 import { Big, formatMoney } from '$lib/money/money';
-import { ageNearestBirthday } from '$lib/dates/age';
+import { ageNearestBirthday, completedYearsBetween } from '$lib/dates/age';
 import {
 	isSerpParticipant,
 	type Company,
@@ -30,6 +30,12 @@ import {
 	type ParticipantResult,
 	type Results
 } from '$lib/domain';
+import {
+	averageFutureServiceYears,
+	serpEarningsByYear,
+	serpPensionForParticipant,
+	type SerpParticipantInput
+} from './serp-pension';
 
 /** A monetary figure that is not computed yet. `null` = "blocked on the GAAP layer", not "$0". */
 type Pending = string | null;
@@ -301,32 +307,66 @@ function accumulateColiPolicy(
  * horizon, and the per-participant allocation keys. Not wired to the report yet.
  */
 export function computeAccounting(params: ComputeAccountingParams): AccountingResult {
-	const { results, census, refDate } = params;
+	const { results, census, company, settings, refDate } = params;
 	const referenceYear = Number(refDate.slice(0, 4));
 	const horizonPlanYears = lifeOfProgramHorizon(results, census, refDate);
-
-	const planYears = Array.from({ length: horizonPlanYears }, (_, i) => i + 1);
 	const calendarYearOf = (planYear: number) => referenceYear + planYear - 1;
 
-	const serp: SerpAccountingYear[] = planYears.map((planYear) => ({
-		planYear,
-		calendarYear: calendarYearOf(planYear),
-		serviceCost: null,
-		interestCost: null,
-		priorServiceCostAmortization: null,
-		pensionExpense: null,
-		pboBoy: null,
-		pboEoy: null,
-		unrecognizedPriorServiceCostEoy: null,
+	// SERP pension side — BUILT. Assemble each participant's obligation, then roll it forward.
+	const resultById = new Map(results.perParticipant.map((p) => [p.insuredId, p]));
+	const serpParticipants: SerpParticipantInput[] = [];
+	for (const insured of census.filter(isSerpParticipant)) {
+		const result = resultById.get(insured.id);
+		if (!result) continue;
+		const currentAge = ageNearestBirthday(insured.dateOfBirth, refDate);
+		const pension = serpPensionForParticipant({
+			stream: result.benefitStream,
+			discountRate: settings.npvDiscountRate,
+			nra: insured.retirementAge,
+			currentAge,
+			pastServiceYears: Math.max(0, completedYearsBetween(insured.dateOfHire, refDate))
+		});
+		serpParticipants.push({ pension, currentAge, benefitStream: result.benefitStream });
+	}
+	const serpRaw = serpEarningsByYear({
+		participants: serpParticipants,
+		avgFutureServiceYears: averageFutureServiceYears(serpParticipants.map((p) => p.pension)),
+		discountRate: settings.npvDiscountRate,
+		taxRate: company.corporateTaxRate,
+		horizonPlanYears
+	});
+	const serp: SerpAccountingYear[] = serpRaw.map((raw) => ({
+		planYear: raw.planYear,
+		calendarYear: calendarYearOf(raw.planYear),
+		serviceCost: formatMoney(raw.serviceCost),
+		interestCost: formatMoney(raw.interestCost),
+		priorServiceCostAmortization: formatMoney(raw.priorServiceCostAmortization),
+		pensionExpense: formatMoney(raw.pensionExpense),
+		pboBoy: formatMoney(raw.pboBoy),
+		pboEoy: formatMoney(raw.pboEoy),
+		unrecognizedPriorServiceCostEoy: formatMoney(raw.unrecognizedPriorServiceCostEoy),
+		// AOCI, unfunded accrued pension cost, and the deferred tax asset balance are 6.x-worksheet
+		// items not yet specced — left null.
 		aociEoy: null,
 		unfundedAccruedPensionCostEoy: null,
-		benefitTaxDeduction: null,
+		benefitTaxDeduction: formatMoney(raw.benefitTaxDeduction),
 		deferredTaxAssetEoy: null,
-		netSerpEarningsImpact: null
+		netSerpEarningsImpact: formatMoney(raw.netSerpEarningsImpact)
 	}));
 
 	// COLI earnings side — BUILT (report 5.2 column [4]). One series per option the run designed.
 	const coliByOption = coliEarningsByOption(results, census, referenceYear, horizonPlanYears);
+
+	// Combined earnings impact [5] = net SERP [3] + COLI [4], per option per plan year.
+	const netSerpByPlanYear = new Map(serpRaw.map((r) => [r.planYear, r.netSerpEarningsImpact]));
+	for (const optionId of Object.keys(coliByOption)) {
+		coliByOption[optionId] = coliByOption[optionId].map((year) => ({
+			...year,
+			combinedEarningsImpact: formatMoney(
+				(netSerpByPlanYear.get(year.planYear) ?? new Big(0)).plus(new Big(year.coliEarningsImpact ?? '0'))
+			)
+		}));
+	}
 
 	// 6.6 allocates consolidated pension expense across SERP participants (a COLI-only life carries
 	// no pension expense). Keys are real; the split awaits the pension expense calc.

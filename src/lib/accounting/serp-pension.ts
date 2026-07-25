@@ -135,3 +135,120 @@ export function averageFutureServiceYears(pensions: ParticipantPension[]): numbe
 	const total = pensions.reduce((sum, p) => sum + p.futureServiceYears, 0);
 	return total / pensions.length;
 }
+
+/** One SERP participant's inputs to the year-by-year roll-forward. */
+export interface SerpParticipantInput {
+	pension: ParticipantPension;
+	/** Current (valuation) age — maps benefit ages to plan years (`age − currentAge`). */
+	currentAge: number;
+	/** The benefit stream (attained ages → amounts) — the benefits-paid term of the roll-forward. */
+	benefitStream: BenefitStreamYear[];
+}
+
+/** One plan year of the consolidated SERP pension accounting (full precision `Big`). */
+export interface SerpAccountingYearRaw {
+	planYear: number;
+	serviceCost: Big;
+	interestCost: Big;
+	priorServiceCostAmortization: Big;
+	/** Service cost + interest cost + prior-service amortisation. */
+	pensionExpense: Big;
+	pboBoy: Big;
+	pboEoy: Big;
+	/** Prior service cost not yet amortised, end of year. */
+	unrecognizedPriorServiceCostEoy: Big;
+	/** Pension expense × tax rate — the tax benefit (report column [2]). */
+	benefitTaxDeduction: Big;
+	/** After-tax earnings impact = −pension expense + tax deduction, signed (report column [3]). */
+	netSerpEarningsImpact: Big;
+}
+
+export interface SerpEarningsParams {
+	participants: SerpParticipantInput[];
+	/** Straight-line prior-service amortisation period (see {@link averageFutureServiceYears}). */
+	avgFutureServiceYears: number;
+	/** Accounting discount rate — drives interest cost on the PBO. */
+	discountRate: number;
+	/** Corporate tax rate — the tax deduction on pension expense. */
+	taxRate: number;
+	/** Number of plan years to project (life-of-program horizon). */
+	horizonPlanYears: number;
+}
+
+/**
+ * Year-by-year consolidated SERP pension accounting (operator spec, 2026-07-25).
+ *
+ * Each participant's PBO rolls forward from plan start:
+ *   PBO(EOY) = PBO(BOY) + service cost + interest cost − benefits paid
+ * opening PBO(BOY) = the accrued **prior service cost** (past-service share of the PBO); interest
+ * cost = discount rate × PBO(BOY); benefits paid come from the benefit stream. **Service cost** is
+ * the straight-line accrual recognised each year until the participant's NRA; **prior-service
+ * amortisation** is the level `priorServiceCost / avgFutureServiceYears`, capped at the remaining
+ * unamortised balance so a fractional period ends cleanly. Pension expense = service cost +
+ * interest cost + amortisation. Values are summed across SERP participants per plan year.
+ *
+ * Mortality is death-at-LE: the benefit stream already ends at each participant's life expectancy,
+ * so no survival weighting is applied (a mortality table is a later refinement).
+ */
+export function serpEarningsByYear(params: SerpEarningsParams): SerpAccountingYearRaw[] {
+	const { participants, avgFutureServiceYears, discountRate, taxRate, horizonPlanYears } = params;
+	const zero = new Big(0);
+
+	// Consolidated per-year accumulators.
+	const rows: SerpAccountingYearRaw[] = Array.from({ length: horizonPlanYears }, (_, i) => ({
+		planYear: i + 1,
+		serviceCost: zero,
+		interestCost: zero,
+		priorServiceCostAmortization: zero,
+		pensionExpense: zero,
+		pboBoy: zero,
+		pboEoy: zero,
+		unrecognizedPriorServiceCostEoy: zero,
+		benefitTaxDeduction: zero,
+		netSerpEarningsImpact: zero
+	}));
+
+	for (const { pension, currentAge, benefitStream } of participants) {
+		const benefitByPlanYear = new Map<number, Big>();
+		for (const year of benefitStream) {
+			benefitByPlanYear.set(year.age - currentAge, new Big(year.amount));
+		}
+		const levelAmort =
+			avgFutureServiceYears > 0 ? pension.priorServiceCost.div(avgFutureServiceYears) : zero;
+
+		let pboBoy = pension.priorServiceCost;
+		let amortRemaining = pension.priorServiceCost;
+		for (let planYear = 1; planYear <= horizonPlanYears; planYear++) {
+			const serviceCost = planYear <= pension.futureServiceYears ? pension.annualServiceCost : zero;
+			const interestCost = pboBoy.times(discountRate);
+			const benefitsPaid = benefitByPlanYear.get(planYear) ?? zero;
+			// Level amortisation, capped at the remaining unamortised balance (handles fractional periods).
+			const amort = amortRemaining.gt(0)
+				? levelAmort.gt(amortRemaining)
+					? amortRemaining
+					: levelAmort
+				: zero;
+			amortRemaining = amortRemaining.minus(amort);
+			const pboEoy = pboBoy.plus(serviceCost).plus(interestCost).minus(benefitsPaid);
+			const pensionExpense = serviceCost.plus(interestCost).plus(amort);
+			const taxDeduction = pensionExpense.times(taxRate);
+
+			const row = rows[planYear - 1];
+			row.serviceCost = row.serviceCost.plus(serviceCost);
+			row.interestCost = row.interestCost.plus(interestCost);
+			row.priorServiceCostAmortization = row.priorServiceCostAmortization.plus(amort);
+			row.pensionExpense = row.pensionExpense.plus(pensionExpense);
+			row.pboBoy = row.pboBoy.plus(pboBoy);
+			row.pboEoy = row.pboEoy.plus(pboEoy);
+			row.unrecognizedPriorServiceCostEoy = row.unrecognizedPriorServiceCostEoy.plus(amortRemaining);
+			row.benefitTaxDeduction = row.benefitTaxDeduction.plus(taxDeduction);
+			// After-tax earnings impact: −pension expense + tax deduction (signed, an earnings charge).
+			row.netSerpEarningsImpact = row.netSerpEarningsImpact
+				.minus(pensionExpense)
+				.plus(taxDeduction);
+
+			pboBoy = pboEoy;
+		}
+	}
+	return rows;
+}

@@ -197,24 +197,36 @@ describe('deriveReport', () => {
 		};
 	}
 
-	it('binds COLI earnings impact (5.2 column [4]) from the accounting module for a feasible option', () => {
+	it('binds COLI [4] and combined [5] from the accounting module for a feasible option', () => {
 		const model = deriveReport(buildQuoteWithDesign(), today);
 		const led = model.earningsLedgerByOption['cost-recovery'];
 		expect(led).toBeDefined();
 		expect(led.coliByYear[2026]).toBe('(2,000)'); // year 1: 8,000 AV − 10,000 premium
 		expect(led.coliByYear[2028]).toBe('83,000'); // LE year: AV released + 100,000 death benefit
 		expect(led.coliTotal).toBe('80,000'); // life of program: 100,000 DB − 20,000 premiums
+		// This life has no benefit stream, so net SERP is 0 and combined [5] equals COLI [4].
+		expect(led.combinedByYear[2026]).toBe('(2,000)');
+		expect(led.combinedTotal).toBe('80,000');
 	});
 
-	it('suppresses the COLI column for an option whose solve was infeasible', () => {
+	it('binds the SERP columns [1][2][3] (option-independent, zero for an empty benefit stream)', () => {
+		const model = deriveReport(buildQuoteWithDesign(), today);
+		expect(model.earningsLedgerSerp).not.toBeNull();
+		expect(model.earningsLedgerSerp?.col1ByYear[2026]).toBe('0');
+		expect(model.earningsLedgerSerp?.col1Total).toBe('0');
+	});
+
+	it('suppresses the per-option columns for an infeasible solve, but still shows the SERP columns', () => {
 		const model = deriveReport(buildQuoteWithDesign(true), today);
 		expect(model.earningsLedgerByOption['cost-recovery']).toBeUndefined();
+		expect(model.earningsLedgerSerp).not.toBeNull(); // SERP is option-independent
 	});
 
-	it('has no COLI earnings ledger before a run', () => {
+	it('has no earnings ledger before a run', () => {
 		const quote = buildQuoteWithDesign();
 		quote.results = null;
 		const model = deriveReport(quote, today);
 		expect(model.earningsLedgerByOption).toEqual({});
+		expect(model.earningsLedgerSerp).toBeNull();
 	});
 });

@@ -15,6 +15,7 @@ import {
 	averageFutureServiceYears,
 	discountToToday,
 	pvBenefitsAtNRA,
+	serpEarningsByYear,
 	serpPensionForParticipant,
 	type BenefitStreamYear
 } from './serp-pension';
@@ -93,5 +94,63 @@ describe('averageFutureServiceYears', () => {
 
 	it('is zero with no participants', () => {
 		expect(averageFutureServiceYears([])).toBe(0);
+	});
+});
+
+describe('serpEarningsByYear (roll-forward)', () => {
+	// Single participant, 0% discount so interest cost is 0 and totals are exact.
+	//   PBO 200,000; prior service cost 133,333.33; annual service cost 6,666.67; future service 10.
+	//   Benefits 100,000 at ages 65 & 66 → plan years 10 & 11 (current age 55).
+	//   Service cost + amortisation both run years 1–10; pension expense 20,000/yr for 10 years.
+	const pension = serpPensionForParticipant({ stream, discountRate: 0, nra: 65, currentAge: 55, pastServiceYears: 20 });
+	const rows = serpEarningsByYear({
+		participants: [{ pension, currentAge: 55, benefitStream: stream }],
+		avgFutureServiceYears: 10,
+		discountRate: 0,
+		taxRate: 0.21,
+		horizonPlanYears: 15
+	});
+
+	it('recognises service cost + amortisation as pension expense over the service years', () => {
+		expect(rows[0].serviceCost.toFixed(2)).toBe('6666.67');
+		expect(rows[0].priorServiceCostAmortization.toFixed(2)).toBe('13333.33');
+		expect(rows[0].pensionExpense.toFixed(2)).toBe('20000.00');
+		expect(rows[0].interestCost.toString()).toBe('0'); // 0% discount
+	});
+
+	it('nets earnings impact after tax: −expense + expense × rate (report column [3])', () => {
+		// −20,000 + 20,000 × 0.21 = −15,800
+		expect(rows[0].benefitTaxDeduction.toFixed(2)).toBe('4200.00');
+		expect(rows[0].netSerpEarningsImpact.toFixed(2)).toBe('-15800.00');
+	});
+
+	it('stops service cost and amortisation after their windows', () => {
+		expect(rows[10].serviceCost.toString()).toBe('0'); // year 11 > 10 future service years
+		expect(rows[10].pensionExpense.toString()).toBe('0'); // amortisation also done, interest 0
+	});
+
+	it('rolls the PBO down to zero as benefits are paid (0% discount)', () => {
+		// Opening prior service cost, accrues service cost, then benefits at years 10 & 11 unwind it.
+		expect(rows[0].pboBoy.toFixed(2)).toBe('133333.33');
+		expect(rows[10].pboEoy.toFixed(2)).toBe('0.00'); // after the year-11 benefit payment
+	});
+
+	it('life-of-program pension expense equals the PBO at a 0% discount rate', () => {
+		const total = rows.reduce((s, r) => s.plus(r.pensionExpense), new Big(0));
+		expect(total.toFixed(2)).toBe('200000.00'); // = PBO today
+	});
+
+	it('accrues interest cost on the PBO when the discount rate is positive', () => {
+		const p = serpPensionForParticipant({ stream, discountRate: 0.05, nra: 65, currentAge: 55, pastServiceYears: 20 });
+		const r = serpEarningsByYear({
+			participants: [{ pension: p, currentAge: 55, benefitStream: stream }],
+			avgFutureServiceYears: 10,
+			discountRate: 0.05,
+			taxRate: 0.21,
+			horizonPlanYears: 15
+		});
+		// Interest cost year 1 = 5% × opening PBO (prior service cost).
+		expect(r[0].interestCost.gt(0)).toBe(true);
+		expect(r[0].interestCost.toFixed(2)).toBe(p.priorServiceCost.times(0.05).toFixed(2));
 	});
 });
