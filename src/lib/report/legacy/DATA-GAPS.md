@@ -69,7 +69,7 @@ placeholder column on those ten pages is one of these, or arithmetic on them:
 | **AOCI balance & amortisation** | Accumulated other comprehensive income, before and after tax benefit. |
 | **Unfunded accrued pension cost** | Annual and EOY balances (audit trail columns 6–7). |
 | **Mortality weighting** | Survival-weighted expense; also the "% living at average life expectancy" footnote on 5.2. |
-| **COLI earnings recognition** | Per FASB ASC 325-30 cash-surrender-value method: premium, CSV change, death proceeds → earnings. The **inputs already exist** on `ParticipantResult.designs[].illustrationYears`; only the accounting treatment is missing. |
+| ~~**COLI earnings recognition**~~ | ☑ **BUILT (2026-07-25)** — `src/lib/accounting/coliEarningsByOption`, wired to page 5.2 column [4]. Operator formula: ΔAV − premium + death benefit at LE, account value released at death (nets to DB − premiums). Uses account value, not CSV. |
 
 Two structural notes that will matter when this is built:
 
@@ -280,11 +280,14 @@ The **only** column that resolves today is the calendar year (30 years from the 
 - ☐ **[3] Net SERP Earnings Impact** — `[1] + [2]`. Falls out once [1] and [2] exist, but note
   the source marks it `**`: it "reflects impact of actuarial mortality projections required under
   GAAP", i.e. it is mortality-weighted, not a plain sum of the two columns for a single life.
-- ☐ **[4] Hypothetical COLI Earnings Impact** — annual earnings from the policy: cash-value
-  growth less premium expense, plus death-benefit gains, per option. The per-year illustration
-  stream needed for this **is already persisted** (`ParticipantResult.designs[].illustrationYears`,
-  carrying account value, CSV, death benefit, premium, withdrawals and loans), so this is the
-  closest column to buildable — it needs the accounting treatment defined, not new engine data.
+- ☑ **[4] Hypothetical COLI Earnings Impact — RESOLVED (2026-07-25).** Built in the accounting
+  module (`src/lib/accounting/`, `coliEarningsByOption`) and wired to the ledger via
+  `ReportModel.earningsLedgerByOption`. Operator formula: assume death at each participant's life
+  expectancy; annual impact = **change in account value − premium**, plus the **death benefit** in
+  the LE year, with the account value **released at death** (its change in the LE year is
+  `0 − prior AV`), so lifetime earnings net to `death benefit − premiums` with no double count.
+  Uses account value, not CSV. An option with any infeasible solve is suppressed (shows "—"), and
+  the totals row is life-of-program (not the 30 displayed years). Live-verified.
 - ☐ **[5] Combined Earnings Impact** — `[3] + [4]`. Falls out once both exist.
 - ☐ **Totals row (`^`)** — totals over the **life of the program**, explicitly *not* the sum of
   the 30 displayed years. Needs the full-horizon projection, not just the displayed window.

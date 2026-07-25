@@ -145,4 +145,76 @@ describe('deriveReport', () => {
 		expect(model.firstPaymentAge).toBe(65);
 		expect(model.payoutYears).toBe(20);
 	});
+
+	/**
+	 * A quote whose one COLI life carries a design reaching its LE age, so the accounting module's
+	 * COLI earnings series (page 5.2 column [4]) has something to bind. Death at LE 84 (policy year
+	 * 3); premiums 10k in years 1–2; AV 8k → 17k → 25k; death benefit 100k. Reference year 2026.
+	 */
+	function buildQuoteWithDesign(infeasible = false): Quote {
+		return {
+			schemaVersion: SCHEMA_VERSION,
+			id: 'q2',
+			company: { name: 'Acme', corporateTaxRate: 0.21 },
+			modelSettings: { ...DEFAULT_MODEL_SETTINGS },
+			census: [makeInsured({ id: 'a', planMembership: 'BOTH', lifeExpectancy: 84 })],
+			results: {
+				perParticipant: [
+					{
+						insuredId: 'a',
+						finalAverageSalary: '100000.00',
+						annualBenefit: '60000.00',
+						benefitStream: [],
+						totalBenefitCost: '0.00',
+						netPresentValue: '0.00',
+						designs: {
+							'cost-recovery': {
+								faceAmount: '100000.00',
+								firstYearPremium: '10000.00',
+								illustrationYears: [
+									{ policyYear: 1, age: 82, premium: '10000.00', accountValue: '8000.00', cashSurrenderValue: '0.00', deathBenefit: '100000.00' },
+									{ policyYear: 2, age: 83, premium: '10000.00', accountValue: '17000.00', cashSurrenderValue: '0.00', deathBenefit: '100000.00' },
+									{ policyYear: 3, age: 84, premium: '0.00', accountValue: '25000.00', cashSurrenderValue: '0.00', deathBenefit: '100000.00' }
+								]
+							}
+						}
+					}
+				],
+				aggregate: {
+					totalBenefitCost: '0.00',
+					netPresentValue: '0.00',
+					byOption: {
+						'cost-recovery': {
+							totalFaceAmount: '100000.00',
+							totalFirstYearPremium: '10000.00',
+							policyCount: 1,
+							...(infeasible ? { infeasibleCount: 1 } : {})
+						}
+					}
+				},
+				asOf: '2026-01-01'
+			}
+		};
+	}
+
+	it('binds COLI earnings impact (5.2 column [4]) from the accounting module for a feasible option', () => {
+		const model = deriveReport(buildQuoteWithDesign(), today);
+		const led = model.earningsLedgerByOption['cost-recovery'];
+		expect(led).toBeDefined();
+		expect(led.coliByYear[2026]).toBe('(2,000)'); // year 1: 8,000 AV − 10,000 premium
+		expect(led.coliByYear[2028]).toBe('83,000'); // LE year: AV released + 100,000 death benefit
+		expect(led.coliTotal).toBe('80,000'); // life of program: 100,000 DB − 20,000 premiums
+	});
+
+	it('suppresses the COLI column for an option whose solve was infeasible', () => {
+		const model = deriveReport(buildQuoteWithDesign(true), today);
+		expect(model.earningsLedgerByOption['cost-recovery']).toBeUndefined();
+	});
+
+	it('has no COLI earnings ledger before a run', () => {
+		const quote = buildQuoteWithDesign();
+		quote.results = null;
+		const model = deriveReport(quote, today);
+		expect(model.earningsLedgerByOption).toEqual({});
+	});
 });

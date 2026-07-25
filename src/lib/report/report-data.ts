@@ -11,6 +11,7 @@
 import { Big, formatMoneyDisplay } from '$lib/money/money';
 import { ageNearestBirthday, completedYearsBetween } from '$lib/dates/age';
 import { survivorBenefitAtAge, survivorBenefitStream } from '$lib/engine/survivor-benefit';
+import { computeAccounting } from '$lib/accounting';
 import {
 	isColiParticipant,
 	isSerpParticipant,
@@ -365,6 +366,19 @@ export interface OptionLedger {
 }
 
 /**
+ * COLI earnings impact for one funding option (report page 5.2, column [4]), from the accounting
+ * module. Keyed by calendar year so the ledger sheet binds each of its displayed years directly.
+ * An option present here is feasible and run; infeasible or undesigned options are omitted (the
+ * sheet then shows "—"). Signed display: a charge to earnings is parenthesized.
+ */
+export interface EarningsLedgerColiDisplay {
+	/** Column [4] per calendar year — grouped whole dollars, negatives parenthesized. */
+	coliByYear: Record<number, string>;
+	/** Life-of-program total for column [4] — not limited to the years the sheet displays. */
+	coliTotal: string;
+}
+
+/**
  * Census age span and mortality assumption for the Appendix G chart footnote. Derived from
  * inputs, so it fills pre-run even though the chart itself awaits a mortality table.
  */
@@ -450,6 +464,11 @@ export interface ReportModel {
 	faceSurvivorByOption: Record<string, FaceSurvivorAnalysis>;
 	/** Year-by-year ledger per funding option, keyed by strategy id (Appendix C). */
 	ledgerByOption: Record<string, OptionLedger>;
+	/**
+	 * COLI earnings impact per funding option (page 5.2 column [4]), keyed by strategy id. Only
+	 * feasible, run options appear; others are absent and the sheet renders "—".
+	 */
+	earningsLedgerByOption: Record<string, EarningsLedgerColiDisplay>;
 	/** Census age span + life expectancy for the mortality chart footnote (Appendix G). */
 	mortalityAssumptions: MortalityAssumptions;
 
@@ -1078,6 +1097,35 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		);
 	}
 
+	// Page 5.2 column [4] — COLI earnings impact, from the accounting module. Computed only after a
+	// run (it reads the illustration streams); an option with any infeasible solve is suppressed,
+	// matching how pages 4.3 / 4.5 refuse to total a design built on a solve that missed its target.
+	const earningsLedgerByOption: Record<string, EarningsLedgerColiDisplay> = {};
+	if (results) {
+		const accounting = computeAccounting({
+			results,
+			census,
+			company,
+			settings: quote.modelSettings,
+			refDate: legacyRefDate
+		});
+		const grouped = (b: Big) =>
+			b.lt(0) ? `(${formatMoneyDisplay(b.abs(), 0)})` : formatMoneyDisplay(b, 0);
+		for (const option of REPORT_FUNDING_OPTIONS) {
+			const series = accounting.coliByOption[option.id];
+			if (!series) continue;
+			if ((results.aggregate.byOption?.[option.id]?.infeasibleCount ?? 0) > 0) continue;
+			const coliByYear: Record<number, string> = {};
+			let total = new Big(0);
+			for (const year of series) {
+				const impact = new Big(year.coliEarningsImpact ?? '0');
+				coliByYear[year.calendarYear] = grouped(impact);
+				total = total.plus(impact);
+			}
+			earningsLedgerByOption[option.id] = { coliByYear, coliTotal: grouped(total) };
+		}
+	}
+
 	// Census rows
 	const censusRows: CensusRow[] = census.map((i) => ({
 		name: fullName(i),
@@ -1194,6 +1242,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		benefitStatement: benefitStatementFor(census[0], legacyRefDate, resultById),
 		faceSurvivorByOption,
 		ledgerByOption,
+		earningsLedgerByOption,
 		mortalityAssumptions: mortalityAssumptionsFrom(census, legacyRefDate),
 
 		legacyAsOfDisplay: longDate(legacyRefDate),

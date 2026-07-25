@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Legacy Report — E3 Annual Impact on Earnings, Option 3 (section page 5.2-3).
-	 * Placeholder: every column awaits the accounting engine — see DATA-GAPS.md.
+	 * Column [4] (COLI earnings impact) is live; the SERP columns await the accounting engine.
 	 */
 	import type { ReportModel } from '../../report-data';
 	import EarningsLedgerSheet from './EarningsLedgerSheet.svelte';
@@ -12,6 +12,7 @@
 <EarningsLedgerSheet
 	{report}
 	pageNo="5.2-3"
+	optionId="premium-deposit"
 	optionTitle="Option 3 — SERP Benefit Funding Wherewithal Based on COLI Assets"
 	closingNote={{
 		marker: '*',

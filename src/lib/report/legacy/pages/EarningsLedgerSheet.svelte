@@ -2,12 +2,12 @@
 	/**
 	 * Shared layout for the four "Annual Impact on Earnings — Summary" ledger sheets
 	 * (source: "E3 Earnings Imp Ledger.pdf", section pages 5.2-1 … 5.2-4) — one per funding
-	 * option, identical in structure and differing only in title and closing note.
+	 * option, identical in structure and differing only in title, page number, and closing note.
 	 *
-	 * ⚠ **Placeholder page.** Every figure here depends on GAAP accounting calculations the app
-	 * does not perform yet (SERP earnings accrual, deferred tax, and hypothetical COLI earnings),
-	 * so all five columns render "—". Calendar years are real — they are the only column that can
-	 * be derived today. Each column is logged individually in DATA-GAPS.md.
+	 * **Column [4] (Hypothetical COLI Earnings Impact) is live** — bound to the accounting module
+	 * via `report.earningsLedgerByOption[optionId]`. The SERP columns [1]–[3], the combined column
+	 * [5], and their totals still render "—" pending the pension side (see DATA-GAPS.md). Calendar
+	 * years are real. Column [4] shows "—" until a run, or when the option's solve was infeasible.
 	 */
 	import type { ReportModel } from '../../report-data';
 	import LegacyPageShell from './LegacyPageShell.svelte';
@@ -15,11 +15,14 @@
 	let {
 		report,
 		pageNo,
+		optionId,
 		optionTitle,
 		closingNote
 	}: {
 		report: ReportModel;
 		pageNo: string;
+		/** Funding strategy id this sheet displays — keys column [4] into the accounting series. */
+		optionId: string;
 		/** e.g. "Option 1 - Recovery of Net Program Costs from COLI upon Mortality". */
 		optionTitle: string;
 		/** The per-option note above the shared footnotes (marked * or ~ in the source). */
@@ -35,7 +38,12 @@
 	const firstYear = $derived(new Date(`${report.legacyRefDate}T00:00:00`).getFullYear());
 	const years = $derived(Array.from({ length: LEDGER_YEARS }, (_, i) => firstYear + i));
 
-	/** Placeholder until the accounting engine lands — see DATA-GAPS.md. */
+	/** COLI earnings impact for this option, or undefined pre-run / when the option is suppressed. */
+	const coli = $derived(report.earningsLedgerByOption?.[optionId]);
+	/** Column [4] for a calendar year: the option's value, "0" once run but past program end, else "—". */
+	const coliFor = (year: number): string => (coli ? (coli.coliByYear[year] ?? '0') : GAP);
+
+	/** Placeholder for the columns still awaiting the GAAP accounting layer — see DATA-GAPS.md. */
 	const GAP = '—';
 </script>
 
@@ -71,7 +79,7 @@
 				<td class="num gap">{GAP}</td>
 				<td class="num gap">{GAP}</td>
 				<td class="num gap">{GAP}</td>
-				<td class="num gap">{GAP}</td>
+				<td class="num" class:gap={!coli}>{coli ? coli.coliTotal : GAP}</td>
 				<td class="num gap">{GAP}</td>
 			</tr>
 			{#each years as year (year)}
@@ -80,7 +88,7 @@
 					<td class="num gap">{GAP}</td>
 					<td class="num gap">{GAP}</td>
 					<td class="num gap">{GAP}</td>
-					<td class="num gap">{GAP}</td>
+					<td class="num" class:gap={!coli}>{coliFor(year)}</td>
 					<td class="num gap">{GAP}</td>
 				</tr>
 			{/each}

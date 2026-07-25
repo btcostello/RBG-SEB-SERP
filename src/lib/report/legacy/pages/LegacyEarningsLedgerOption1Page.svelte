@@ -12,6 +12,7 @@
 <EarningsLedgerSheet
 	{report}
 	pageNo="5.2-1"
+	optionId="cost-recovery"
 	optionTitle="Option 1 — Recovery of Net Program Costs from COLI upon Mortality"
 	closingNote={{
 		marker: '*',

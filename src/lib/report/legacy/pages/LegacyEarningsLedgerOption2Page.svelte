@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Legacy Report — E3 Annual Impact on Earnings, Option 2 (section page 5.2-2).
-	 * Placeholder: every column awaits the accounting engine — see DATA-GAPS.md.
+	 * Column [4] (COLI earnings impact) is live; the SERP columns await the accounting engine.
 	 *
 	 * Option 2 alone carries the "~" note instead of the shared "*" one: because the policy funds
 	 * the benefits, its combined impact is a net of premiums paid, benefits paid from company cash
@@ -16,6 +16,7 @@
 <EarningsLedgerSheet
 	{report}
 	pageNo="5.2-2"
+	optionId="benefit-distribution"
 	optionTitle="Option 2 — SERP Benefit Funding from COLI Assets"
 	closingNote={{
 		marker: '~',
