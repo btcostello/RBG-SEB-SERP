@@ -92,7 +92,12 @@ Still needed by page 3.2 (Projections). Some are available post-run; others need
 - ☐ **5-Year Final Average Salary** — the engine's FAS (`finalAverageSalary`). Currently only present after a run (via results). Needs a pure derivation to show pre-run.
 - ☑ **Initial pre-retirement survivor benefit** — RESOLVED (2026-07-18). `engine/survivor-benefit.ts` computes the survivor stream from the per-participant durational schedule; page 3.2 shows the current-year value. Pure, so it fills pre-run.
 - ⧗ **Annual SERP benefit** & **Total SERP benefit to life expectancy** — available from results after a run (`annualBenefit`, `totalBenefitCost`); shown when present, else "—". A pure pre-run derivation would let them show without a run.
-- Note: "Fixed Benefit" participants (benefitPercentage 0 & benefitAmount > 0) show "Fixed Benefit" in the % FAS column; their benefit amounts aren't calculated yet (fixed-benefit calc is post-MVP).
+- ☑ **Fixed-benefit calc — RESOLVED (2026-07-25).** The annual benefit is now the additive sum of
+  its bases (Fixed $ + %FAS + unit-credit × credited service), with COLA escalation and the
+  min/max payout clamp applied to the stream — `engine/benefit-stream.ts` (`composeAnnualBenefit`)
+  and `engine/compute-liability.ts`. "Fixed Benefit" participants (benefitPercentage 0 &
+  benefitAmount > 0) still show "Fixed Benefit" in the % FAS column, but their benefit amount now
+  computes through results like any other participant.
 
 ## Missing input fields (to add to the app)
 - ☑ **Plan Effective Date** — RESOLVED. Added `effectiveDate` (optional ISO date) to `ModelSettings`, with a date input in the Model settings form; surfaced on `ReportModel.planSpecs.effectiveDate` (long form). Page 2.4 shows it, or "— not set —" until entered.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeLiability } from './compute-liability';
+import { computeLiability, creditedServiceYears } from './compute-liability';
 import type { Insured } from '$lib/domain';
 import { makeInsured, makeSettings } from '$lib/testing/fixtures';
 
@@ -63,6 +63,51 @@ describe('computeLiability (FR15, FR16, NFR5)', () => {
 		expect(discounted.aggregate.netPresentValue.lt(discounted.aggregate.totalBenefitCost)).toBe(
 			true
 		);
+	});
+
+	it('adds a fixed-dollar benefit additively on top of the %FAS benefit', () => {
+		// 24,000 fixed + 60% × 100,000 = 84,000/yr
+		const result = computeLiability({
+			census: [insured({ benefitAmount: '24000' })],
+			settings,
+			asOf
+		});
+		expect(result.perParticipant[0].annualBenefit.toString()).toBe('84000');
+	});
+
+	it('adds a unit-credit benefit: unitCredit × credited service × FAS', () => {
+		// Retire 65 at age 60 → 5 future years; All Years basis, hired 2005-01-01 (22 completed
+		// years to 2027-06-15) → 27 credited years. 1% × 27 × 100,000 = 27,000, plus 60% × 100,000.
+		const result = computeLiability({
+			census: [insured({ benefitPercentage: 0.6, unitCredit: 0.01, serviceBasis: 'All Years' })],
+			settings,
+			asOf
+		});
+		expect(creditedServiceYears(insured({ serviceBasis: 'All Years' }), asOf)).toBe(27);
+		expect(result.perParticipant[0].annualBenefit.toString()).toBe('87000');
+	});
+
+	it('credits only future service under the Future Service basis', () => {
+		// Age 60, retire 65 → 5 future years, regardless of hire date.
+		expect(creditedServiceYears(insured({ serviceBasis: 'Future Service' }), asOf)).toBe(5);
+	});
+
+	it('applies COLA escalation to the benefit stream (raising total cost above level)', () => {
+		const level = computeLiability({ census: [insured()], settings, asOf });
+		const escalated = computeLiability({ census: [insured({ colaScale: 0.02 })], settings, asOf });
+		expect(escalated.perParticipant[0].benefitStream[0].amount.toString()).toBe('60000'); // level yr 1
+		expect(escalated.perParticipant[0].totalBenefitCost.gt(level.perParticipant[0].totalBenefitCost)).toBe(true);
+	});
+
+	it('clamps the payout to maxBenefitYears', () => {
+		// LE 84, retire 65 → 20 payments; a 10-year cap gives 10 × 60,000 = 600,000.
+		const result = computeLiability({
+			census: [insured({ maxBenefitYears: 10 })],
+			settings,
+			asOf
+		});
+		expect(result.perParticipant[0].benefitStream).toHaveLength(10);
+		expect(result.perParticipant[0].totalBenefitCost.toString()).toBe('600000');
 	});
 
 	it('is deterministic for identical inputs (NFR1)', () => {
