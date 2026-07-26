@@ -11,11 +11,10 @@
 	import { CompanySchema, fieldErrors } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
-	import CensusEditor from '$lib/components/CensusEditor.svelte';
-	import LiabilityResults from '$lib/components/LiabilityResults.svelte';
+	import ExecutiveRoster from '$lib/components/ExecutiveRoster.svelte';
 	import RunButton from '$lib/components/RunButton.svelte';
 	import ProgressIndicator from '$lib/components/ProgressIndicator.svelte';
-	import AssetResults from '$lib/components/AssetResults.svelte';
+	import WorkspaceResults from '$lib/components/WorkspaceResults.svelte';
 	import QuoteList from '$lib/components/QuoteList.svelte';
 
 	let saved = $state(false);
@@ -61,12 +60,9 @@
 
 <main>
 	<header class="masthead">
-		<p class="eyebrow">COLI-Financed SERP Proposal Builder</p>
+		<p class="eyebrow">COLI-Financed SERP · Proposal Workspace</p>
 		<h1>SERP Pro</h1>
 		<p class="byline">by The Ridgeback Group and Schiff Executive Benefits</p>
-		<p class="tagline">
-			Build a supplemental executive retirement plan financed with corporate-owned life insurance.
-		</p>
 	</header>
 
 	<QuoteList />
@@ -94,13 +90,13 @@
 			</form>
 		</section>
 	{:else}
-		<section class="panel">
-			<div class="header">
+		<section class="workspace">
+			<div class="ws-header">
 				<div>
 					<p class="eyebrow">Active quote</p>
 					<h2>{quoteStore.current.company.name || 'Untitled quote'}</h2>
 				</div>
-				<div class="header-actions">
+				<div class="ws-actions">
 					<button class="btn btn-primary" type="button" onclick={saveCurrent}>
 						{saved ? 'Saved ✓' : 'Save quote'}
 					</button>
@@ -109,58 +105,64 @@
 					</button>
 				</div>
 			</div>
-			<div class="forms">
-				<CompanyForm />
-				<ModelSettingsForm />
+
+			<!-- Inputs on top -->
+			<div class="setup">
+				<div class="setup-block">
+					<p class="sec-eyebrow">Plan setup</p>
+					<div class="forms">
+						<CompanyForm />
+						<ModelSettingsForm />
+					</div>
+				</div>
+
+				<div class="setup-block">
+					<ExecutiveRoster />
+				</div>
+
+				<div class="run-block">
+					<RunButton />
+					<ProgressIndicator />
+				</div>
 			</div>
-			<div class="census">
-				<h2 class="section-title">Executive census</h2>
-				<CensusEditor />
+
+			<!-- Results below -->
+			<div class="results">
+				<WorkspaceResults />
 			</div>
-			<RunButton />
-			<ProgressIndicator />
-			<LiabilityResults />
-			<AssetResults />
 		</section>
 	{/if}
 </main>
 
 <style>
 	main {
-		max-width: 52rem;
+		max-width: 66rem;
 		margin: 0 auto;
-		padding: 2.5rem 1.25rem 4rem;
+		padding: 2.5rem 1.5rem 5rem;
 	}
 
 	/* ---- masthead ---- */
 	.masthead {
-		margin-bottom: 1.75rem;
+		margin-bottom: 2rem;
 	}
 	.masthead h1 {
 		font-family: var(--serif);
 		font-weight: 600;
-		font-size: 2.6rem;
+		font-size: 2.4rem;
 		line-height: 1.05;
 		letter-spacing: -0.015em;
 		color: var(--ink);
-		margin: 0 0 0.35rem;
+		margin: 0 0 0.3rem;
 	}
 	.masthead .byline {
 		font-family: var(--sans);
 		font-size: 0.82rem;
 		font-weight: 500;
 		color: var(--muted);
-		margin: 0 0 0.85rem;
-	}
-	.masthead .tagline {
-		font-family: var(--serif);
-		font-size: 1.05rem;
-		color: var(--ink-soft);
 		margin: 0;
-		max-width: 34rem;
 	}
 
-	/* ---- eyebrow (matches the report) ---- */
+	/* ---- eyebrow ---- */
 	.eyebrow {
 		font-family: var(--sans);
 		font-size: 0.7rem;
@@ -180,7 +182,29 @@
 		vertical-align: 0.22em;
 	}
 
-	/* ---- panel (white card on the canvas) ---- */
+	/* section eyebrow inside the setup panel */
+	.sec-eyebrow {
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--bronze-deep);
+		margin: 0 0 1rem;
+		padding-bottom: 0.55rem;
+		border-bottom: 1px solid var(--line);
+		position: relative;
+	}
+	.sec-eyebrow::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		bottom: -1px;
+		width: 40px;
+		height: 2px;
+		background: var(--bronze);
+	}
+
+	/* ---- create panel (white card on the canvas) ---- */
 	.panel {
 		background: var(--paper);
 		border: 1px solid var(--line);
@@ -213,40 +237,57 @@
 		color: var(--ink-soft);
 	}
 
-	/* ---- active-quote header ---- */
-	.header {
+	/* ---- workspace: inputs on top, results below ---- */
+	.workspace {
+		display: flex;
+		flex-direction: column;
+		gap: 2.75rem;
+	}
+	.ws-header {
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
 		gap: 1rem;
-		border-bottom: 1px solid var(--line-soft);
+		border-bottom: 1px solid var(--line);
 		padding-bottom: 1.1rem;
-		margin-bottom: 1.4rem;
 	}
-	.header-actions {
+	.ws-header h2 {
+		font-family: var(--serif);
+		font-weight: 600;
+		font-size: 1.7rem;
+		color: var(--ink);
+		margin: 0;
+	}
+	.ws-actions {
 		display: flex;
 		gap: 0.5rem;
 		flex: 0 0 auto;
 	}
+
+	/* input band (a calm contained panel, distinct from the open results below) */
+	.setup {
+		background: var(--paper);
+		border: 1px solid var(--line);
+		border-radius: 2px;
+		box-shadow: 0 1px 8px rgba(14, 37, 48, 0.05);
+		padding: 1.75rem 1.9rem 1.9rem;
+		display: flex;
+		flex-direction: column;
+		gap: 2.25rem;
+	}
 	.forms {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-		gap: 1.25rem;
-		/* Each fieldset takes its natural height; without this the shorter Company column
-		   stretches to match Model settings and its inputs balloon vertically. */
+		gap: 1.5rem;
+		/* Each fieldset takes its natural height so the shorter column's inputs don't stretch. */
 		align-items: start;
 	}
-	.census {
-		margin-top: 1.75rem;
-	}
-	.section-title {
-		font-family: var(--serif);
-		font-weight: 600;
-		font-size: 1.15rem;
-		color: var(--ink);
-		margin: 0 0 0.75rem;
-		padding-bottom: 0.4rem;
-		border-bottom: 2px solid var(--ink);
+	.run-block {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		border-top: 1px solid var(--line-soft);
+		padding-top: 1.6rem;
 	}
 
 	/* ---- buttons ---- */

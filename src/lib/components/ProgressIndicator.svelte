@@ -15,11 +15,15 @@
 
 <style>
 	.progress {
-		background: #e8f0fe;
-		border: 1px solid #aac4f5;
-		border-radius: 6px;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.9rem;
-		color: #1a3a7a;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: var(--fill);
+		border: 1px solid var(--line);
+		border-left: 3px solid var(--accent);
+		border-radius: 2px;
+		padding: 0.55rem 0.9rem;
+		font-size: 0.85rem;
+		color: var(--ink-soft);
 	}
 </style>

@@ -11,6 +11,7 @@
 	<button type="button" onclick={() => runState.start()} disabled={!canRun}>
 		{runState.isRunning ? 'Running…' : 'Run model'}
 	</button>
+	<span class="hint">Designs all four COLI funding options for each executive.</span>
 	{#if runState.status === 'failed' && runState.error}
 		<p class="error">
 			{runFailureHeadline(runState.error.kind)}: {runState.error.message}
@@ -20,7 +21,7 @@
 
 {#if runState.validationIssues.length > 0}
 	<div class="validation" role="alert">
-		<p>Fix these issues before running:</p>
+		<p>Fix these before running:</p>
 		<ul>
 			{#each runState.validationIssues as issue (issue.label + issue.field + issue.message)}
 				<li><strong>{issue.label}:</strong> {issue.message}</li>
@@ -33,24 +34,46 @@
 	.run {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		margin: 1rem 0;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
 	}
 	button {
-		padding: 0.5rem 1.25rem;
-		font-weight: 600;
+		font-family: var(--sans);
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: 0.03em;
+		color: #fff;
+		background: var(--accent-deep);
+		border: 1px solid var(--accent-deep);
+		border-radius: 2px;
+		padding: 0.65rem 1.6rem;
+		cursor: pointer;
+	}
+	button:hover:not(:disabled) {
+		background: var(--accent);
+		border-color: var(--accent);
+	}
+	button:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+	.hint {
+		font-size: 0.8rem;
+		color: var(--muted);
 	}
 	.error {
-		color: #b00020;
-		margin: 0;
+		width: 100%;
+		color: var(--warn-tx);
+		font-size: 0.85rem;
+		margin: 0.25rem 0 0;
 	}
 	.validation {
-		background: #fdecea;
-		border: 1px solid #f5c2c0;
-		border-radius: 6px;
-		padding: 0.75rem 1rem;
-		margin-bottom: 1rem;
-		color: #7a1c17;
+		background: var(--warn-bg, #f8eee7);
+		border: 1px solid #d8b39c;
+		border-radius: 2px;
+		padding: 0.85rem 1.1rem;
+		margin-top: 1rem;
+		color: var(--warn-tx);
 	}
 	.validation p {
 		margin: 0 0 0.5rem;
