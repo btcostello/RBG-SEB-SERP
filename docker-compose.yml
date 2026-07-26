@@ -1,0 +1,17 @@
+# Local Postgres for development. `docker compose up -d` starts it; the connection string it
+# exposes matches DATABASE_URL in .env.example. Production uses Railway's managed Postgres instead.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: schiff
+      POSTGRES_PASSWORD: schiff
+      POSTGRES_DB: schiff
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
