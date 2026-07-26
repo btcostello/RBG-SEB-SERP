@@ -34,6 +34,7 @@ import {
 	averageFutureServiceYears,
 	serpEarningsByYear,
 	serpPensionForParticipant,
+	type ParticipantPension,
 	type SerpParticipantInput
 } from './serp-pension';
 
@@ -122,12 +123,17 @@ export interface ColiAccountingYear {
 }
 
 /**
- * Pension expense allocated to one participant (report 6.6). Names/keys are real; the split and
- * the percent-of-total await the pension expense calc.
+ * One participant's reference-year pension expense, allocated for report 6.6. The columns are the
+ * first plan year's figures (the sheet is titled for the plan reference year): service cost,
+ * prior-service amortisation, interest accrual, their total, and the participant's share of the
+ * consolidated total.
  */
 export interface ParticipantPensionAllocation {
 	insuredId: string;
-	/** This participant's share of consolidated pension expense. */
+	serviceCost: Pending;
+	priorServiceCostAmortization: Pending;
+	interestCost: Pending;
+	/** Service + amortisation + interest for the reference year. */
 	pensionExpense: Pending;
 	/** Share as a fraction of the consolidated total (the 6.6 "% of total" column). */
 	percentOfTotal: number | null;
@@ -321,6 +327,7 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 	// SERP pension side — BUILT. Assemble each participant's obligation, then roll it forward.
 	const resultById = new Map(results.perParticipant.map((p) => [p.insuredId, p]));
 	const serpParticipants: SerpParticipantInput[] = [];
+	const pensionById: { insuredId: string; pension: ParticipantPension }[] = [];
 	for (const insured of census.filter(isSerpParticipant)) {
 		const result = resultById.get(insured.id);
 		if (!result) continue;
@@ -333,10 +340,12 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 			pastServiceYears: Math.max(0, completedYearsBetween(insured.dateOfHire, refDate))
 		});
 		serpParticipants.push({ pension, currentAge, benefitStream: result.benefitStream });
+		pensionById.push({ insuredId: insured.id, pension });
 	}
+	const avgFutureServiceYears = averageFutureServiceYears(serpParticipants.map((p) => p.pension));
 	const serpRaw = serpEarningsByYear({
 		participants: serpParticipants,
-		avgFutureServiceYears: averageFutureServiceYears(serpParticipants.map((p) => p.pension)),
+		avgFutureServiceYears,
 		discountRate: settings.npvDiscountRate,
 		taxRate: company.corporateTaxRate,
 		horizonPlanYears
@@ -376,11 +385,27 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		}));
 	}
 
-	// 6.6 allocates consolidated pension expense across SERP participants (a COLI-only life carries
-	// no pension expense). Keys are real; the split awaits the pension expense calc.
-	const byParticipant: ParticipantPensionAllocation[] = census
-		.filter(isSerpParticipant)
-		.map((insured) => ({ insuredId: insured.id, pensionExpense: null, percentOfTotal: null }));
+	// 6.6 allocates the reference-year (plan year 1) pension expense across SERP participants. Each
+	// participant's year-1 figures: service cost, prior-service amortisation, and interest on the
+	// opening PBO (which is their prior service cost), then the share of the consolidated total.
+	const allocations = pensionById.map(({ insuredId, pension }) => {
+		const serviceCost = pension.futureServiceYears >= 1 ? pension.annualServiceCost : new Big(0);
+		const levelAmort =
+			avgFutureServiceYears > 0 ? pension.priorServiceCost.div(avgFutureServiceYears) : new Big(0);
+		const amort = levelAmort.gt(pension.priorServiceCost) ? pension.priorServiceCost : levelAmort;
+		const interestCost = pension.priorServiceCost.times(settings.npvDiscountRate);
+		const total = serviceCost.plus(amort).plus(interestCost);
+		return { insuredId, serviceCost, amort, interestCost, total };
+	});
+	const allocationTotal = allocations.reduce((sum, a) => sum.plus(a.total), new Big(0));
+	const byParticipant: ParticipantPensionAllocation[] = allocations.map((a) => ({
+		insuredId: a.insuredId,
+		serviceCost: formatMoney(a.serviceCost),
+		priorServiceCostAmortization: formatMoney(a.amort),
+		interestCost: formatMoney(a.interestCost),
+		pensionExpense: formatMoney(a.total),
+		percentOfTotal: allocationTotal.eq(0) ? null : a.total.div(allocationTotal).toNumber()
+	}));
 
 	return { status: 'partial', referenceYear, horizonPlanYears, serp, coliByOption, byParticipant };
 }

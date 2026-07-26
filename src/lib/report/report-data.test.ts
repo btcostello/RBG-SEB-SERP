@@ -231,12 +231,21 @@ describe('deriveReport', () => {
 		expect(row?.every((v) => v === '0')).toBe(true);
 	});
 
-	it('has no earnings ledger or audit trail before a run', () => {
+	it('binds the 6.6 cost allocation per participant with a % of total', () => {
+		const model = deriveReport(buildQuoteWithDesign(), today);
+		expect(model.costAllocation).not.toBeNull();
+		// The one life has no benefit stream, so its columns are zero and the share is undefined.
+		expect(model.costAllocation?.byInsuredId['a']).toEqual(['0', '0', '0', '0', '—']);
+		expect(model.costAllocation?.totals).toEqual(['0', '0', '0', '0', '100.0%']);
+	});
+
+	it('has no earnings ledger, audit trail, or cost allocation before a run', () => {
 		const quote = buildQuoteWithDesign();
 		quote.results = null;
 		const model = deriveReport(quote, today);
 		expect(model.earningsLedgerByOption).toEqual({});
 		expect(model.earningsLedgerSerp).toBeNull();
 		expect(model.auditTrail).toBeNull();
+		expect(model.costAllocation).toBeNull();
 	});
 });

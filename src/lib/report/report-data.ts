@@ -193,6 +193,8 @@ export interface PlanSpecsDisplay {
 /** One row of the legacy SERP Plan Census (page 3.1), computed as of the plan effective date. */
 export interface LegacyCensusRow {
 	index: number;
+	/** Stable participant id — lets option/allocation sheets (6.6) key back to this row. */
+	insuredId: string;
 	name: string;
 	/** SERP participant for whom COLI is not purchased (gets the "*" mark). */
 	serpNotColi: boolean;
@@ -412,6 +414,18 @@ export interface AuditTrailDisplay {
 }
 
 /**
+ * Reference-year pension expense allocation by participant (report page 6.6). Five formatted
+ * columns per SERP participant ([1] service cost, [2] prior-service amortisation, [3] interest,
+ * [4] total pension expense, [5] % of total), keyed by insured id, plus the consolidated totals
+ * row. Present only after a run with SERP participants.
+ */
+export interface CostAllocationDisplay {
+	byInsuredId: Record<string, string[]>;
+	/** Totals row — [1]–[4] consolidated, [5] is "100.0%". */
+	totals: string[];
+}
+
+/**
  * Census age span and mortality assumption for the Appendix G chart footnote. Derived from
  * inputs, so it fills pre-run even though the chart itself awaits a mortality table.
  */
@@ -501,6 +515,8 @@ export interface ReportModel {
 	earningsLedgerSerp: EarningsLedgerSerpDisplay | null;
 	/** Consolidated FASB ASC 715-30 audit trail (page 6.5), or null pre-run / no SERP participants. */
 	auditTrail: AuditTrailDisplay | null;
+	/** Reference-year pension expense allocation by participant (page 6.6), or null pre-run / no SERP. */
+	costAllocation: CostAllocationDisplay | null;
 	/**
 	 * COLI [4] and combined [5] columns of the 5.2 ledger per funding option, keyed by strategy id.
 	 * Only feasible, run options appear; others are absent and those columns render "—".
@@ -685,6 +701,7 @@ function benefitFormulaFrom(census: Insured[]): BenefitFormulaDisplay {
 function legacyCensusFrom(census: Insured[], refDate: string): LegacyCensusRow[] {
 	return census.filter(isSerpParticipant).map((insured, idx) => ({
 		index: idx + 1,
+		insuredId: insured.id,
 		name: `${insured.firstName} ${insured.lastName}`,
 		serpNotColi: !isColiParticipant(insured),
 		gender: insured.gender,
@@ -1140,6 +1157,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	// total a design built on a solve that missed its target.
 	let earningsLedgerSerp: EarningsLedgerSerpDisplay | null = null;
 	let auditTrail: AuditTrailDisplay | null = null;
+	let costAllocation: CostAllocationDisplay | null = null;
 	const earningsLedgerByOption: Record<string, EarningsLedgerOptionDisplay> = {};
 	if (results) {
 		const accounting = computeAccounting({
@@ -1196,6 +1214,32 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 				];
 			}
 			auditTrail = { byYear };
+
+			// Page 6.6 — reference-year pension expense allocated by participant, plus the totals row.
+			const pct = (fraction: number | null): string =>
+				fraction == null ? '—' : `${(fraction * 100).toFixed(1)}%`;
+			const byInsuredId: Record<string, string[]> = {};
+			for (const alloc of accounting.byParticipant) {
+				byInsuredId[alloc.insuredId] = [
+					grouped(new Big(alloc.serviceCost ?? '0')),
+					grouped(new Big(alloc.priorServiceCostAmortization ?? '0')),
+					grouped(new Big(alloc.interestCost ?? '0')),
+					grouped(new Big(alloc.pensionExpense ?? '0')),
+					pct(alloc.percentOfTotal)
+				];
+			}
+			// Totals = the consolidated reference-year figures (accounting.serp[0]); share is 100%.
+			const refYear = accounting.serp[0];
+			costAllocation = {
+				byInsuredId,
+				totals: [
+					grouped(new Big(refYear?.serviceCost ?? '0')),
+					grouped(new Big(refYear?.priorServiceCostAmortization ?? '0')),
+					grouped(new Big(refYear?.interestCost ?? '0')),
+					grouped(new Big(refYear?.pensionExpense ?? '0')),
+					'100.0%'
+				]
+			};
 		}
 
 		// COLI [4] and combined [5] per option.
@@ -1342,6 +1386,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		ledgerByOption,
 		earningsLedgerSerp,
 		auditTrail,
+		costAllocation,
 		earningsLedgerByOption,
 		mortalityAssumptions: mortalityAssumptionsFrom(census, legacyRefDate),
 

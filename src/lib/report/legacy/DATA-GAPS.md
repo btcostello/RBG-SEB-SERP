@@ -317,21 +317,25 @@ Source: `F1 SERP Summary.pdf` (6.1–6.3), `F2 COLI Summary.pdf` (6.4), `F3 Audi
 Operator notes: "4 accounting heavy pages in a row… I want the accounting pages roughed-in, but
 don't overbuild until we have a chance to build the GAAP layer."
 
-**Status: placeholder pages — every figure renders "—".** All six share one config-driven
-component, `pages/LegacyAccountingSheet.svelte` (label column + N numeric columns, optional
-period group headers, notes). Six near-identical tables would have been the wrong trade while
-the contents are all placeholders.
+**Status: 6.5 and 6.6 fully built (2026-07-25); 6.1–6.4 remain placeholders.** All six share one
+config-driven component, `pages/LegacyAccountingSheet.svelte` (label column + N numeric columns,
+optional period group headers, notes), which now takes optional per-row `values` so a wired sheet
+supplies data while the rest stay placeholders.
 
-**What is real today** (so it does not get rebuilt later):
+- ☑ **6.5 Audit Trail — BUILT.** All nine columns from the accounting module (`report.auditTrail`);
+  see the [4]–[9] audit-trail entries above. Live-verified.
+- ☑ **6.6 Cost Allocation — BUILT.** Reference-year (plan year 1) pension expense per SERP
+  participant — service cost, prior-service amortisation, interest, total, and % of consolidated
+  total (`report.costAllocation`). Totals row reconciles with the 6.5 year-1 consolidated figures.
+  Live-verified (two-participant split 66.7% / 33.3%). `LegacyCensusRow` gained `insuredId` so the
+  sheet keys allocations back to each participant.
+
+**Still placeholders — 6.1–6.4** (the double-entry SERP/COLI worksheets; 6.1 and 6.4 are the
+harder ones). What is real on those today:
 - **Period columns** on 6.1–6.4 — First Month / first Calendar Year / next Calendar Year, derived
   from the plan effective date via `accounting-periods.ts`.
-- **Calendar years** on 6.5 — 30 from the same reference date, matching the 5.2 ledger.
-- **Participant names and the year** on 6.6 — from `legacyCensus` (SERP participants only; a
-  COLI-only life carries no pension expense to allocate).
 - **Option labels** on 6.4 — from the funding registry, so they track the options the app designs.
 - **Row labels, entry descriptions and the ASC 325-30 note** — reproduced from the source.
-
-**All figures** → see the GAAP accounting engine table at the top of this file.
 
 Open questions:
 - ☐ **Does the COLI worksheet need continuation sheets for Options 3 and 4?** The source sheet

@@ -134,10 +134,17 @@ describe('computeAccounting (partial: COLI built, SERP pending)', () => {
 		expect(result.coliByOption['cost-recovery'][2].coliEarningsImpact).toBe('83000.00');
 	});
 
-	it('keys a pension allocation for each SERP participant (split still pending)', () => {
+	it('allocates the reference-year pension expense per SERP participant (zero here — no benefit stream)', () => {
 		const result = computeAccounting(params());
 		expect(result.byParticipant).toEqual([
-			{ insuredId: 'i1', pensionExpense: null, percentOfTotal: null }
+			{
+				insuredId: 'i1',
+				serviceCost: '0.00',
+				priorServiceCostAmortization: '0.00',
+				interestCost: '0.00',
+				pensionExpense: '0.00',
+				percentOfTotal: null // consolidated total is zero, so no meaningful share
+			}
 		]);
 	});
 
