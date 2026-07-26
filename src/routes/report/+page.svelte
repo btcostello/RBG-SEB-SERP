@@ -10,7 +10,7 @@
 	const hasReport = $derived(quoteStore.current?.results != null);
 </script>
 
-<svelte:head><title>Schiff SERP — Report</title></svelte:head>
+<svelte:head><title>SERP Pro — Report</title></svelte:head>
 
 <main class:paper={hasReport}>
 	{#if hasReport}

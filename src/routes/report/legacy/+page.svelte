@@ -11,7 +11,7 @@
 	const hasResults = $derived(quoteStore.current?.results != null);
 </script>
 
-<svelte:head><title>Schiff SERP — Legacy Report</title></svelte:head>
+<svelte:head><title>SERP Pro — Legacy Report</title></svelte:head>
 
 <main class:paper={hasQuote}>
 	{#if hasQuote}

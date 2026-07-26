@@ -135,17 +135,39 @@
 <style>
 	fieldset {
 		display: grid;
-		gap: 0.75rem;
-		border: 1px solid #ccc;
-		border-radius: 6px;
-		padding: 1rem;
+		gap: 0.85rem;
+		border: 1px solid var(--line);
+		border-radius: 2px;
+		background: var(--paper);
+		padding: 0.5rem 1.1rem 1.1rem;
+		margin: 0;
+	}
+	legend {
+		font-family: var(--sans);
+		font-size: 0.68rem;
+		font-weight: 600;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--bronze-deep);
+		padding: 0 0.4rem;
 	}
 	label {
 		display: grid;
-		gap: 0.25rem;
+		gap: 0.3rem;
+		font-size: 0.8rem;
+		color: var(--ink-soft);
+	}
+	input,
+	select {
+		width: 100%;
+		max-width: 20rem;
+	}
+	input[type='number'],
+	input[type='date'] {
+		max-width: 11rem;
 	}
 	.error {
-		color: #b00020;
-		font-size: 0.85rem;
+		color: var(--warn-tx);
+		font-size: 0.8rem;
 	}
 </style>

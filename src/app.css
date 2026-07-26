@@ -1,8 +1,36 @@
-/* Global baseline styles + base print rules.
-   Presentation-grade print CSS for the proposal report is layered in later (Story 4.5). */
+/* Global baseline + the shared design system.
+
+   The proposal report established the visual language (Spectral serif + Inter sans, deep-petrol
+   ink with a copper/teal accent, hairline rules and squared corners). Those tokens live here at
+   :root so the app chrome (nav, setup screen) reads as the same system. `report.css` re-declares
+   the same tokens under `.report`, so the report pages are unaffected. */
+
+@import '@fontsource/spectral/400.css';
+@import '@fontsource/spectral/500.css';
+@import '@fontsource/spectral/600.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
 
 :root {
-	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	--ink: #0e2530; /* deep petrol, near-black — headings, heavy rules */
+	--ink-soft: #33525f;
+	--accent: #1f7a8c; /* teal — structural rules, focus */
+	--accent-deep: #155863;
+	--bronze: #b98a45; /* copper — bars, ticks, marks */
+	--bronze-deep: #96692a; /* copper — text (eyebrows, headlines) */
+	--paper: #ffffff;
+	--canvas: #eef2f3; /* the surface the white cards sit on */
+	--line: #c9d4d8;
+	--line-soft: #e2e9eb;
+	--muted: #5c6d74;
+	--warn-tx: #a2472a;
+	--pos-tx: #356b2f;
+	--fill: #f3f7f8;
+	--serif: 'Spectral', Georgia, 'Times New Roman', serif;
+	--sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	/* kept for back-compat with any older references */
+	--font-sans: var(--sans);
 	color-scheme: light;
 }
 
@@ -17,10 +45,41 @@ body {
 }
 
 body {
-	font-family: var(--font-sans);
+	font-family: var(--sans);
 	line-height: 1.5;
-	color: #1a1a1a;
-	background: #ffffff;
+	color: var(--ink);
+	background: var(--canvas);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* ---- shared form controls (unify the setup forms with the report's squared, hairline look) ---- */
+input[type='text'],
+input[type='number'],
+input[type='date'],
+select,
+textarea {
+	font-family: var(--sans);
+	font-size: 0.95rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 2px;
+	padding: 0.5rem 0.6rem;
+}
+
+input[type='text']:focus,
+input[type='number']:focus,
+input[type='date']:focus,
+select:focus,
+textarea:focus {
+	outline: none;
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px rgba(31, 122, 140, 0.16);
+}
+
+input[aria-invalid='true'],
+select[aria-invalid='true'] {
+	border-color: var(--warn-tx);
 }
 
 @media print {

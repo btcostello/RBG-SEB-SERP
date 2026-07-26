@@ -57,15 +57,23 @@
 	}
 </script>
 
-<svelte:head><title>Schiff SERP — Setup</title></svelte:head>
+<svelte:head><title>SERP Pro — Setup</title></svelte:head>
 
 <main>
-	<h1>Schiff SERP</h1>
+	<header class="masthead">
+		<p class="eyebrow">COLI-Financed SERP Proposal Builder</p>
+		<h1>SERP Pro</h1>
+		<p class="byline">by The Ridgeback Group and Schiff Executive Benefits</p>
+		<p class="tagline">
+			Build a supplemental executive retirement plan financed with corporate-owned life insurance.
+		</p>
+	</header>
 
 	<QuoteList />
 
 	{#if !quoteStore.current}
-		<section>
+		<section class="panel create">
+			<p class="eyebrow">New quote</p>
 			<h2>Create a new quote</h2>
 			<form
 				onsubmit={(e) => {
@@ -80,16 +88,25 @@
 						<span class="error">{createErrors.name}</span>
 					{/if}
 				</label>
-				<button type="submit" disabled={Object.keys(createErrors).length > 0}>Create quote</button>
+				<button class="btn btn-primary" type="submit" disabled={Object.keys(createErrors).length > 0}>
+					Create quote
+				</button>
 			</form>
 		</section>
 	{:else}
-		<section>
+		<section class="panel">
 			<div class="header">
-				<h2>{quoteStore.current.company.name || 'Untitled quote'}</h2>
+				<div>
+					<p class="eyebrow">Active quote</p>
+					<h2>{quoteStore.current.company.name || 'Untitled quote'}</h2>
+				</div>
 				<div class="header-actions">
-					<button type="button" onclick={saveCurrent}>{saved ? 'Saved ✓' : 'Save quote'}</button>
-					<button type="button" onclick={() => quoteStore.close()}>New quote</button>
+					<button class="btn btn-primary" type="button" onclick={saveCurrent}>
+						{saved ? 'Saved ✓' : 'Save quote'}
+					</button>
+					<button class="btn btn-ghost" type="button" onclick={() => quoteStore.close()}>
+						New quote
+					</button>
 				</div>
 			</div>
 			<div class="forms">
@@ -97,7 +114,7 @@
 				<ModelSettingsForm />
 			</div>
 			<div class="census">
-				<h2>Executive census</h2>
+				<h2 class="section-title">Executive census</h2>
 				<CensusEditor />
 			</div>
 			<RunButton />
@@ -110,42 +127,165 @@
 
 <style>
 	main {
-		max-width: 48rem;
+		max-width: 52rem;
 		margin: 0 auto;
-		padding: 2rem 1rem;
+		padding: 2.5rem 1.25rem 4rem;
 	}
-	form {
+
+	/* ---- masthead ---- */
+	.masthead {
+		margin-bottom: 1.75rem;
+	}
+	.masthead h1 {
+		font-family: var(--serif);
+		font-weight: 600;
+		font-size: 2.6rem;
+		line-height: 1.05;
+		letter-spacing: -0.015em;
+		color: var(--ink);
+		margin: 0 0 0.35rem;
+	}
+	.masthead .byline {
+		font-family: var(--sans);
+		font-size: 0.82rem;
+		font-weight: 500;
+		color: var(--muted);
+		margin: 0 0 0.85rem;
+	}
+	.masthead .tagline {
+		font-family: var(--serif);
+		font-size: 1.05rem;
+		color: var(--ink-soft);
+		margin: 0;
+		max-width: 34rem;
+	}
+
+	/* ---- eyebrow (matches the report) ---- */
+	.eyebrow {
+		font-family: var(--sans);
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--bronze-deep);
+		margin: 0 0 0.5rem;
+	}
+	.eyebrow::before {
+		content: '';
+		display: inline-block;
+		width: 20px;
+		height: 2px;
+		background: var(--bronze);
+		margin-right: 9px;
+		vertical-align: 0.22em;
+	}
+
+	/* ---- panel (white card on the canvas) ---- */
+	.panel {
+		background: var(--paper);
+		border: 1px solid var(--line);
+		border-top: 3px solid var(--ink);
+		border-radius: 2px;
+		box-shadow: 0 1px 10px rgba(14, 37, 48, 0.06);
+		padding: 1.5rem 1.75rem 1.75rem;
+	}
+	.panel h2 {
+		font-family: var(--serif);
+		font-weight: 600;
+		font-size: 1.5rem;
+		color: var(--ink);
+		margin: 0;
+	}
+	.panel.create form {
 		display: grid;
-		gap: 0.75rem;
+		gap: 0.85rem;
 		max-width: 24rem;
+		margin-top: 1rem;
+	}
+	.panel.create form input {
+		width: 100%;
+		max-width: 20rem;
 	}
 	label {
 		display: grid;
-		gap: 0.25rem;
+		gap: 0.3rem;
+		font-size: 0.85rem;
+		color: var(--ink-soft);
 	}
+
+	/* ---- active-quote header ---- */
 	.header {
 		display: flex;
-		align-items: baseline;
+		align-items: flex-start;
 		justify-content: space-between;
 		gap: 1rem;
+		border-bottom: 1px solid var(--line-soft);
+		padding-bottom: 1.1rem;
+		margin-bottom: 1.4rem;
 	}
 	.header-actions {
 		display: flex;
 		gap: 0.5rem;
+		flex: 0 0 auto;
 	}
 	.forms {
 		display: grid;
-		gap: 1.5rem;
+		grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+		gap: 1.25rem;
+		/* Each fieldset takes its natural height; without this the shorter Company column
+		   stretches to match Model settings and its inputs balloon vertically. */
+		align-items: start;
 	}
 	.census {
-		margin-top: 1.5rem;
+		margin-top: 1.75rem;
 	}
+	.section-title {
+		font-family: var(--serif);
+		font-weight: 600;
+		font-size: 1.15rem;
+		color: var(--ink);
+		margin: 0 0 0.75rem;
+		padding-bottom: 0.4rem;
+		border-bottom: 2px solid var(--ink);
+	}
+
+	/* ---- buttons ---- */
+	.btn {
+		font-family: var(--sans);
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.03em;
+		padding: 0.55rem 1.15rem;
+		border-radius: 2px;
+		border: 1px solid transparent;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.btn-primary {
+		background: var(--ink);
+		color: #fff;
+		border-color: var(--ink);
+	}
+	.btn-primary:hover:not(:disabled) {
+		background: var(--accent-deep);
+		border-color: var(--accent-deep);
+	}
+	.btn-primary:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.btn-ghost {
+		background: transparent;
+		color: var(--ink-soft);
+		border-color: var(--line);
+	}
+	.btn-ghost:hover {
+		color: var(--ink);
+		border-color: var(--ink-soft);
+	}
+
 	.error {
-		color: #b00020;
-		font-size: 0.85rem;
-	}
-	button {
-		justify-self: start;
-		padding: 0.5rem 1rem;
+		color: var(--warn-tx);
+		font-size: 0.8rem;
 	}
 </style>
