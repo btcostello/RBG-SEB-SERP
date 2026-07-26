@@ -4,18 +4,44 @@
 	 * section page 4.3.
 	 *
 	 * Financing summary. Data-driven from results: projected benefit payments (total SERP benefit),
-	 * tax deduction savings, after-tax cost, Option 1 premium (total first-year premium) and Option
-	 * 1 average face. Options 2–4 require additional illustrations (gaps → "—"). The sample's
-	 * buy-sell lines are intentionally excluded (per operator: sample error).
+	 * tax deduction savings, after-tax cost, and the premium + average face for each of the four
+	 * funding options. The sample's buy-sell lines are intentionally excluded (per operator:
+	 * sample error).
 	 */
-	import type { ReportModel } from '../../report-data';
+	import { REPORT_FUNDING_OPTIONS, type ReportModel } from '../../report-data';
 	import LegacyPageShell from './LegacyPageShell.svelte';
 
 	let { report }: { report: ReportModel } = $props();
 	const r = $derived(report);
-	const dash = (v: string | null) => v ?? '—';
+	const dash = (v: string | null | undefined) => v ?? '—';
 	/** Results-gated value: show it only once a run exists, else "—". */
 	const ifRun = (v: string) => (r.hasResults ? v : '—');
+
+	const OPTION_DESCRIPTIONS: Record<string, string> = {
+		'cost-recovery': 'Option 1: Program Cost Recovery upon Mortality',
+		'benefit-distribution': 'Option 2: Benefit Funding from COLI Values',
+		'premium-deposit': 'Option 3: Benefit Funding Wherewithal Based on COLI Values',
+		'premium-recovery': 'Option 4: Benefit Funding from COLI Values + Cost Recovery'
+	};
+	const optionRows = $derived(
+		REPORT_FUNDING_OPTIONS.map((option) => ({
+			id: option.id,
+			number: option.number,
+			description: OPTION_DESCRIPTIONS[option.id],
+			summary: r.fundingOptions[option.id]
+		}))
+	);
+	/**
+	 * Options can cover different numbers of lives — a COLI-only participant carries no SERP
+	 * benefit to distribute, so today only Option 1 designs one. Disclose it rather than let the
+	 * comparison read as like-for-like. (See the mixed-membership backlog item in HANDOFF.md.)
+	 */
+	const lifeCounts = $derived(
+		[...new Set(optionRows.filter((o) => o.summary).map((o) => o.summary!.policyCount))]
+	);
+	const coverageDiffers = $derived(lifeCounts.length > 1);
+	/** Options whose totals include a solve that never reached its target — not reportable. */
+	const unreliable = $derived(optionRows.filter((o) => (o.summary?.infeasibleCount ?? 0) > 0));
 </script>
 
 <LegacyPageShell {report} pageNo="4.3" pageNoSide="right">
@@ -42,22 +68,12 @@
 
 		<div class="section-label">Projected Annual COLI Premium: <sup>*</sup></div>
 		<div class="block indent">
-			<div class="row">
-				<span class="k">Option 1: Program Cost Recovery upon Mortality</span>
-				<span class="v">{dash(r.totalFirstYearPremium)}</span>
-			</div>
-			<div class="row">
-				<span class="k">Option 2: Benefit Funding from COLI Values</span>
-				<span class="v gap">—</span>
-			</div>
-			<div class="row">
-				<span class="k">Option 3: Benefit Funding Wherewithal Based on COLI Values</span>
-				<span class="v gap">—</span>
-			</div>
-			<div class="row">
-				<span class="k">Option 4: Benefit Funding from COLI Values + Cost Recovery</span>
-				<span class="v gap">—</span>
-			</div>
+			{#each optionRows as option (option.id)}
+				<div class="row">
+					<span class="k">{option.description}</span>
+					<span class="v" class:gap={!option.summary}>{dash(option.summary?.premium)}</span>
+				</div>
+			{/each}
 		</div>
 
 		<p class="fn">
@@ -68,18 +84,12 @@
 
 		<div class="section-label">Life Insurance Initial Average Face Amount per Insured Participant:</div>
 		<div class="block indent">
-			<div class="row">
-				<span class="k">Option 1:</span>
-				<span class="v">{dash(r.option1AvgFace)}</span>
-			</div>
-			<div class="row">
-				<span class="k">Options 2 &amp; 3:</span>
-				<span class="v gap">—</span>
-			</div>
-			<div class="row">
-				<span class="k">Option 4:</span>
-				<span class="v gap">—</span>
-			</div>
+			{#each optionRows as option (option.id)}
+				<div class="row">
+					<span class="k">Option {option.number}:</span>
+					<span class="v" class:gap={!option.summary}>{dash(option.summary?.averageFace)}</span>
+				</div>
+			{/each}
 		</div>
 
 		<div class="block counts">
@@ -91,6 +101,25 @@
 				<span class="k">Number of COLI Participants:</span>
 				<span class="v">{r.numColi}</span>
 			</div>
+			{#if coverageDiffers}
+				<p class="fn">
+					<sup>†</sup> Options cover different numbers of policies
+					({optionRows
+						.filter((o) => o.summary)
+						.map((o) => `Option ${o.number}: ${o.summary?.policyCount}`)
+						.join(', ')}); premiums and average face are not directly comparable across
+					options.
+				</p>
+			{/if}
+			{#if unreliable.length > 0}
+				<p class="fn warn">
+					<strong>Not shown:</strong>
+					{unreliable.map((o) => `Option ${o.number}`).join(', ')} could not be solved for
+					{unreliable.map((o) => o.summary?.infeasibleCount).join('/')} of
+					{unreliable.map((o) => o.summary?.policyCount).join('/')} participants, so no figure
+					is reported. Review the design assumptions for those participants.
+				</p>
+			{/if}
 		</div>
 	</div>
 </LegacyPageShell>
@@ -159,5 +188,8 @@
 	}
 	.counts {
 		margin-top: 16px;
+	}
+	.fn.warn {
+		color: var(--ink);
 	}
 </style>

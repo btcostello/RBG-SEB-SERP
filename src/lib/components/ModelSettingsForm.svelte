@@ -11,10 +11,12 @@
 	import {
 		ModelSettingsSchema,
 		MORTALITY_TABLES,
+		PRODUCT_TYPES,
 		fieldErrors,
 		toNumberOrNaN,
 		type ModelSettings,
-		type MortalityTable
+		type MortalityTable,
+		type ProductType
 	} from '$lib/domain';
 
 	const settings = quoteStore.current?.modelSettings;
@@ -23,6 +25,9 @@
 	let npvDiscountRate = $state(settings ? String(settings.npvDiscountRate) : '');
 	let creditingRate = $state(settings ? String(settings.creditingRate) : '');
 	let mortalityTable = $state<MortalityTable>(settings?.mortalityTable ?? 'RP-2012U');
+	// Absent means the engine's own default (VUL), so an existing quote saved before this field
+	// existed keeps behaving as it did until the operator picks one.
+	let productType = $state<ProductType>(settings?.productType ?? 'IUL');
 	let effectiveDate = $state(settings?.effectiveDate ?? '');
 	let premiumYears = $state(settings?.premiumYears != null ? String(settings.premiumYears) : '');
 
@@ -32,6 +37,7 @@
 		npvDiscountRate: num(npvDiscountRate),
 		creditingRate: num(creditingRate),
 		mortalityTable,
+		productType,
 		// Optional: an empty picker means "not set" (undefined), which is valid.
 		effectiveDate: effectiveDate || undefined,
 		premiumYears: premiumYears.trim() === '' ? undefined : num(premiumYears)
@@ -107,6 +113,14 @@
 			aria-invalid={!!errors.effectiveDate}
 		/>
 		{#if errors.effectiveDate}<span class="error">{errors.effectiveDate}</span>{/if}
+	</label>
+
+	<label>
+		<span>COLI product type</span>
+		<select bind:value={productType} onchange={commit} aria-invalid={!!errors.productType}>
+			{#each PRODUCT_TYPES as type (type)}<option value={type}>{type}</option>{/each}
+		</select>
+		{#if errors.productType}<span class="error">{errors.productType}</span>{/if}
 	</label>
 
 	<label>

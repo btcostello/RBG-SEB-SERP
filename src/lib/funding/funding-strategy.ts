@@ -17,9 +17,13 @@ export interface FundingStrategyInput {
 }
 
 export interface FundingResult {
-	/** Total COLI death benefit sized by the strategy. */
-	totalDeathBenefit: Big;
-	/** Per-participant face amounts. */
+	/**
+	 * Total COLI death benefit sized by the strategy. Absent for premium-funded strategies
+	 * (`facesFromPremium`), where the death benefit is an output of the illustration rather
+	 * than an input to it.
+	 */
+	totalDeathBenefit?: Big;
+	/** Per-participant face amounts. Empty when `facesFromPremium`. */
 	allocations: FaceAllocation[];
 }
 
@@ -28,6 +32,12 @@ export interface FundingStrategy {
 	readonly id: string;
 	/** Human-readable label for the UI. */
 	readonly label: string;
+	/**
+	 * True when face is derived from the solved premium (the smallest compliant face) rather
+	 * than allocated from the SERP liability. Options 2–4 invert Option 1's direction: the
+	 * orchestrator must not pre-allocate face for them, and reads it back off the illustration.
+	 */
+	readonly facesFromPremium?: boolean;
 	/** Size the death benefit and allocate per-person face. */
 	fund(input: FundingStrategyInput): FundingResult;
 }

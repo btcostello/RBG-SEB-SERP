@@ -41,6 +41,26 @@ function toMoneyString(wireNumber: number): string {
 	return formatMoney(new Big(wireNumber));
 }
 
+/** As above, but preserves "the engine did not send this" as undefined rather than "0.00". */
+function toOptionalMoneyString(wireNumber: number | undefined): string | undefined {
+	return wireNumber === undefined ? undefined : toMoneyString(wireNumber);
+}
+
+/** Domain period → wire period. `amount` is only meaningful for `kind: 'specify'`. */
+function toWirePeriod<K extends string>(period: {
+	startYear: number;
+	endYear: number;
+	kind: K;
+	amount?: string;
+}): { start_year: number; end_year: number; kind: K; amount?: number } {
+	return {
+		start_year: period.startYear,
+		end_year: period.endYear,
+		kind: period.kind,
+		...(period.amount !== undefined ? { amount: toWireNumber(period.amount) } : {})
+	};
+}
+
 /** Map a domain DesignRequest to the snake_case wire body (actuarial fields only, NFR12). */
 export function mapDesignRequestToWire(request: DesignRequest): WireProjectRequest {
 	const wire: WireProjectRequest = {
@@ -49,19 +69,36 @@ export function mapDesignRequestToWire(request: DesignRequest): WireProjectReque
 		health: request.riskClass,
 		face_amount: toWireNumber(request.faceAmount)
 	};
+	if (request.facePeriods !== undefined) wire.face_periods = request.facePeriods.map(toWirePeriod);
 	if (request.productType !== undefined) wire.product_type = request.productType;
 	if (request.dbOption !== undefined) wire.db_option = request.dbOption;
+	if (request.dboPeriods !== undefined)
+		wire.dbo_periods = request.dboPeriods.map((period) => ({
+			start_year: period.startYear,
+			end_year: period.endYear,
+			option: period.option
+		}));
 	if (request.annualPremium !== undefined)
 		wire.annual_premium = toWireNumber(request.annualPremium);
+	if (request.premiumPeriods !== undefined)
+		wire.premium_periods = request.premiumPeriods.map(toWirePeriod);
 	if (request.premiumMode !== undefined) wire.premium_mode = request.premiumMode;
+	if (request.distributionPeriods !== undefined)
+		wire.distribution_periods = request.distributionPeriods.map(toWirePeriod);
+	if (request.distributionType !== undefined) wire.distribution_type = request.distributionType;
 	if (request.creditedRate !== undefined) wire.credited_rate = request.creditedRate;
 	if (request.qualificationTest !== undefined) wire.qualification_test = request.qualificationTest;
+	if (request.mecHandling !== undefined) wire.mec_handling = request.mecHandling;
 	if (request.maturityAge !== undefined) wire.maturity_age = request.maturityAge;
 	if (request.solve !== undefined) {
+		const { mode, metric, target, value, when, basis } = request.solve;
 		wire.solve = {
-			value: toWireNumber(request.solve.value),
-			when: request.solve.when,
-			...(request.solve.basis !== undefined ? { basis: request.solve.basis } : {})
+			when,
+			...(mode !== undefined ? { mode } : {}),
+			...(metric !== undefined ? { metric } : {}),
+			...(target !== undefined ? { target } : {}),
+			...(value !== undefined ? { value: toWireNumber(value) } : {}),
+			...(basis !== undefined ? { basis } : {})
 		};
 	}
 	return wire;
@@ -69,26 +106,74 @@ export function mapDesignRequestToWire(request: DesignRequest): WireProjectReque
 
 /** Map a parsed wire response to the domain IllustrationResult (camelCase, money strings). */
 export function mapWireResponseToResult(wire: WireProjectResponse): IllustrationResult {
-	return {
-		years: wire.report.map((row) => ({
-			policyYear: row.policy_year,
-			age: row.age,
-			premium: toMoneyString(row.premium),
-			accountValue: toMoneyString(row.account_value),
-			// The wire report exposes no separate surrender value; use account value as the net
-			// surrender value (MVP — calibratable once /schema confirms a CSV field).
-			cashSurrenderValue: toMoneyString(row.account_value),
-			deathBenefit: toMoneyString(row.death_benefit)
-		})),
+	// `loans[]` is a parallel per-year table; fold it into the year rows so downstream cash-flow
+	// derivations read one stream instead of joining two.
+	const loanByYear = new Map((wire.loans ?? []).map((row) => [row.policy_year, row]));
+
+	const result: IllustrationResult = {
+		years: wire.report.map((row) => {
+			const loan = loanByYear.get(row.policy_year);
+			return {
+				policyYear: row.policy_year,
+				age: row.age,
+				premium: toMoneyString(row.premium),
+				accountValue: toMoneyString(row.account_value),
+				// Prefer the engine's own surrender value; fall back to the account value only if an
+				// older deployment omits it (the pre-v1 approximation).
+				cashSurrenderValue: toMoneyString(row.cash_surrender_value ?? row.account_value),
+				deathBenefit: toMoneyString(row.death_benefit),
+				...(row.net_account_value !== undefined
+					? { netAccountValue: toMoneyString(row.net_account_value) }
+					: {}),
+				...(row.status !== undefined ? { status: row.status } : {}),
+				...(loan?.withdrawal !== undefined
+					? { withdrawal: toMoneyString(loan.withdrawal) }
+					: {}),
+				...(loan?.new_loan !== undefined ? { loan: toMoneyString(loan.new_loan) } : {}),
+				...(loan?.eoy_loan_balance !== undefined
+					? { loanBalance: toMoneyString(loan.eoy_loan_balance) }
+					: {})
+			};
+		}),
 		gptAdjusted: wire.gpt_adjusted,
 		mecAdjusted: wire.mec_adjusted,
 		solvedAnnualPremium: toMoneyString(wire.summary.initial_annual_premium),
+		...(wire.summary.initial_face_amount !== undefined
+			? { initialFaceAmount: toMoneyString(wire.summary.initial_face_amount) }
+			: {}),
 		guideline: {
 			singlePremium: toMoneyString(wire.summary.guideline_single_premium),
 			levelPremiumA: toMoneyString(wire.summary.guideline_level_premium_a),
 			levelPremiumB: toMoneyString(wire.summary.guideline_level_premium_b)
 		}
 	};
+
+	if (wire.summary.lapse_year !== undefined) result.lapseYear = wire.summary.lapse_year;
+	if (wire.summary.mec_year !== undefined) result.mecYear = wire.summary.mec_year;
+	if (wire.solve !== undefined) {
+		result.solve =
+			wire.solve === null
+				? null
+				: {
+						feasible: wire.solve.feasible,
+						...(wire.solve.reason !== undefined ? { reason: wire.solve.reason } : {}),
+						...(wire.solve.metric !== undefined ? { metric: wire.solve.metric } : {}),
+						...(wire.solve.target_kind !== undefined
+							? { targetKind: wire.solve.target_kind }
+							: {}),
+						...optionalMoney('targetValue', wire.solve.target_value),
+						...optionalMoney('solvedPremium', wire.solve.solved_premium),
+						...optionalMoney('solvedFace', wire.solve.solved_face),
+						...optionalMoney('solvedDistribution', wire.solve.solved_distribution)
+					};
+	}
+	return result;
+}
+
+/** Spread helper: `{key: money}` when the engine sent the field, `{}` when it did not. */
+function optionalMoney(key: string, wireNumber: number | undefined): Record<string, string> {
+	const money = toOptionalMoneyString(wireNumber);
+	return money === undefined ? {} : { [key]: money };
 }
 
 /** Inspect a non-OK response and throw the matching typed error (never returns). */

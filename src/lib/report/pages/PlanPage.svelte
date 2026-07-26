@@ -68,7 +68,8 @@
 				: `${report.samples.length === 2 ? 'two' : 'three'} executives`}
 		</h3>
 		<div class="chips">
-			{#each report.samples as sample (sample.name)}
+			<!-- Keyed by id, not name: names are not unique, and a duplicate key throws. -->
+			{#each report.samples as sample (sample.insuredId)}
 				<div class="chip">
 					<div class="nm">{sample.name}</div>
 					<div class="mini">Age {sample.age} · retires at {sample.retirementAge}</div>

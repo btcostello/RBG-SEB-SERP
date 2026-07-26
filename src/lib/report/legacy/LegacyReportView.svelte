@@ -33,8 +33,8 @@
 		{:else}
 			{#each legacyReportPages as page (page.id)}
 				{@const PageComponent = page.component}
-				<article class="report-page" aria-label={page.title}>
-					<PageComponent {report} />
+				<article class="report-page" class:landscape={page.landscape} aria-label={page.title}>
+					<PageComponent {report} {...(page.props ?? {})} />
 				</article>
 			{/each}
 		{/if}

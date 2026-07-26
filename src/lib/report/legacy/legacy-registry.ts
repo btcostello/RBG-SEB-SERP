@@ -31,6 +31,25 @@ import LegacyFinOverviewPageB from './pages/LegacyFinOverviewPageB.svelte';
 import LegacyFundingOverviewPage from './pages/LegacyFundingOverviewPage.svelte';
 import LegacyCashFlowSummaryPage from './pages/LegacyCashFlowSummaryPage.svelte';
 import LegacyEarningsImpactPage from './pages/LegacyEarningsImpactPage.svelte';
+import LegacyEarningsLedgerOption1Page from './pages/LegacyEarningsLedgerOption1Page.svelte';
+import LegacyEarningsLedgerOption2Page from './pages/LegacyEarningsLedgerOption2Page.svelte';
+import LegacyEarningsLedgerOption3Page from './pages/LegacyEarningsLedgerOption3Page.svelte';
+import LegacyEarningsLedgerOption4Page from './pages/LegacyEarningsLedgerOption4Page.svelte';
+import LegacySerpEntriesPage from './pages/LegacySerpEntriesPage.svelte';
+import LegacySerpReconciliationPage from './pages/LegacySerpReconciliationPage.svelte';
+import LegacySerpNotesPage from './pages/LegacySerpNotesPage.svelte';
+import LegacyColiEntriesPage from './pages/LegacyColiEntriesPage.svelte';
+import LegacyAuditTrailPage from './pages/LegacyAuditTrailPage.svelte';
+import LegacyCostAllocationPage from './pages/LegacyCostAllocationPage.svelte';
+import LegacyBenefitStatementPage from './pages/LegacyBenefitStatementPage.svelte';
+import LegacyFaceSurvivorOption1Page from './pages/LegacyFaceSurvivorOption1Page.svelte';
+import LegacyFaceSurvivorOption2Page from './pages/LegacyFaceSurvivorOption2Page.svelte';
+import LegacyOptionLedgerPage from './pages/LegacyOptionLedgerPage.svelte';
+import LegacyAccountingDescPage from './pages/LegacyAccountingDescPage.svelte';
+import LegacySerpOverviewPage from './pages/LegacySerpOverviewPage.svelte';
+import LegacyColiOverviewPage from './pages/LegacyColiOverviewPage.svelte';
+import LegacyMortalityChartPage from './pages/LegacyMortalityChartPage.svelte';
+import LegacyGlossaryPage from './pages/LegacyGlossaryPage.svelte';
 
 export interface LegacyReportPage {
 	/** Stable id (unique within the registry). */
@@ -39,7 +58,31 @@ export interface LegacyReportPage {
 	title: string;
 	/** The Svelte component that renders the page; receives the `ReportModel`. */
 	component: Component<{ report: ReportModel }>;
+	/**
+	 * Extra props merged in alongside `report`. Lets one component serve several registry
+	 * entries — e.g. the Appendix C ledgers, which are the same sheet per option and year slice.
+	 */
+	props?: Record<string, unknown>;
+	/** Render this sheet rotated (10in × 7.5in). For pages too wide for a portrait sheet. */
+	landscape?: boolean;
 }
+
+/** Appendix C option titles, verbatim from the source sheets. */
+const LEDGER_OPTIONS = [
+	{ id: 'cost-recovery', title: 'Option 1 — Recovery of Net Program Costs from COLI upon Mortality' },
+	{ id: 'benefit-distribution', title: 'Option 2 — SERP Benefit Funding from COLI Assets' },
+	{ id: 'premium-deposit', title: 'Option 3 — SERP Benefit Funding Wherewithal Based on COLI Assets' },
+	{ id: 'premium-recovery', title: 'Option 4 — SERP Benefit Funding from COLI Assets & Cost Recovery' }
+] as const;
+
+/** Appendix H glossary sheet labels, in source order — content lives in pages/glossary-data.ts. */
+const GLOSSARY_SHEETS = [
+	'Page 3.2',
+	'Pages 5.2-1 through 5.2-4',
+	'Page 6.5',
+	'Appendix B',
+	'Appendix C'
+] as const;
 
 /** The registered Legacy Report pages, rendered in this order. Appended one section at a time. */
 export const legacyReportPages: LegacyReportPage[] = [
@@ -60,5 +103,67 @@ export const legacyReportPages: LegacyReportPage[] = [
 	{ id: 'd1-fin-overview-2', title: 'Financial Overview (continued)', component: LegacyFinOverviewPageB },
 	{ id: 'd2-funding-overview', title: 'Overview — SERP Benefit Financing', component: LegacyFundingOverviewPage },
 	{ id: 'd5-cash-flow-summary', title: 'Cash Flow Summary — Life of Plan', component: LegacyCashFlowSummaryPage },
-	{ id: 'e1-earnings-impact', title: 'Earnings Impact', component: LegacyEarningsImpactPage }
+	{ id: 'e1-earnings-impact', title: 'Earnings Impact', component: LegacyEarningsImpactPage },
+	{
+		id: 'e3-earnings-ledger-1',
+		title: 'Annual Impact on Earnings — Option 1',
+		component: LegacyEarningsLedgerOption1Page
+	},
+	{
+		id: 'e3-earnings-ledger-2',
+		title: 'Annual Impact on Earnings — Option 2',
+		component: LegacyEarningsLedgerOption2Page
+	},
+	{
+		id: 'e3-earnings-ledger-3',
+		title: 'Annual Impact on Earnings — Option 3',
+		component: LegacyEarningsLedgerOption3Page
+	},
+	{
+		id: 'e3-earnings-ledger-4',
+		title: 'Annual Impact on Earnings — Option 4',
+		component: LegacyEarningsLedgerOption4Page
+	},
+	{ id: 'f1-serp-entries', title: 'SERP Accounting Entry Worksheet', component: LegacySerpEntriesPage },
+	{ id: 'f1-serp-reconciliation', title: 'SERP Accounting — Reconciliation', component: LegacySerpReconciliationPage },
+	{ id: 'f1-serp-notes', title: 'SERP Accounting — Notes', component: LegacySerpNotesPage },
+	{ id: 'f2-coli-entries', title: 'COLI Accounting Entry Worksheet', component: LegacyColiEntriesPage },
+	{ id: 'f3-audit-trail', title: 'FASB ASC 715-30 Audit Trail', component: LegacyAuditTrailPage },
+	{ id: 'f4-cost-allocation', title: 'Pension Expense Allocation by Participant', component: LegacyCostAllocationPage },
+	{ id: 'g1-benefit-statement', title: 'Summary of Benefits (Appendix A)', component: LegacyBenefitStatementPage },
+	{ id: 'g2-face-survivor-1', title: 'COLI Face vs Survivor Liability — Option 1', component: LegacyFaceSurvivorOption1Page },
+	{ id: 'g2-face-survivor-2', title: 'COLI Face vs Survivor Liability — Option 2', component: LegacyFaceSurvivorOption2Page },
+	// Appendix C — one ledger per funding option, split across two sheets at the source's
+	// pagination (plan years 1-21 and 22-45). One component serves all eight via registry props.
+	...LEDGER_OPTIONS.flatMap((option, index) =>
+		[
+			{ part: 1, fromYear: 1, toYear: 21 },
+			{ part: 2, fromYear: 22, toYear: 45 }
+		].map((slice) => ({
+			id: `g3-ledger-${option.id}-${slice.part}`,
+			title: `Option Ledger — ${option.title} (${slice.part} of 2)`,
+			component: LegacyOptionLedgerPage,
+			// Ten currency columns do not fit a portrait sheet; the source is wide too.
+			landscape: true,
+			props: {
+				pageNo: `Appendix C.${index * 2 + slice.part}`,
+				strategyId: option.id,
+				optionTitle: option.title,
+				fromYear: slice.fromYear,
+				toYear: slice.toYear,
+				showTotals: slice.part === 1
+			}
+		}))
+	),
+	{ id: 'g5-accounting-desc', title: 'Accounting for SERP Programs (Appendix D)', component: LegacyAccountingDescPage },
+	{ id: 'g6-serp-overview', title: 'Informational Overview — SERPs (Appendix E.1)', component: LegacySerpOverviewPage },
+	{ id: 'g6-coli-overview', title: 'Informational Overview — COLI (Appendix E.2)', component: LegacyColiOverviewPage },
+	{ id: 'h3-mortality-chart', title: 'Comparison of Mortality Assumptions (Appendix G)', component: LegacyMortalityChartPage },
+	// Appendix H — five glossary sheets, one component driven by registry props.
+	...GLOSSARY_SHEETS.map((sheet, index) => ({
+		id: `i1-glossary-${index + 1}`,
+		title: `Glossary — ${sheet}`,
+		component: LegacyGlossaryPage,
+		props: { sheetIndex: index }
+	}))
 ];

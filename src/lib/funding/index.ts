@@ -11,6 +11,9 @@ import {
 	COST_RECOVERY_SOLVE,
 	buildCostRecoveryDesignRequest
 } from './cost-recovery';
+import { benefitDistributionStrategy } from './benefit-distribution';
+import { premiumDepositStrategy } from './premium-deposit';
+import { premiumRecoveryStrategy } from './premium-recovery';
 
 const registry = new Map<string, FundingStrategy>();
 
@@ -19,6 +22,9 @@ function register(strategy: FundingStrategy): void {
 }
 
 register(costRecoveryStrategy);
+register(benefitDistributionStrategy);
+register(premiumDepositStrategy);
+register(premiumRecoveryStrategy);
 
 /** The default funding strategy for the MVP. */
 export const DEFAULT_FUNDING_STRATEGY_ID = COST_RECOVERY_ID;
@@ -40,4 +46,37 @@ export {
 	buildCostRecoveryDesignRequest
 };
 export type { CostRecoveryDesignParams } from './cost-recovery';
+export {
+	benefitDistributionStrategy,
+	BENEFIT_DISTRIBUTION_ID,
+	BENEFIT_DISTRIBUTION_SOLVE,
+	buildBenefitDistributionDesignRequest
+} from './benefit-distribution';
+export type { BenefitDistributionDesignParams } from './benefit-distribution';
+export {
+	premiumDepositStrategy,
+	PREMIUM_DEPOSIT_ID,
+	buildPremiumDepositDesignRequest
+} from './premium-deposit';
+export type { PremiumDepositDesignParams } from './premium-deposit';
+export {
+	premiumRecoveryStrategy,
+	PREMIUM_RECOVERY_ID,
+	premiumRecoverySolve,
+	premiumRecoveryIsUnderfunded,
+	buildPremiumRecoveryDesignRequest,
+	buildFlooredPremiumRecoveryDesignRequest
+} from './premium-recovery';
+export type {
+	PremiumRecoveryDesignParams,
+	FlooredPremiumRecoveryDesignParams
+} from './premium-recovery';
+export {
+	premiumFundedBase,
+	dboSwitchAfterFunding,
+	benefitStreamToDistributionPeriods,
+	SERP_DISTRIBUTION_TYPE,
+	DEFAULT_PAY_YEARS
+} from './design-basis';
+export type { PremiumFundedDesignParams } from './design-basis';
 export * from './funding-strategy';

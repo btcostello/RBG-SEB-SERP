@@ -5,7 +5,7 @@
  * repository directly, and the repository is reached only through the QuoteRepository
  * interface — so swapping localStorage for a DB changes nothing in stores or UI (NFR14).
  */
-import { getQuoteRepository } from '$lib/persistence/local-storage-repository';
+import { getQuoteRepository } from '$lib/persistence/http-repository';
 import type { QuoteRepository, QuoteSummary } from '$lib/persistence/quote-repository';
 import type { Quote } from '$lib/domain';
 

@@ -59,7 +59,12 @@ describe('assembleResults (FR20, FR21)', () => {
 			asOf: '2027-06-15'
 		});
 		const designed: DesignedPolicy[] = [
-			{ insuredId: 'i1', faceAmount: new Big('474000'), illustration: illustration('5000.00') }
+			{
+				insuredId: 'i1',
+				strategyId: 'cost-recovery',
+				faceAmount: new Big('474000'),
+				illustration: illustration('5000.00')
+			}
 		];
 
 		const results = assembleResults({
@@ -82,11 +87,129 @@ describe('assembleResults (FR20, FR21)', () => {
 		expect(results.aggregate.totalFirstYearPremium).toBe('5000.00');
 	});
 
+	it('keys each option under `designs` and mirrors the primary into the flat fields', () => {
+		const liability = computeLiability({ census: [insured], settings, asOf: '2027-06-15' });
+		const designed: DesignedPolicy[] = [
+			{
+				insuredId: 'i1',
+				strategyId: 'cost-recovery',
+				faceAmount: new Big('474000'),
+				illustration: illustration('5000.00')
+			},
+			{
+				insuredId: 'i1',
+				strategyId: 'benefit-distribution',
+				faceAmount: new Big('957338'),
+				illustration: illustration('32129.00')
+			}
+		];
+
+		const results = assembleResults({ liability, totalDeathBenefit: new Big('948000'), designed });
+
+		expect(v.safeParse(ResultsSchema, results).success).toBe(true);
+		const p = results.perParticipant.find((x) => x.insuredId === 'i1');
+		expect(Object.keys(p?.designs ?? {})).toEqual(['cost-recovery', 'benefit-distribution']);
+		expect(p?.designs?.['benefit-distribution'].faceAmount).toBe('957338.00');
+		expect(p?.designs?.['benefit-distribution'].firstYearPremium).toBe('32129.00');
+		// The flat fields track the primary option only, so existing bindings are unaffected.
+		expect(p?.faceAmount).toBe('474000.00');
+		expect(p?.firstYearPremium).toBe('5000.00');
+
+		expect(results.aggregate.byOption?.['cost-recovery']).toEqual({
+			totalFaceAmount: '474000.00',
+			totalFirstYearPremium: '5000.00',
+			policyCount: 1,
+			totalDeathBenefit: '948000.00'
+		});
+		// Face falls out of the premium for the funded options, so no death benefit is pre-sized.
+		expect(results.aggregate.byOption?.['benefit-distribution']).toEqual({
+			totalFaceAmount: '957338.00',
+			totalFirstYearPremium: '32129.00',
+			policyCount: 1
+		});
+		expect(results.aggregate.totalFirstYearPremium).toBe('5000.00');
+	});
+
+	it('still validates a snapshot persisted before per-option designs existed', () => {
+		// A quote saved by the previous build: flat design fields, no `designs`, no `byOption`.
+		// It must reopen unchanged, which is why both new keys are optional.
+		const legacy = {
+			perParticipant: [
+				{
+					insuredId: 'i1',
+					finalAverageSalary: '100000.00',
+					annualBenefit: '50000.00',
+					benefitStream: [{ age: 66, amount: '50000.00' }],
+					totalBenefitCost: '1000000.00',
+					netPresentValue: '800000.00',
+					faceAmount: '474000.00',
+					firstYearPremium: '5000.00',
+					gptAdjusted: false,
+					mecAdjusted: false
+				}
+			],
+			aggregate: {
+				totalBenefitCost: '1000000.00',
+				netPresentValue: '800000.00',
+				totalDeathBenefit: '948000.00',
+				totalFirstYearPremium: '5000.00'
+			},
+			asOf: '2027-06-15'
+		};
+		const parsed = v.parse(ResultsSchema, legacy);
+		expect(parsed.perParticipant[0].designs).toBeUndefined();
+		expect(parsed.aggregate.byOption).toBeUndefined();
+		expect(parsed.perParticipant[0].faceAmount).toBe('474000.00');
+	});
+
+	it('counts infeasible solves so a report can refuse to print their totals', () => {
+		const liability = computeLiability({ census: [], settings, asOf: '2027-06-15' });
+		const failed = illustration('99999999.00');
+		const designed: DesignedPolicy[] = [
+			{
+				insuredId: 'a',
+				strategyId: 'benefit-distribution',
+				faceAmount: new Big('100000'),
+				illustration: { ...illustration('4000.00'), solve: { feasible: true } }
+			},
+			{
+				insuredId: 'b',
+				strategyId: 'benefit-distribution',
+				faceAmount: new Big('999999999'),
+				illustration: { ...failed, solve: { feasible: false, reason: 'no_solve_period' } }
+			}
+		];
+		const results = assembleResults({ liability, totalDeathBenefit: new Big('0'), designed });
+		expect(results.aggregate.byOption?.['benefit-distribution']?.infeasibleCount).toBe(1);
+		expect(results.perParticipant.find((p) => p.insuredId === 'b')?.designs?.[
+			'benefit-distribution'
+		].solveFeasible).toBe(false);
+	});
+
+	it('totals each option across participants independently', () => {
+		const liability = computeLiability({ census: [], settings, asOf: '2027-06-15' });
+		const designed: DesignedPolicy[] = ['a', 'b'].flatMap((id) => [
+			{
+				insuredId: id,
+				strategyId: 'benefit-distribution',
+				faceAmount: new Big('100000'),
+				illustration: illustration('4000.00')
+			}
+		]);
+		const results = assembleResults({ liability, totalDeathBenefit: new Big('0'), designed });
+		expect(results.aggregate.byOption?.['benefit-distribution']).toMatchObject({
+			totalFaceAmount: '200000.00',
+			totalFirstYearPremium: '8000.00',
+			policyCount: 2
+		});
+	});
+
 	it('creates a zero-liability entry for a COLI-only participant', () => {
 		const liability = computeLiability({ census: [], settings, asOf: '2027-06-15' });
 		const designed: DesignedPolicy[] = [
 			{
 				insuredId: 'coliOnly',
+				strategyId: 'cost-recovery',
 				faceAmount: new Big('100000'),
 				illustration: illustration('3000.00')
 			}
