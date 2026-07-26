@@ -1,10 +1,10 @@
 <script lang="ts">
 	/**
 	 * Legacy Report — F3 Consolidated FASB ASC 715-30 Audit Trail (section page 6.5).
-	 * Placeholder — see DATA-GAPS.md.
 	 *
-	 * Calendar years are real (30 from the plan reference date, matching the earnings ledger);
-	 * all nine columns await the accounting layer.
+	 * All nine columns are live, from the accounting module (`report.auditTrail`). Calendar years
+	 * span 30 from the plan reference date, matching the 5.2 earnings ledger. Cells show "—" before
+	 * a run or when there are no SERP participants.
 	 */
 	import type { ReportModel } from '../../report-data';
 	import LegacyAccountingSheet from './LegacyAccountingSheet.svelte';
@@ -14,7 +14,10 @@
 	const LEDGER_YEARS = 30;
 	const firstYear = $derived(new Date(`${report.legacyRefDate}T00:00:00`).getFullYear());
 	const rows = $derived(
-		Array.from({ length: LEDGER_YEARS }, (_, i) => ({ label: String(firstYear + i) }))
+		Array.from({ length: LEDGER_YEARS }, (_, i) => {
+			const year = firstYear + i;
+			return { label: String(year), values: report.auditTrail?.byYear[year] };
+		})
 	);
 	const columns = [
 		{ label: '[1] Service Cost' },

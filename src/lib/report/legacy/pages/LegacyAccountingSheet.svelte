@@ -89,7 +89,10 @@
 							{row.label}
 							{#if row.note}<span class="rownote">{row.note}</span>{/if}
 						</td>
-						{#each columns.keys() as c (c)}<td class="num gap">{GAP}</td>{/each}
+						{#each columns.keys() as c (c)}
+							{@const cell = row.values?.[c]}
+							<td class="num" class:gap={cell == null}>{cell ?? GAP}</td>
+						{/each}
 					</tr>
 				{/if}
 			{/each}

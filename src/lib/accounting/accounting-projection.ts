@@ -63,12 +63,18 @@ export interface SerpAccountingYear {
 	/** Projected Benefit Obligation, beginning and end of year — distinct from the engine's NPV. */
 	pboBoy: Pending;
 	pboEoy: Pending;
-	/** Unrecognised prior service cost balance carried in AOCI, end of year. */
-	unrecognizedPriorServiceCostEoy: Pending;
-	/** Accumulated other comprehensive income balance, end of year (pre-tax benefit). */
-	aociEoy: Pending;
-	/** Unfunded accrued pension cost, end of year (audit-trail balance, 6.5). */
+	/** Gross SERP benefit payments this year (audit-trail column [5]). */
+	grossBenefitPayments: Pending;
+	/** Total pension cost − gross benefit payments (audit-trail column [6]). */
+	annualUnfundedAccruedPensionCost: Pending;
+	/** Cumulative annual unfunded accrued pension cost, end of year (audit-trail column [7]). */
 	unfundedAccruedPensionCostEoy: Pending;
+	/** Unrecognised prior service cost balance, beginning of year (audit-trail column [8]). */
+	unrecognizedPriorServiceCostBoy: Pending;
+	/** Unrecognised prior service cost balance, end of year = BOY − amortisation (column [9]). */
+	unrecognizedPriorServiceCostEoy: Pending;
+	/** Accumulated other comprehensive income balance, end of year (pre-tax benefit) — 6.x, not built. */
+	aociEoy: Pending;
 
 	// --- Tax effect (at Company.corporateTaxRate) ---
 	/** Tax deduction on the pension expense. Report 5.2 column [2]. */
@@ -344,11 +350,13 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		pensionExpense: formatMoney(raw.pensionExpense),
 		pboBoy: formatMoney(raw.pboBoy),
 		pboEoy: formatMoney(raw.pboEoy),
+		grossBenefitPayments: formatMoney(raw.grossBenefitPayments),
+		annualUnfundedAccruedPensionCost: formatMoney(raw.annualUnfundedAccruedPensionCost),
+		unfundedAccruedPensionCostEoy: formatMoney(raw.unfundedAccruedPensionCostEoy),
+		unrecognizedPriorServiceCostBoy: formatMoney(raw.unrecognizedPriorServiceCostBoy),
 		unrecognizedPriorServiceCostEoy: formatMoney(raw.unrecognizedPriorServiceCostEoy),
-		// AOCI, unfunded accrued pension cost, and the deferred tax asset balance are 6.x-worksheet
-		// items not yet specced — left null.
+		// AOCI balance and the deferred tax asset balance are 6.x items not yet specced — left null.
 		aociEoy: null,
-		unfundedAccruedPensionCostEoy: null,
 		benefitTaxDeduction: formatMoney(raw.benefitTaxDeduction),
 		deferredTaxAssetEoy: null,
 		netSerpEarningsImpact: formatMoney(raw.netSerpEarningsImpact)

@@ -151,11 +151,19 @@ export interface SerpAccountingYearRaw {
 	serviceCost: Big;
 	interestCost: Big;
 	priorServiceCostAmortization: Big;
-	/** Service cost + interest cost + prior-service amortisation. */
+	/** Service cost + interest cost + prior-service amortisation (audit-trail "total pension cost"). */
 	pensionExpense: Big;
 	pboBoy: Big;
 	pboEoy: Big;
-	/** Prior service cost not yet amortised, end of year. */
+	/** Gross SERP benefit payments this year (the benefit stream). */
+	grossBenefitPayments: Big;
+	/** Total pension cost − gross benefit payments (audit-trail column [6]). */
+	annualUnfundedAccruedPensionCost: Big;
+	/** Cumulative annual unfunded accrued pension cost, end of year (audit-trail column [7]). */
+	unfundedAccruedPensionCostEoy: Big;
+	/** Prior service cost not yet amortised, beginning of year (audit-trail column [8]). */
+	unrecognizedPriorServiceCostBoy: Big;
+	/** Prior service cost not yet amortised, end of year = BOY − amortisation (column [9]). */
 	unrecognizedPriorServiceCostEoy: Big;
 	/** Pension expense × tax rate — the tax benefit (report column [2]). */
 	benefitTaxDeduction: Big;
@@ -203,6 +211,10 @@ export function serpEarningsByYear(params: SerpEarningsParams): SerpAccountingYe
 		pensionExpense: zero,
 		pboBoy: zero,
 		pboEoy: zero,
+		grossBenefitPayments: zero,
+		annualUnfundedAccruedPensionCost: zero,
+		unfundedAccruedPensionCostEoy: zero,
+		unrecognizedPriorServiceCostBoy: zero,
 		unrecognizedPriorServiceCostEoy: zero,
 		benefitTaxDeduction: zero,
 		netSerpEarningsImpact: zero
@@ -222,6 +234,8 @@ export function serpEarningsByYear(params: SerpEarningsParams): SerpAccountingYe
 			const serviceCost = planYear <= pension.futureServiceYears ? pension.annualServiceCost : zero;
 			const interestCost = pboBoy.times(discountRate);
 			const benefitsPaid = benefitByPlanYear.get(planYear) ?? zero;
+			// Unamortised prior service cost at the start of the year (before this year's amortisation).
+			const unrecognizedBoy = amortRemaining;
 			// Level amortisation, capped at the remaining unamortised balance (handles fractional periods).
 			const amort = amortRemaining.gt(0)
 				? levelAmort.gt(amortRemaining)
@@ -240,6 +254,8 @@ export function serpEarningsByYear(params: SerpEarningsParams): SerpAccountingYe
 			row.pensionExpense = row.pensionExpense.plus(pensionExpense);
 			row.pboBoy = row.pboBoy.plus(pboBoy);
 			row.pboEoy = row.pboEoy.plus(pboEoy);
+			row.grossBenefitPayments = row.grossBenefitPayments.plus(benefitsPaid);
+			row.unrecognizedPriorServiceCostBoy = row.unrecognizedPriorServiceCostBoy.plus(unrecognizedBoy);
 			row.unrecognizedPriorServiceCostEoy = row.unrecognizedPriorServiceCostEoy.plus(amortRemaining);
 			row.benefitTaxDeduction = row.benefitTaxDeduction.plus(taxDeduction);
 			// After-tax earnings impact: −pension expense + tax deduction (signed, an earnings charge).
@@ -249,6 +265,15 @@ export function serpEarningsByYear(params: SerpEarningsParams): SerpAccountingYe
 
 			pboBoy = pboEoy;
 		}
+	}
+
+	// Second pass over the consolidated series: the unfunded accrued pension cost is annual pension
+	// cost less benefits paid, and its EOY balance is the running cumulative of that annual figure.
+	let cumulativeUnfunded = zero;
+	for (const row of rows) {
+		row.annualUnfundedAccruedPensionCost = row.pensionExpense.minus(row.grossBenefitPayments);
+		cumulativeUnfunded = cumulativeUnfunded.plus(row.annualUnfundedAccruedPensionCost);
+		row.unfundedAccruedPensionCostEoy = cumulativeUnfunded;
 	}
 	return rows;
 }

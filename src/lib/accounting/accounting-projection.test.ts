@@ -151,14 +151,17 @@ describe('computeAccounting (partial: COLI built, SERP pending)', () => {
 			'pensionExpense',
 			'pboBoy',
 			'pboEoy',
+			'grossBenefitPayments',
+			'annualUnfundedAccruedPensionCost',
+			'unfundedAccruedPensionCostEoy',
+			'unrecognizedPriorServiceCostBoy',
 			'unrecognizedPriorServiceCostEoy',
 			'benefitTaxDeduction',
 			'netSerpEarningsImpact'
 		] as const;
 		for (const field of builtFields) expect(result.serp[0][field]).toBe('0.00');
-		// The 6.x balance items are not specced yet — still null.
+		// AOCI and the deferred tax asset balance are not specced yet — still null.
 		expect(result.serp[0].aociEoy).toBeNull();
-		expect(result.serp[0].unfundedAccruedPensionCostEoy).toBeNull();
 		expect(result.serp[0].deferredTaxAssetEoy).toBeNull();
 	});
 

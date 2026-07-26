@@ -222,11 +222,21 @@ describe('deriveReport', () => {
 		expect(model.earningsLedgerSerp).not.toBeNull(); // SERP is option-independent
 	});
 
-	it('has no earnings ledger before a run', () => {
+	it('binds the 6.5 audit trail — nine SERP columns per calendar year', () => {
+		const model = deriveReport(buildQuoteWithDesign(), today);
+		expect(model.auditTrail).not.toBeNull();
+		const row = model.auditTrail?.byYear[2026];
+		expect(row).toHaveLength(9);
+		// This life has no benefit stream, so every audit-trail column is zero.
+		expect(row?.every((v) => v === '0')).toBe(true);
+	});
+
+	it('has no earnings ledger or audit trail before a run', () => {
 		const quote = buildQuoteWithDesign();
 		quote.results = null;
 		const model = deriveReport(quote, today);
 		expect(model.earningsLedgerByOption).toEqual({});
 		expect(model.earningsLedgerSerp).toBeNull();
+		expect(model.auditTrail).toBeNull();
 	});
 });

@@ -140,6 +140,23 @@ describe('serpEarningsByYear (roll-forward)', () => {
 		expect(total.toFixed(2)).toBe('200000.00'); // = PBO today
 	});
 
+	it('derives the audit-trail unfunded and unrecognized-prior-service columns (6.5)', () => {
+		// Gross benefits land in years 10 & 11 (ages 65 & 66); pension expense is 20,000/yr for 10 yrs.
+		expect(rows[0].grossBenefitPayments.toString()).toBe('0');
+		expect(rows[9].grossBenefitPayments.toFixed(2)).toBe('100000.00');
+		// Annual unfunded = total pension cost − gross benefits.
+		expect(rows[0].annualUnfundedAccruedPensionCost.toFixed(2)).toBe('20000.00');
+		expect(rows[9].annualUnfundedAccruedPensionCost.toFixed(2)).toBe('-80000.00'); // 20,000 − 100,000
+		// EOY unfunded = running cumulative: builds to 180,000 by year 9, unwinds to 0 by year 11.
+		expect(rows[8].unfundedAccruedPensionCostEoy.toFixed(2)).toBe('180000.00');
+		expect(rows[9].unfundedAccruedPensionCostEoy.toFixed(2)).toBe('100000.00');
+		expect(rows[10].unfundedAccruedPensionCostEoy.toFixed(2)).toBe('0.00');
+		// Unrecognized prior service cost amortises from 133,333.33 to 0 over the 10-year period.
+		expect(rows[0].unrecognizedPriorServiceCostBoy.toFixed(2)).toBe('133333.33');
+		expect(rows[0].unrecognizedPriorServiceCostEoy.toFixed(2)).toBe('120000.00'); // less 13,333.33
+		expect(rows[9].unrecognizedPriorServiceCostEoy.toFixed(2)).toBe('0.00');
+	});
+
 	it('accrues interest cost on the PBO when the discount rate is positive', () => {
 		const p = serpPensionForParticipant({ stream, discountRate: 0.05, nra: 65, currentAge: 55, pastServiceYears: 20 });
 		const r = serpEarningsByYear({

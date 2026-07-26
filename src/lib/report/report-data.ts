@@ -400,6 +400,18 @@ export interface EarningsLedgerOptionDisplay {
 }
 
 /**
+ * The consolidated FASB ASC 715-30 audit trail (report page 6.5) — the nine SERP pension columns
+ * per calendar year, preformatted. Present only after a run with SERP participants. Columns:
+ * [1] service cost, [2] prior-service amortisation, [3] interest accrual, [4] total pension cost,
+ * [5] gross benefit payments, [6] annual unfunded, [7] EOY unfunded, [8] BOY unrecognised prior
+ * service cost, [9] EOY unrecognised prior service cost.
+ */
+export interface AuditTrailDisplay {
+	/** Nine formatted column values (charges parenthesized) keyed by calendar year. */
+	byYear: Record<number, string[]>;
+}
+
+/**
  * Census age span and mortality assumption for the Appendix G chart footnote. Derived from
  * inputs, so it fills pre-run even though the chart itself awaits a mortality table.
  */
@@ -487,6 +499,8 @@ export interface ReportModel {
 	ledgerByOption: Record<string, OptionLedger>;
 	/** SERP pension columns [1][2][3] of the 5.2 ledger (option-independent), or null pre-run / no SERP. */
 	earningsLedgerSerp: EarningsLedgerSerpDisplay | null;
+	/** Consolidated FASB ASC 715-30 audit trail (page 6.5), or null pre-run / no SERP participants. */
+	auditTrail: AuditTrailDisplay | null;
 	/**
 	 * COLI [4] and combined [5] columns of the 5.2 ledger per funding option, keyed by strategy id.
 	 * Only feasible, run options appear; others are absent and those columns render "—".
@@ -1125,6 +1139,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	// and an option with any infeasible solve is suppressed, matching how pages 4.3 / 4.5 refuse to
 	// total a design built on a solve that missed its target.
 	let earningsLedgerSerp: EarningsLedgerSerpDisplay | null = null;
+	let auditTrail: AuditTrailDisplay | null = null;
 	const earningsLedgerByOption: Record<string, EarningsLedgerOptionDisplay> = {};
 	if (results) {
 		const accounting = computeAccounting({
@@ -1164,6 +1179,23 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 				col2Total: grouped(t2),
 				col3Total: grouped(t3)
 			};
+
+			// Page 6.5 audit trail — the nine SERP pension columns per calendar year.
+			const byYear: Record<number, string[]> = {};
+			for (const year of accounting.serp) {
+				byYear[year.calendarYear] = [
+					grouped(new Big(year.serviceCost ?? '0')),
+					grouped(new Big(year.priorServiceCostAmortization ?? '0')),
+					grouped(new Big(year.interestCost ?? '0')),
+					grouped(new Big(year.pensionExpense ?? '0')),
+					grouped(new Big(year.grossBenefitPayments ?? '0')),
+					grouped(new Big(year.annualUnfundedAccruedPensionCost ?? '0')),
+					grouped(new Big(year.unfundedAccruedPensionCostEoy ?? '0')),
+					grouped(new Big(year.unrecognizedPriorServiceCostBoy ?? '0')),
+					grouped(new Big(year.unrecognizedPriorServiceCostEoy ?? '0'))
+				];
+			}
+			auditTrail = { byYear };
 		}
 
 		// COLI [4] and combined [5] per option.
@@ -1309,6 +1341,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		faceSurvivorByOption,
 		ledgerByOption,
 		earningsLedgerSerp,
+		auditTrail,
 		earningsLedgerByOption,
 		mortalityAssumptions: mortalityAssumptionsFrom(census, legacyRefDate),
 
