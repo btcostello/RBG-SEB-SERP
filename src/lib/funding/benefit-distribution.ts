@@ -32,15 +32,21 @@ export const BENEFIT_DISTRIBUTION_SOLVE: SolveSpec = {
 export interface BenefitDistributionDesignParams extends PremiumFundedDesignParams {
 	/** The participant's SERP benefit stream, keyed by attained age. */
 	benefitStream: StreamYear[];
+	/** Corporate tax rate — the distribution funds the after-tax benefit (deductible SERP cost). */
+	corporateTaxRate: number;
 }
 
-/** Build the Option 2 design request: benefit stream out, premium solved to fund it. */
+/** Build the Option 2 design request: after-tax benefit stream out, premium solved to fund it. */
 export function buildBenefitDistributionDesignRequest(
 	params: BenefitDistributionDesignParams
 ): DesignRequest {
 	return {
 		...premiumFundedBase(params),
-		distributionPeriods: benefitStreamToDistributionPeriods(params.benefitStream, params.issueAge),
+		distributionPeriods: benefitStreamToDistributionPeriods(
+			params.benefitStream,
+			params.issueAge,
+			params.corporateTaxRate
+		),
 		distributionType: SERP_DISTRIBUTION_TYPE,
 		solve: BENEFIT_DISTRIBUTION_SOLVE
 	};

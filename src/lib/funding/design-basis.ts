@@ -28,6 +28,7 @@
  * intended $336,980 admitted. If the intent is "never fail 7702 *or* 7702A", the face rule needs
  * to bind on the guideline limit too — see HANDOFF.md §5.
  */
+import { Big, formatMoney } from '$lib/money/money';
 import type { DboPeriod, DesignRequest, DistributionPeriod, Gender, RiskClass } from '$lib/domain';
 import type { StreamYear } from '$lib/domain';
 
@@ -89,32 +90,43 @@ export function premiumFundedBase(params: PremiumFundedDesignParams): DesignRequ
 }
 
 /**
- * Convert a participant's SERP benefit stream into distribution windows.
+ * Convert a participant's SERP benefit stream into distribution windows, distributing the
+ * AFTER-TAX benefit each year: `benefit × (1 − corporateTaxRate)`.
+ *
+ * SERP benefit payments are tax-deductible to the company, so its true cost of the promise is the
+ * after-tax amount — the deduction covers the rest at the executive-payment level. The policy is
+ * therefore sized to fund that net cost, not the gross benefit, which keeps the distribution on the
+ * same after-tax basis as the SERP liability it offsets (so cost recovery reads consistently and
+ * Option 4 breaks even at ~100%). This assumes the company can currently use the SERP deduction
+ * (a profitable, regular-tax payer); if it cannot, after-tax funding understates the benefit cost.
  *
  * The stream is keyed by attained age; the engine wants policy years. Year 1 ends at
  * `issueAge + 1`, so a benefit at attained age A falls in policy year `A - issueAge`.
- * Consecutive years carrying the same amount collapse into one window, which keeps a level
- * 20-year payout to a single period instead of twenty.
+ * Consecutive years carrying the same (after-tax) amount collapse into one window, which keeps a
+ * level 20-year payout to a single period instead of twenty.
  */
 export function benefitStreamToDistributionPeriods(
 	stream: StreamYear[],
-	issueAge: number
+	issueAge: number,
+	corporateTaxRate: number
 ): DistributionPeriod[] {
+	const netFactor = new Big(1).minus(corporateTaxRate);
 	const periods: DistributionPeriod[] = [];
 	for (const year of stream) {
 		const policyYear = year.age - issueAge;
 		// A benefit at or before the issue age cannot be drawn from a policy that does not exist.
 		if (policyYear < 1 || policyYear > LAST_POLICY_YEAR) continue;
 
+		const amount = formatMoney(new Big(year.amount).times(netFactor));
 		const open = periods[periods.length - 1];
-		if (open && open.amount === year.amount && open.endYear === policyYear - 1) {
+		if (open && open.amount === amount && open.endYear === policyYear - 1) {
 			open.endYear = policyYear;
 		} else {
 			periods.push({
 				startYear: policyYear,
 				endYear: policyYear,
 				kind: 'specify',
-				amount: year.amount
+				amount
 			});
 		}
 	}

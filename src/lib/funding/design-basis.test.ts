@@ -20,7 +20,9 @@ const insured = {
 	riskClass: 'Standard Non Tobacco',
 	seedFaceAmount: '1000000.00',
 	productType: 'IUL',
-	creditedRate: 0.0575
+	creditedRate: 0.0575,
+	// 20% rate → distributions fund the after-tax benefit (× 0.8): $30k → $24k.
+	corporateTaxRate: 0.2
 } as const;
 
 /** Level $30k benefit, attained ages 66-85 → policy years 21-40 for a 45-year-old. */
@@ -63,10 +65,16 @@ describe('premiumFundedBase — shared Option 2/3/4 basis', () => {
 });
 
 describe('benefitStreamToDistributionPeriods', () => {
+	it('distributes the after-tax benefit (benefit × (1 − taxRate))', () => {
+		// $30k gross at 20% → $24k distributed; at 0% it is the gross benefit unchanged.
+		expect(benefitStreamToDistributionPeriods(levelStream, 45, 0.2)[0].amount).toBe('24000.00');
+		expect(benefitStreamToDistributionPeriods(levelStream, 45, 0)[0].amount).toBe('30000.00');
+	});
+
 	it('collapses a level payout into one window on the right policy years', () => {
 		// Year 1 ends at issueAge + 1, so attained age 66 is policy year 21 for a 45-year-old.
-		expect(benefitStreamToDistributionPeriods(levelStream, 45)).toEqual([
-			{ startYear: 21, endYear: 40, kind: 'specify', amount: '30000.00' }
+		expect(benefitStreamToDistributionPeriods(levelStream, 45, 0.2)).toEqual([
+			{ startYear: 21, endYear: 40, kind: 'specify', amount: '24000.00' }
 		]);
 	});
 
@@ -76,14 +84,14 @@ describe('benefitStreamToDistributionPeriods', () => {
 			{ age: 67, amount: '30000.00' },
 			{ age: 68, amount: '15000.00' }
 		];
-		expect(benefitStreamToDistributionPeriods(stepped, 45)).toEqual([
-			{ startYear: 21, endYear: 22, kind: 'specify', amount: '30000.00' },
-			{ startYear: 23, endYear: 23, kind: 'specify', amount: '15000.00' }
+		expect(benefitStreamToDistributionPeriods(stepped, 45, 0.2)).toEqual([
+			{ startYear: 21, endYear: 22, kind: 'specify', amount: '24000.00' },
+			{ startYear: 23, endYear: 23, kind: 'specify', amount: '12000.00' }
 		]);
 	});
 
 	it('drops benefits at or before the issue age — no policy exists to draw from', () => {
-		expect(benefitStreamToDistributionPeriods([{ age: 45, amount: '1000.00' }], 45)).toEqual([]);
+		expect(benefitStreamToDistributionPeriods([{ age: 45, amount: '1000.00' }], 45, 0.2)).toEqual([]);
 	});
 
 	it('does not merge non-adjacent windows carrying the same amount', () => {
@@ -91,15 +99,15 @@ describe('benefitStreamToDistributionPeriods', () => {
 			{ age: 66, amount: '30000.00' },
 			{ age: 70, amount: '30000.00' }
 		];
-		expect(benefitStreamToDistributionPeriods(gapped, 45)).toHaveLength(2);
+		expect(benefitStreamToDistributionPeriods(gapped, 45, 0.2)).toHaveLength(2);
 	});
 });
 
 describe('Options 2-4 design requests', () => {
-	it('Option 2 draws the benefit stream and solves premium to $1k net AV at 100', () => {
+	it('Option 2 draws the after-tax benefit stream and solves premium to $1k net AV at 100', () => {
 		const request = buildBenefitDistributionDesignRequest({ ...insured, benefitStream: levelStream });
 		expect(request.distributionPeriods).toEqual([
-			{ startYear: 21, endYear: 40, kind: 'specify', amount: '30000.00' }
+			{ startYear: 21, endYear: 40, kind: 'specify', amount: '24000.00' }
 		]);
 		expect(request.distributionType).toBe('withdraw_to_basis_then_loan');
 		expect(request.solve).toMatchObject({ target: 'specify', value: '1000.00', when: 100 });
@@ -157,7 +165,7 @@ describe('Options 2-4 design requests', () => {
 		// Premium recovery becomes a reported outcome, not the target.
 		expect(floored.solve).toBeUndefined();
 		expect(floored.distributionPeriods).toEqual([
-			{ startYear: 21, endYear: 40, kind: 'specify', amount: '30000.00' }
+			{ startYear: 21, endYear: 40, kind: 'specify', amount: '24000.00' }
 		]);
 		expect(v.safeParse(DesignRequestSchema, floored).success).toBe(true);
 	});

@@ -32,6 +32,7 @@
 				premium: totals?.premium ?? null,
 				avgFace: totals?.averageFace ?? null,
 				costRecovery: flow?.costRecovery ?? null,
+				costRecoveryWithPremium: flow?.costRecoveryWithPremium ?? null,
 				designed: !!totals && (totals.infeasibleCount ?? 0) === 0
 			};
 		}).filter((o) => o.designed);
@@ -163,7 +164,7 @@
 					>
 						<span class="oi">{o.number}</span>
 						<span class="ol">{o.label}</span>
-						{#if o.costRecovery}<span class="orc">{o.costRecovery}<small>recovery</small></span>{/if}
+						{#if o.costRecovery}<span class="orc">{o.costRecovery}<small>SERP recovery</small></span>{/if}
 					</button>
 				{/each}
 			</div>
@@ -180,8 +181,13 @@
 					</div>
 					<div class="od-fig">
 						<div class="n rec">{selected.costRecovery ?? '—'}</div>
-						<div class="l">Cost recovered</div>
+						<div class="l">SERP cost recovered</div>
 						<div class="track"><span class="bar" style="width: {Math.min(100, pctNum(selected.costRecovery))}%"></span></div>
+					</div>
+					<div class="od-fig">
+						<div class="n rec">{selected.costRecoveryWithPremium ?? '—'}</div>
+						<div class="l">SERP + premium cost recovered</div>
+						<div class="track"><span class="bar" style="width: {Math.min(100, pctNum(selected.costRecoveryWithPremium))}%"></span></div>
 					</div>
 				</div>
 			{/if}
@@ -219,7 +225,8 @@
 				<div class="s-row"><span>Executives retained</span><b>{report.numSerp}</b></div>
 				<div class="s-row"><span>Benefit promised (today's value)</span><b>{report.netPresentValue}</b></div>
 				<div class="s-row"><span>After-tax cost</span><b>{report.afterTaxCost}</b></div>
-				{#if selected?.costRecovery}<div class="s-row"><span>Cost recovered · {selected.label}</span><b>{selected.costRecovery}</b></div>{/if}
+				{#if selected?.costRecovery}<div class="s-row"><span>SERP cost recovered · {selected.label}</span><b>{selected.costRecovery}</b></div>{/if}
+				{#if selected?.costRecoveryWithPremium}<div class="s-row"><span>SERP + premium cost recovered · {selected.label}</span><b>{selected.costRecoveryWithPremium}</b></div>{/if}
 			</div>
 			<p class="thesis small">
 				A meaningful benefit for the people who matter most — at a net cost the company largely
@@ -492,7 +499,7 @@
 	}
 	.opt-detail {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(2, 1fr);
 		gap: 1.5rem;
 		margin-top: 1.75rem;
 		padding-top: 1.75rem;

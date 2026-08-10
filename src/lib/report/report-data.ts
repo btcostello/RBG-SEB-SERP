@@ -245,11 +245,15 @@ export interface CashFlowOptionDisplay {
 	netBenefitsColiAssets: string;
 	netBenefitsTotal: string;
 	coliPremiums: string;
+	/** Death benefit at life expectancy, NET of any outstanding loan balance repaid from proceeds. */
 	coliDeathBenefits: string;
 	coliLoansWithdrawals: string;
 	netColiGainLoss: string;
 	aggregateCashFlow: string;
+	/** SERP cost recovery: total COLI benefits ÷ after-tax SERP cost. */
 	costRecovery: string;
+	/** SERP + Premium cost recovery: total COLI benefits ÷ (after-tax SERP cost + total premiums). */
+	costRecoveryWithPremium: string;
 }
 
 /**
@@ -260,7 +264,7 @@ export const REPORT_FUNDING_OPTIONS = [
 	{ id: 'cost-recovery', number: 1, label: 'Cost Recovery' },
 	{ id: 'benefit-distribution', number: 2, label: 'Benefit Funding' },
 	{ id: 'premium-deposit', number: 3, label: 'Funding Wherewithal' },
-	{ id: 'premium-recovery', number: 4, label: 'Bene Funding + Cost Recov' }
+	{ id: 'premium-recovery', number: 4, label: 'Benefit Funding + Premium Recovery' }
 ] as const;
 
 /**
@@ -974,7 +978,11 @@ function legacyProjectionsFrom(
 
 /**
  * Life-of-plan cash-flow totals for ONE funding option, from that option's persisted
- * illustration streams. Death benefits are taken at each participant's life-expectancy age.
+ * illustration streams. Death benefits are taken at each participant's life-expectancy age, NET
+ * of any outstanding policy loan balance — the insurer repays the loan out of the proceeds, so the
+ * company only ever collects gross death benefit minus the loan balance. Using gross would
+ * double-count the loan, which was already received as a distribution while the insured was alive.
+ * (This equals the engine's `net_death_benefit` metric: report death_benefit − eoy_loan_balance.)
  * Returns null when no participant carries a design for this option.
  *
  * Options differ in *where* the benefit money comes from, not in how much is paid — so the
@@ -995,7 +1003,7 @@ function cashFlowForOption(
 	strategyId: string
 ): CashFlowOptionDisplay | null {
 	let totalPremiums = new Big(0);
-	let totalDeathAtLE = new Big(0);
+	let totalNetDeathAtLE = new Big(0);
 	let totalDistributions = new Big(0);
 	let anyStream = false;
 
@@ -1015,7 +1023,10 @@ function cashFlowForOption(
 				.plus(new Big(year.loan ?? '0'));
 		}
 		const leYear = years.find((y) => y.age === insured.lifeExpectancy) ?? years[years.length - 1];
-		totalDeathAtLE = totalDeathAtLE.plus(new Big(leYear.deathBenefit));
+		// Net death benefit: gross death benefit less the outstanding loan balance the insurer
+		// repays from the proceeds. Options without loans (1, 3) carry no loanBalance, so net = gross.
+		const netDeathAtLE = new Big(leYear.deathBenefit).minus(new Big(leYear.loanBalance ?? '0'));
+		totalNetDeathAtLE = totalNetDeathAtLE.plus(netDeathAtLE);
 	}
 	if (!anyStream) return null;
 
@@ -1027,23 +1038,32 @@ function cashFlowForOption(
 	const fromColi = totalDistributions.gt(afterTaxCost) ? afterTaxCost : totalDistributions;
 	const fromCompany = afterTaxCost.minus(fromColi);
 	const netBenefitsTotal = afterTaxCost.times(-1);
-	// What the policies returned (death proceeds + distributions) less what went in.
-	const netColiGain = totalDeathAtLE.plus(totalDistributions).minus(totalPremiums);
+	// What the policies returned (net death proceeds + distributions) less what went in.
+	const netColiGain = totalNetDeathAtLE.plus(totalDistributions).minus(totalPremiums);
 	const aggregate = netBenefitsTotal.plus(netColiGain);
-	const costRecovery = netColiGain.eq(0)
-		? '—'
-		: `${netBenefitsTotal.times(-1).div(netColiGain).times(100).round(0).toString()}%`;
+	// Total COLI benefits: distributions received + net death benefit at life expectancy. Premiums
+	// are NOT netted out here.
+	const totalColiBenefits = totalNetDeathAtLE.plus(totalDistributions);
+	const pct = (denom: Big) =>
+		denom.eq(0) ? '—' : `${totalColiBenefits.div(denom).times(100).round(0).toString()}%`;
+	// SERP cost recovery: COLI benefits as a share of the after-tax SERP cost — i.e.
+	// total SERP benefits × (1 − taxRate), which is exactly `afterTaxCost`.
+	const costRecovery = pct(afterTaxCost);
+	// SERP + Premium cost recovery: same benefits over the after-tax SERP cost PLUS the premiums
+	// the company paid in, so recovery must also earn back the funding outlay.
+	const costRecoveryWithPremium = pct(afterTaxCost.plus(totalPremiums));
 
 	return {
 		netBenefitsCompanyCashFlow: grouped(fromCompany.times(-1)),
 		netBenefitsColiAssets: grouped(fromColi.times(-1)),
 		netBenefitsTotal: grouped(netBenefitsTotal),
 		coliPremiums: grouped(totalPremiums.times(-1)),
-		coliDeathBenefits: formatMoneyDisplay(totalDeathAtLE, 0),
+		coliDeathBenefits: formatMoneyDisplay(totalNetDeathAtLE, 0),
 		coliLoansWithdrawals: formatMoneyDisplay(totalDistributions, 0),
 		netColiGainLoss: grouped(netColiGain),
 		aggregateCashFlow: grouped(aggregate),
-		costRecovery
+		costRecovery,
+		costRecoveryWithPremium
 	};
 }
 

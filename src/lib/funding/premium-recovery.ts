@@ -46,6 +46,8 @@ export interface PremiumRecoveryDesignParams extends PremiumFundedDesignParams {
 	benefitStream: StreamYear[];
 	/** Attained age the death benefit must have returned premiums by. */
 	lifeExpectancy: number;
+	/** Corporate tax rate — the distribution funds the after-tax benefit (deductible SERP cost). */
+	corporateTaxRate: number;
 }
 
 /**
@@ -60,7 +62,11 @@ export function buildPremiumRecoveryDesignRequest(
 ): DesignRequest {
 	return {
 		...premiumFundedBase(params),
-		distributionPeriods: benefitStreamToDistributionPeriods(params.benefitStream, params.issueAge),
+		distributionPeriods: benefitStreamToDistributionPeriods(
+			params.benefitStream,
+			params.issueAge,
+			params.corporateTaxRate
+		),
 		distributionType: SERP_DISTRIBUTION_TYPE,
 		solve: premiumRecoverySolve(params.lifeExpectancy)
 	};
@@ -94,7 +100,11 @@ export function buildFlooredPremiumRecoveryDesignRequest(
 		premiumPeriods: [
 			{ startYear: 1, endYear: payYears, kind: 'specify', amount: params.annualPremium }
 		],
-		distributionPeriods: benefitStreamToDistributionPeriods(params.benefitStream, params.issueAge),
+		distributionPeriods: benefitStreamToDistributionPeriods(
+			params.benefitStream,
+			params.issueAge,
+			params.corporateTaxRate
+		),
 		distributionType: SERP_DISTRIBUTION_TYPE
 	};
 }

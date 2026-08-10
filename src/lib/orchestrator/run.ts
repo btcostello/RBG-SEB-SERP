@@ -198,6 +198,9 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 				? { payYears: quote.modelSettings.premiumYears }
 				: {})
 		};
+		// Options 2 & 4 distribute the AFTER-TAX benefit (deductible SERP cost), so the funding
+		// design needs the corporate tax rate. Option 1 (cost recovery) takes no distributions.
+		const corporateTaxRate = quote.company.corporateTaxRate;
 		const allocatedFace = faceById.get(insured.id) ?? new Big(0);
 		const out: DesignedPolicy[] = [];
 
@@ -228,9 +231,14 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 		// Options 2–4 size face from the solved premium, so the seed is only an anchor.
 		const seedFaceAmount = formatMoney(allocatedFace);
 
-		// Option 2 — distributions pay each year's SERP benefit.
+		// Option 2 — distributions pay each year's after-tax SERP benefit.
 		const benefitDistribution = await illustrateWithTimeout(
-			buildBenefitDistributionDesignRequest({ ...shared, seedFaceAmount, benefitStream }),
+			buildBenefitDistributionDesignRequest({
+				...shared,
+				seedFaceAmount,
+				benefitStream,
+				corporateTaxRate
+			}),
 			callSignal
 		);
 		out.push(designedFromSolve(insured.id, BENEFIT_DISTRIBUTION_ID, benefitDistribution));
@@ -263,7 +271,8 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 				...shared,
 				seedFaceAmount,
 				benefitStream,
-				lifeExpectancy: insured.lifeExpectancy
+				lifeExpectancy: insured.lifeExpectancy,
+				corporateTaxRate
 			}),
 			callSignal
 		);
@@ -274,7 +283,8 @@ export async function runModel(params: RunModelParams): Promise<RunOutput> {
 					seedFaceAmount,
 					benefitStream,
 					lifeExpectancy: insured.lifeExpectancy,
-					annualPremium: option2Premium
+					annualPremium: option2Premium,
+					corporateTaxRate
 				}),
 				callSignal
 			);

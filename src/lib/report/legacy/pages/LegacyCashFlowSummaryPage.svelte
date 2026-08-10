@@ -33,11 +33,12 @@
 		{ label: 'Net Benefits Paid from COLI Assets', pick: (cf) => cf.netBenefitsColiAssets },
 		{ label: 'Net Benefits Paid — Total', strong: true, pick: (cf) => cf.netBenefitsTotal },
 		{ label: 'COLI Premiums', pick: (cf) => cf.coliPremiums },
-		{ label: 'COLI Death Benefits', pick: (cf) => cf.coliDeathBenefits },
+		{ label: 'COLI Death Benefits (net of loan)', pick: (cf) => cf.coliDeathBenefits },
 		{ label: 'COLI Policy Loans and Withdrawals', pick: (cf) => cf.coliLoansWithdrawals },
 		{ label: 'Net COLI Gain / (Loss)', pick: (cf) => cf.netColiGainLoss },
 		{ label: 'Net Program Aggregate Cash Flow', mark: '*', pick: (cf) => cf.aggregateCashFlow },
-		{ label: 'COLI Cost Recovery', mark: '*', pick: (cf) => cf.costRecovery }
+		{ label: 'SERP Cost Recovery', mark: '*', pick: (cf) => cf.costRecovery },
+		{ label: 'SERP + Premium Cost Recovery', pick: (cf) => cf.costRecoveryWithPremium }
 	];
 
 	/**
@@ -105,7 +106,7 @@
 			{/if}
 			<p>
 				<sup>*</sup> Generally, the Aggregate Cash Flow target for both Option 1 and Option 4 is zero;
-				corresponding Cost Recovery target is 100%.
+				corresponding SERP Cost Recovery target is 100%.
 			</p>
 			<p>
 				<sup>^</sup> Assumed Mortality at Life Expectancy (generally age 84), for benefit and insurance

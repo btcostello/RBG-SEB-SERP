@@ -37,6 +37,7 @@
 		premium: string;
 		avgFace: string;
 		costRecovery: string;
+		costRecoveryWithPremium: string;
 		status: 'feasible' | 'review' | 'none';
 	}
 
@@ -52,6 +53,7 @@
 				premium: totals?.premium ?? '—',
 				avgFace: totals?.averageFace ?? '—',
 				costRecovery: flow?.costRecovery ?? '—',
+				costRecoveryWithPremium: flow?.costRecoveryWithPremium ?? '—',
 				status: !totals ? 'none' : infeasible > 0 ? 'review' : 'feasible'
 			};
 		});
@@ -98,7 +100,8 @@
 							<th>Option</th>
 							<th>Premium / yr</th>
 							<th>Avg face</th>
-							<th>Cost recovery</th>
+							<th>SERP cost recovery</th>
+							<th>SERP + premium cost recovery</th>
 							<th>Status</th>
 						</tr>
 					</thead>
@@ -109,6 +112,7 @@
 								<td class="num">{row.premium}</td>
 								<td class="num">{row.avgFace}</td>
 								<td class="num">{row.costRecovery}</td>
+								<td class="num">{row.costRecoveryWithPremium}</td>
 								<td>
 									{#if row.status === 'feasible'}
 										<span class="chip ok">Feasible</span>
@@ -122,6 +126,11 @@
 						{/each}
 					</tbody>
 				</table>
+				<p class="assumption">
+					Cost recovery funds the <strong>after-tax</strong> SERP benefit — benefit × (1 − tax rate) —
+					since SERP payments are deductible; COLI premiums are not. Assumes the company can
+					currently use the SERP deduction.
+				</p>
 			{:else}
 				<p class="prompt">
 					Run the model to design the COLI funding across all four options — premium, face, and
@@ -303,6 +312,16 @@
 		border-left: 3px solid var(--accent);
 		padding: 0.9rem 1.1rem;
 		margin: 0;
+	}
+	.assumption {
+		font-size: 0.74rem;
+		line-height: 1.5;
+		color: var(--muted);
+		margin: 0.9rem 0 0;
+	}
+	.assumption strong {
+		color: var(--ink-soft);
+		font-weight: 600;
 	}
 
 	/* deliverables */
