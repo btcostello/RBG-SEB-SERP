@@ -13,7 +13,10 @@ describe('createQuote', () => {
 		const parsed = v.parse(QuoteSchema, quote);
 		expect(parsed.schemaVersion).toBe(SCHEMA_VERSION);
 		expect(parsed.company.name).toBe('Acme Inc');
-		expect(parsed.modelSettings).toEqual(DEFAULT_MODEL_SETTINGS);
+		// Documented defaults, plus the plan effective date defaulted to the day the quote is created.
+		const { effectiveDate, ...settingsSansDate } = parsed.modelSettings;
+		expect(settingsSansDate).toEqual(DEFAULT_MODEL_SETTINGS);
+		expect(effectiveDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 		expect(parsed.census).toEqual([]);
 		expect(parsed.results).toBeNull();
 	});

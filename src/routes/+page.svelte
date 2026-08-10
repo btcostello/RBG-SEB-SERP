@@ -11,7 +11,7 @@
 	import { CompanySchema, fieldErrors } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
-	import ExecutiveRoster from '$lib/components/ExecutiveRoster.svelte';
+	import CensusEditor from '$lib/components/CensusEditor.svelte';
 	import RunButton from '$lib/components/RunButton.svelte';
 	import ProgressIndicator from '$lib/components/ProgressIndicator.svelte';
 	import WorkspaceResults from '$lib/components/WorkspaceResults.svelte';
@@ -117,7 +117,7 @@
 				</div>
 
 				<div class="setup-block">
-					<ExecutiveRoster />
+					<CensusEditor />
 				</div>
 
 				<div class="run-block">

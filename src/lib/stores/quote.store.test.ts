@@ -20,7 +20,10 @@ describe('quoteStore', () => {
 		quoteStore.create({ companyName: 'Acme', corporateTaxRate: 0.21 });
 		expect(quoteStore.hasQuote).toBe(true);
 		expect(quoteStore.current?.company).toEqual({ name: 'Acme', corporateTaxRate: 0.21 });
-		expect(quoteStore.current?.modelSettings).toEqual(DEFAULT_MODEL_SETTINGS);
+		// Documented defaults, plus the plan effective date defaulted to today at creation.
+		const { effectiveDate, ...settingsSansDate } = quoteStore.current!.modelSettings;
+		expect(settingsSansDate).toEqual(DEFAULT_MODEL_SETTINGS);
+		expect(effectiveDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 		expect(quoteStore.current?.census).toEqual([]);
 		expect(quoteStore.current?.results).toBeNull();
 	});

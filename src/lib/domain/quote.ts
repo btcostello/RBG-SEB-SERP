@@ -45,8 +45,15 @@ export function createQuote(params: {
 			name: params.companyName,
 			corporateTaxRate: params.corporateTaxRate
 		},
-		modelSettings: { ...DEFAULT_MODEL_SETTINGS },
+		// Default the plan effective date to the day the quote is created; the operator can override it.
+		modelSettings: { ...DEFAULT_MODEL_SETTINGS, effectiveDate: todayIso() },
 		census: [],
 		results: null
 	};
+}
+
+/** Today's local date as ISO YYYY-MM-DD (the default plan effective date). */
+function todayIso(): string {
+	const d = new Date();
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

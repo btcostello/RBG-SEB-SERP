@@ -361,8 +361,8 @@
 			<p class="hint">Edit inline, add rows, or paste a block from Excel / Google Sheets.</p>
 		</div>
 		<div class="tools">
-			<button type="button" class="primary" onclick={addRow}>+ Add executive</button>
-			<button type="button" onclick={() => (showPaste = !showPaste)} aria-expanded={showPaste}>
+			<button type="button" class="run-btn" onclick={addRow}>+ Add executive</button>
+			<button type="button" class="run-btn" onclick={() => (showPaste = !showPaste)} aria-expanded={showPaste}>
 				Paste rows…
 			</button>
 			<button
@@ -500,9 +500,6 @@
 		</table>
 	</div>
 
-	<div class="footer">
-		<button type="button" class="ghost" onclick={addRow}>+ Add executive</button>
-	</div>
 </section>
 
 <style>
@@ -559,6 +556,28 @@
 	}
 	button.primary:hover {
 		background: #1c3aa0;
+	}
+
+	/* Toolbar actions mirror the Run model button (bronze accent fill). */
+	button.run-btn {
+		font-family: var(--sans);
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: 0.03em;
+		color: #fff;
+		background: var(--accent-deep);
+		border: 1px solid var(--accent-deep);
+		border-radius: 2px;
+		padding: 0.65rem 1.6rem;
+		cursor: pointer;
+	}
+	button.run-btn:hover:not(:disabled) {
+		background: var(--accent);
+		border-color: var(--accent);
+	}
+	button.run-btn:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
 	}
 	button.ghost {
 		background: transparent;
@@ -728,9 +747,6 @@
 		padding: 1.25rem;
 		text-align: center;
 		color: #94a3b8;
-	}
-	.footer {
-		display: flex;
 	}
 	.sr {
 		position: absolute;
