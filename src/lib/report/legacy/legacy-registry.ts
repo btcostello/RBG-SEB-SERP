@@ -30,6 +30,7 @@ import LegacyFinOverviewPageA from './pages/LegacyFinOverviewPageA.svelte';
 import LegacyFinOverviewPageB from './pages/LegacyFinOverviewPageB.svelte';
 import LegacyFundingOverviewPage from './pages/LegacyFundingOverviewPage.svelte';
 import LegacyCashFlowSummaryPage from './pages/LegacyCashFlowSummaryPage.svelte';
+import LegacyFinancialSummaryPage from './pages/LegacyFinancialSummaryPage.svelte';
 import LegacyEarningsImpactPage from './pages/LegacyEarningsImpactPage.svelte';
 import LegacyEarningsLedgerOption1Page from './pages/LegacyEarningsLedgerOption1Page.svelte';
 import LegacyEarningsLedgerOption2Page from './pages/LegacyEarningsLedgerOption2Page.svelte';
@@ -165,5 +166,12 @@ export const legacyReportPages: LegacyReportPage[] = [
 		title: `Glossary — ${sheet}`,
 		component: LegacyGlossaryPage,
 		props: { sheetIndex: index }
-	}))
+	})),
+	// Final page — a single-option financial snapshot (source "J1 Butterfly Chart"), no page number.
+	{
+		id: 'j1-financial-summary',
+		title: 'Financial Overview — Summary (Funding Wherewithal)',
+		component: LegacyFinancialSummaryPage,
+		props: { strategyId: 'premium-deposit' }
+	}
 ];

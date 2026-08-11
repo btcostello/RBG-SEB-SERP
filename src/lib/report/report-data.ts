@@ -8,7 +8,7 @@
  * Money display here is whole dollars (presentation-grade proposal style); the underlying
  * decimal-string values keep full cents (AR2) and are rounded half-up only for display.
  */
-import { Big, formatMoneyDisplay } from '$lib/money/money';
+import { Big, formatMoney, formatMoneyDisplay } from '$lib/money/money';
 import { ageNearestBirthday, completedYearsBetween } from '$lib/dates/age';
 import { survivorBenefitAtAge, survivorBenefitStream } from '$lib/engine/survivor-benefit';
 import { computeAccounting } from '$lib/accounting';
@@ -254,6 +254,40 @@ export interface CashFlowOptionDisplay {
 	costRecovery: string;
 	/** SERP + Premium cost recovery: total COLI benefits ÷ (after-tax SERP cost + total premiums). */
 	costRecoveryWithPremium: string;
+	/** Raw life-of-plan totals (decimal money strings) for downstream derivations (e.g. J1). */
+	raw: {
+		/** Net death benefit at life expectancy, summed across policies. */
+		netDeathAtLE: string;
+		/** Distributions received (withdrawals + loans), summed across policies. */
+		distributions: string;
+		/** Premiums paid across all policy years, summed across policies. */
+		premiums: string;
+	};
+}
+
+/**
+ * Financial Overview ("butterfly") summary for one funding option (source J1). All figures are
+ * full whole-dollar strings. Plan-level figures (participant count, average age, projected benefit
+ * value, tax deduction, after-tax cost) live on the ReportModel; these are the option-specific
+ * COLI figures plus raw magnitudes for the two-wing bar chart.
+ */
+export interface FinancialOverviewDisplay {
+	/** First-year COLI premium (total across policies). Null when not reportable. */
+	annualColiPremium: string | null;
+	/** Cumulative COLI premium across all policy years. */
+	cumulativeColiPremium: string;
+	/** COLI accumulated values = net death benefit at LE + distributions received. */
+	coliAccumulatedValues: string;
+	/** Use of cash factor = COLI accumulated values − after-tax benefit cost − cumulative premium. */
+	useOfCashFactor: string;
+	/** Raw whole-dollar magnitudes for the chart bars. */
+	bars: {
+		coliAccumulatedValues: number;
+		benefitsPayable: number;
+		afterTaxBenefitCost: number;
+		coliPremiums: number;
+		useOfCashFactor: number;
+	};
 }
 
 /**
@@ -470,6 +504,8 @@ export interface ReportModel {
 	numCensus: number;
 	/** Rounded average age (nearest birthday) across the census; null when census empty. */
 	averageAge: number | null;
+	/** Rounded average age (nearest birthday) of SERP participants; null when none. */
+	averageAgeSerp: number | null;
 	/** Whole-dollar combined recognized salary of SERP participants. */
 	coveredPayroll: string;
 	/** Whole-dollar combined recognized salary of everyone in the census. */
@@ -509,6 +545,8 @@ export interface ReportModel {
 	fundingOptions: Record<string, FundingOptionSummary>;
 	/** Life-of-plan cash-flow totals per funding option, keyed by strategy id (page 4.5). */
 	cashFlowByOption: Record<string, CashFlowOptionDisplay>;
+	/** Financial Overview ("butterfly") summary per funding option, keyed by strategy id (J1). */
+	financialOverviewByOption: Record<string, FinancialOverviewDisplay>;
 	/** Sample benefit statement for the first census member, or null on an empty census. */
 	benefitStatement: BenefitStatementDisplay | null;
 	/** COLI face vs survivor liability per funding option, keyed by strategy id (Appendix B). */
@@ -1063,7 +1101,12 @@ function cashFlowForOption(
 		netColiGainLoss: grouped(netColiGain),
 		aggregateCashFlow: grouped(aggregate),
 		costRecovery,
-		costRecoveryWithPremium
+		costRecoveryWithPremium,
+		raw: {
+			netDeathAtLE: formatMoney(totalNetDeathAtLE),
+			distributions: formatMoney(totalDistributions),
+			premiums: formatMoney(totalPremiums)
+		}
 	};
 }
 
@@ -1098,6 +1141,9 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	const ages = census.map((i) => ageNearestBirthday(i.dateOfBirth, asOf));
 	const averageAge =
 		ages.length === 0 ? null : Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
+	const serpAges = serp.map((i) => ageNearestBirthday(i.dateOfBirth, asOf));
+	const averageAgeSerp =
+		serpAges.length === 0 ? null : Math.round(serpAges.reduce((a, b) => a + b, 0) / serpAges.length);
 	const sumSalaries = (list: Insured[]) =>
 		list.reduce((acc, i) => acc.plus(new Big(i.currentSalary)), new Big(0));
 	const coveredPayroll = wholeDollars(sumSalaries(serp));
@@ -1127,22 +1173,44 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	// streams. An option a run did not design simply has no entry, and its column shows "—".
 	const cashFlowByOption: Record<string, CashFlowOptionDisplay> = {};
 	const fundingOptions: Record<string, FundingOptionSummary> = {};
+	const financialOverviewByOption: Record<string, FinancialOverviewDisplay> = {};
 	if (results) {
 		for (const option of REPORT_FUNDING_OPTIONS) {
 			const flow = cashFlowForOption(census, resultById, afterTaxCostBig, option.id);
 			if (flow) cashFlowByOption[option.id] = flow;
 
 			const totals = results.aggregate.byOption?.[option.id];
+			const reportable = totals ? (totals.infeasibleCount ?? 0) === 0 : false;
 			if (totals && totals.policyCount > 0) {
-				const infeasibleCount = totals.infeasibleCount ?? 0;
-				const reportable = infeasibleCount === 0;
 				fundingOptions[option.id] = {
 					premium: reportable ? wholeDollars(totals.totalFirstYearPremium) : null,
 					averageFace: reportable
 						? wholeDollars(new Big(totals.totalFaceAmount).div(totals.policyCount))
 						: null,
 					policyCount: totals.policyCount,
-					infeasibleCount
+					infeasibleCount: totals.infeasibleCount ?? 0
+				};
+			}
+
+			// Financial Overview (J1 butterfly): COLI accumulated values = net death benefit at LE +
+			// distributions received; use-of-cash factor = that less the after-tax cost and premiums.
+			if (flow) {
+				const accumulated = new Big(flow.raw.netDeathAtLE).plus(new Big(flow.raw.distributions));
+				const cumPremium = new Big(flow.raw.premiums);
+				const useOfCash = accumulated.minus(afterTaxCostBig).minus(cumPremium);
+				financialOverviewByOption[option.id] = {
+					annualColiPremium:
+						reportable && totals ? wholeDollars(totals.totalFirstYearPremium) : null,
+					cumulativeColiPremium: wholeDollars(cumPremium),
+					coliAccumulatedValues: wholeDollars(accumulated),
+					useOfCashFactor: wholeDollars(useOfCash),
+					bars: {
+						coliAccumulatedValues: Number(accumulated.toString()),
+						benefitsPayable: Number(totalCost.toString()),
+						afterTaxBenefitCost: Number(afterTaxCostBig.toString()),
+						coliPremiums: Number(cumPremium.toString()),
+						useOfCashFactor: Number(useOfCash.toString())
+					}
 				};
 			}
 		}
@@ -1367,6 +1435,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		numColi: coli.length,
 		numCensus: census.length,
 		averageAge,
+		averageAgeSerp,
 		coveredPayroll,
 		censusPayroll,
 
@@ -1400,6 +1469,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		cashFlow,
 		fundingOptions,
 		cashFlowByOption,
+		financialOverviewByOption,
 		// Appendix A samples the first census member, per operator.
 		benefitStatement: benefitStatementFor(census[0], legacyRefDate, resultById),
 		faceSurvivorByOption,
