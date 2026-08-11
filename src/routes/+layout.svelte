@@ -25,6 +25,7 @@
 	<div class="links">
 		<a href="/">Setup</a>
 		<a href="/report">Report</a>
+		<a href="/report/interactive">Interactive Report</a>
 		<a href="/report/legacy">Legacy Report</a>
 	</div>
 </nav>
