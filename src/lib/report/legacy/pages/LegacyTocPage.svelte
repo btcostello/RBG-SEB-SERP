@@ -4,7 +4,9 @@
 	 *
 	 * The contents structure is taken as fixed (per operator: take the structure as fact, no
 	 * add/remove). It is a static two-level outline with a right-hand "Section" column of tab
-	 * ids (1–6, A–H). Company name and the footer date are data-driven; everything else is fixed.
+	 * ids: the body sections are numbered 1–6, and the eight Appendix items are lettered A–H
+	 * (A aligns with "Participant Summary of Benefits"). Company name and the footer date are
+	 * data-driven; everything else is fixed.
 	 */
 	import { shortDate, type ReportModel } from '../../report-data';
 
@@ -27,18 +29,18 @@
 		{ level: 0, label: 'Earnings Impact' },
 		{ level: 1, label: 'Impact on Earnings Summary', sec: '6' },
 		{ level: 0, label: 'Accounting Entries' },
-		{ level: 1, label: 'SERP & COLI Accounting Entry Worksheets', sec: 'A' },
-		{ level: 1, label: 'Consolidated FASB ASC 715-30 Audit Trails', sec: 'B' },
-		{ level: 1, label: 'First Plan Year Entries - Allocation by Participant', sec: 'C' },
-		{ level: 0, label: 'Appendix', sec: 'D' },
-		{ level: 1, label: 'Participant Summary of Benefits', sec: 'E' },
-		{ level: 1, label: 'Indemnification of Survivor Benefit Plan (where applicable)', sec: 'F' },
-		{ level: 1, label: 'Summary Analysis of Cash Flows (4 Options)', sec: 'G' },
-		{ level: 1, label: 'Accounting for SERP Programs', sec: 'H' },
-		{ level: 1, label: 'SERP & COLI Informational Overviews' },
-		{ level: 1, label: 'Hypothetical Value of COLI' },
-		{ level: 1, label: 'Comparison of Impact of Mortality Assumptions' },
-		{ level: 1, label: 'Glossary' }
+		{ level: 1, label: 'SERP & COLI Accounting Entry Worksheets' },
+		{ level: 1, label: 'Consolidated FASB ASC 715-30 Audit Trails' },
+		{ level: 1, label: 'First Plan Year Entries - Allocation by Participant' },
+		{ level: 0, label: 'Appendix' },
+		{ level: 1, label: 'Participant Summary of Benefits', sec: 'A' },
+		{ level: 1, label: 'Indemnification of Survivor Benefit Plan (where applicable)', sec: 'B' },
+		{ level: 1, label: 'Summary Analysis of Cash Flows (4 Options)', sec: 'C' },
+		{ level: 1, label: 'Accounting for SERP Programs', sec: 'D' },
+		{ level: 1, label: 'SERP & COLI Informational Overviews', sec: 'E' },
+		{ level: 1, label: 'Hypothetical Value of COLI', sec: 'F' },
+		{ level: 1, label: 'Comparison of Impact of Mortality Assumptions', sec: 'G' },
+		{ level: 1, label: 'Glossary', sec: 'H' }
 	];
 </script>
 
