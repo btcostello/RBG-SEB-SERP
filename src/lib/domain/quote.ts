@@ -15,6 +15,20 @@ import { ResultsSchema } from './results';
 /** Current persisted Quote schema version. Bump when the shape changes (migration seam). */
 export const SCHEMA_VERSION = 1;
 
+/**
+ * Per-report page visibility. Stores the registry page ids the operator has HIDDEN from each
+ * paginated report — not the enabled ids — so the default (absent/empty) shows every page and a
+ * page added to a registry later is visible until explicitly hidden. The interactive report is a
+ * single narrative, not a page list, so it has no entry here.
+ */
+export const ReportSettingsSchema = v.object({
+	/** Page ids hidden from the formal `/report`. Absent/empty ⇒ all pages shown. */
+	hiddenPages: v.optional(v.array(v.string())),
+	/** Page ids hidden from `/report/legacy`. Absent/empty ⇒ all pages shown. */
+	hiddenLegacyPages: v.optional(v.array(v.string()))
+});
+export type ReportSettings = v.InferOutput<typeof ReportSettingsSchema>;
+
 export const QuoteSchema = v.object({
 	schemaVersion: v.literal(SCHEMA_VERSION),
 	/** Stable identifier / storage key (one quote per prospect company). */
@@ -24,7 +38,12 @@ export const QuoteSchema = v.object({
 	/** The executive census. */
 	census: v.array(InsuredSchema),
 	/** Computed results snapshot; `null` until a run computes it. */
-	results: v.nullable(ResultsSchema)
+	results: v.nullable(ResultsSchema),
+	/**
+	 * Report page visibility. Optional so pre-existing quotes still validate; absent means every
+	 * page of every report is shown.
+	 */
+	reportSettings: v.optional(ReportSettingsSchema)
 });
 
 export type Quote = v.InferOutput<typeof QuoteSchema>;

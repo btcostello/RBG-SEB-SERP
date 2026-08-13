@@ -147,6 +147,20 @@ class QuoteStore {
 		if (!this.current) return;
 		this.current = { ...this.current, results };
 	}
+
+	/**
+	 * Set which registry page ids are hidden from a paginated report. `report` selects the target
+	 * document; the hidden set persists on the quote and is applied by the report view. Immutable
+	 * so `$derived`/`$effect` consumers (and the report render) track the change.
+	 */
+	setHiddenReportPages(report: 'main' | 'legacy', hiddenIds: string[]): void {
+		if (!this.current) return;
+		const key = report === 'legacy' ? 'hiddenLegacyPages' : 'hiddenPages';
+		this.current = {
+			...this.current,
+			reportSettings: { ...this.current.reportSettings, [key]: hiddenIds }
+		};
+	}
 }
 
 export const quoteStore = new QuoteStore();

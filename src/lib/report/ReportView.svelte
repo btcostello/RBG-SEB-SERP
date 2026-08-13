@@ -20,11 +20,17 @@
 	}
 
 	const report = $derived(quoteStore.current ? deriveReport(quoteStore.current, todayIso()) : null);
+
+	// Pages the operator has turned off for this quote are dropped before render, so both the
+	// on-screen proposal and the printed PDF contain only the enabled pages (the hidden set lives on
+	// the quote; absent ⇒ every page shown).
+	const hidden = $derived(new Set(quoteStore.current?.reportSettings?.hiddenPages ?? []));
+	const visiblePages = $derived(reportPages.filter((page) => !hidden.has(page.id)));
 </script>
 
 {#if report}
 	<div class="report">
-		{#each reportPages as page (page.id)}
+		{#each visiblePages as page (page.id)}
 			{@const PageComponent = page.component}
 			<article class="report-page" aria-label={page.title}>
 				<PageComponent {report} />

@@ -6,14 +6,18 @@
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
 	import ReportView from '$lib/report/ReportView.svelte';
+	import ReportPageToggles from '$lib/report/ReportPageToggles.svelte';
+	import { reportPages } from '$lib/report/registry';
 
 	const hasReport = $derived(quoteStore.current?.results != null);
+	const togglePages = reportPages.map((p) => ({ id: p.id, title: p.title }));
 </script>
 
-<svelte:head><title>SERP Pro — Report</title></svelte:head>
+<svelte:head><title>SERP-PLUS — Simple Report</title></svelte:head>
 
 <main class:paper={hasReport}>
 	{#if hasReport}
+		<ReportPageToggles pages={togglePages} report="main" />
 		<div class="actions no-print">
 			<button type="button" onclick={() => window.print()}>Print / Save as PDF</button>
 		</div>

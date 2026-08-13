@@ -21,10 +21,10 @@
 {/if}
 
 <nav class="app-nav">
-	<span class="brand">SERP <span>Pro</span></span>
+	<span class="brand">SERP-<span>PLUS</span></span>
 	<div class="links">
 		<a href="/">Setup</a>
-		<a href="/report">Report</a>
+		<a href="/report">Simple Report</a>
 		<a href="/report/interactive">Interactive Report</a>
 		<a href="/report/legacy">Legacy Report</a>
 	</div>

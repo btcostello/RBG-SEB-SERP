@@ -19,19 +19,24 @@
 	}
 
 	const report = $derived(quoteStore.current ? deriveReport(quoteStore.current, todayIso()) : null);
+
+	// Drop the pages the operator has turned off for this quote (hidden set lives on the quote;
+	// absent ⇒ every page shown), so screen and print both reflect the current selection.
+	const hidden = $derived(new Set(quoteStore.current?.reportSettings?.hiddenLegacyPages ?? []));
+	const visiblePages = $derived(legacyReportPages.filter((page) => !hidden.has(page.id)));
 </script>
 
 {#if report}
 	<div class="report">
-		{#if legacyReportPages.length === 0}
+		{#if visiblePages.length === 0}
 			<article class="report-page" aria-label="Legacy Report — empty">
 				<p class="eyebrow">Legacy Report</p>
 				<p class="small">
-					No pages yet. Sections are added one at a time from the supplied source pages.
+					No pages selected. Use the Pages menu to turn report pages back on.
 				</p>
 			</article>
 		{:else}
-			{#each legacyReportPages as page (page.id)}
+			{#each visiblePages as page (page.id)}
 				{@const PageComponent = page.component}
 				<article class="report-page" class:landscape={page.landscape} aria-label={page.title}>
 					<PageComponent {report} {...(page.props ?? {})} />

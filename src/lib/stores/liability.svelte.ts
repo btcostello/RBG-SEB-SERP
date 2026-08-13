@@ -7,10 +7,11 @@
  * updates sub-second. Nothing here mutates the quote — the snapshot is written onto the quote
  * explicitly at save time (see the Setup route), avoiding reactive loops.
  */
+import * as v from 'valibot';
 import { quoteStore } from './quote.svelte';
 import { computeLiability, type LiabilityResult } from '$lib/engine/compute-liability';
 import { toResults } from '$lib/engine/results-mapping';
-import type { Results } from '$lib/domain';
+import { InsuredSchema, type Results } from '$lib/domain';
 
 /** Valuation date = today (local), ISO YYYY-MM-DD. Drives age-nearest-birthday + NPV timing. */
 function today(): string {
@@ -26,11 +27,22 @@ class LiabilityStore {
 	readonly current = $derived.by((): LiabilityResult | null => {
 		const quote = quoteStore.current;
 		if (!quote) return null;
-		return computeLiability({
-			census: quote.census,
-			settings: quote.modelSettings,
-			asOf: today()
-		});
+		// The engine is intentionally strict: a blank or non-numeric cell in a half-typed row makes a
+		// pure formula throw (e.g. a NaN retirement age yields an empty salary path). The live preview
+		// must tolerate rows still being edited, so compute over only the census rows that currently
+		// satisfy the schema — a completed row's figures keep showing while another is mid-edit, and a
+		// row joins the results the moment it validates. The try/catch is a backstop for a transiently
+		// invalid model setting (e.g. a cleared NPV rate): blank the preview rather than crash the page.
+		const validCensus = quote.census.filter((insured) => v.is(InsuredSchema, insured));
+		try {
+			return computeLiability({
+				census: validCensus,
+				settings: quote.modelSettings,
+				asOf: today()
+			});
+		} catch {
+			return null;
+		}
 	});
 
 	/** Domain Results snapshot (decimal strings) for display, persistence, and the report. */

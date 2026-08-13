@@ -48,7 +48,7 @@
 	}
 </script>
 
-<svelte:head><title>SERP Pro — Interactive Report</title></svelte:head>
+<svelte:head><title>SERP-PLUS — Interactive Report</title></svelte:head>
 
 {#if !report || !hasResults}
 	<main class="empty">

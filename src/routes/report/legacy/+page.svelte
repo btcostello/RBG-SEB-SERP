@@ -6,15 +6,19 @@
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
 	import LegacyReportView from '$lib/report/legacy/LegacyReportView.svelte';
+	import ReportPageToggles from '$lib/report/ReportPageToggles.svelte';
+	import { legacyReportPages } from '$lib/report/legacy/legacy-registry';
 
 	const hasQuote = $derived(quoteStore.current != null);
 	const hasResults = $derived(quoteStore.current?.results != null);
+	const togglePages = legacyReportPages.map((p) => ({ id: p.id, title: p.title }));
 </script>
 
-<svelte:head><title>SERP Pro — Legacy Report</title></svelte:head>
+<svelte:head><title>SERP-PLUS — Legacy Report</title></svelte:head>
 
 <main class:paper={hasQuote}>
 	{#if hasQuote}
+		<ReportPageToggles pages={togglePages} report="legacy" />
 		<div class="actions no-print">
 			<button type="button" onclick={() => window.print()}>Print / Save as PDF</button>
 			{#if !hasResults}

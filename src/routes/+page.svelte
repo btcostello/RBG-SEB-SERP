@@ -4,11 +4,12 @@
 	 * No active quote -> a create form (company name + tax rate). Active quote -> the
 	 * company and model-settings editors, plus a summary of the prospect company.
 	 */
+	import * as v from 'valibot';
 	import { quoteStore } from '$lib/stores/quote.svelte';
 	import { savedQuotes } from '$lib/stores/saved-quotes.svelte';
 	import { liability } from '$lib/stores/liability.svelte';
 	import { runState } from '$lib/stores/run-state.svelte';
-	import { CompanySchema, fieldErrors } from '$lib/domain';
+	import { CompanySchema, QuoteSchema, fieldErrors } from '$lib/domain';
 	import CompanyForm from '$lib/components/CompanyForm.svelte';
 	import ModelSettingsForm from '$lib/components/ModelSettingsForm.svelte';
 	import CensusEditor from '$lib/components/CensusEditor.svelte';
@@ -18,20 +19,44 @@
 	import QuoteList from '$lib/components/QuoteList.svelte';
 
 	let saved = $state(false);
+	let saveError = $state<string | null>(null);
 
-	function saveCurrent() {
+	async function saveCurrent() {
 		if (!quoteStore.current) return;
+		saveError = null;
+		// Guard FIRST: the server validates the whole quote against QuoteSchema, and a single blank or
+		// non-numeric cell (most often an advanced census column) serializes to `null` and gets the
+		// ENTIRE save rejected with a 400. Run the same check here — before touching the results calc,
+		// which itself throws on an incomplete row — so the failure surfaces as a clear message
+		// pointing at the incomplete rows, never a silent no-op that looks like a save.
+		if (!v.is(QuoteSchema, quoteStore.current)) {
+			saveError =
+				'Some inputs are incomplete or invalid. Fix the census rows marked "!" before saving — nothing was saved.';
+			return;
+		}
 		// A completed run already wrote the full Results (incl. the COLI asset aggregate — total
 		// death benefit and total first-year premium) onto the quote. Only snapshot the live
 		// liability-only results when no run has populated them yet, so saving never clobbers the
 		// asset figures the report depends on (FR30); a never-run quote still persists liability (AC3).
+		// Best-effort: if the live calc can't produce results, keep whatever is already on the quote
+		// rather than aborting the save.
 		if (runState.status !== 'done') {
-			quoteStore.setResults(liability.results);
+			try {
+				quoteStore.setResults(liability.results);
+			} catch {
+				// Leave the prior results snapshot in place.
+			}
 		}
-		void savedQuotes.save(quoteStore.current).then(() => {
+		try {
+			await savedQuotes.save(quoteStore.current);
 			saved = true;
 			setTimeout(() => (saved = false), 1500);
-		});
+		} catch (e) {
+			// Surface network/DB failures instead of swallowing them — a failed save must never look
+			// like a successful one.
+			saveError =
+				e instanceof Error ? `Could not save: ${e.message}` : 'Could not save the quote. Please try again.';
+		}
 	}
 
 	// --- Create-quote form state ---
@@ -56,12 +81,12 @@
 	}
 </script>
 
-<svelte:head><title>SERP Pro — Setup</title></svelte:head>
+<svelte:head><title>SERP-PLUS — Setup</title></svelte:head>
 
 <main>
 	<header class="masthead">
 		<p class="eyebrow">COLI-Financed SERP · Proposal Workspace</p>
-		<h1>SERP Pro</h1>
+		<h1>SERP-PLUS</h1>
 		<p class="byline">by The Ridgeback Group and Schiff Executive Benefits</p>
 	</header>
 
@@ -105,6 +130,10 @@
 					</button>
 				</div>
 			</div>
+
+			{#if saveError}
+				<p class="save-error" role="alert">{saveError}</p>
+			{/if}
 
 			<!-- Inputs on top -->
 			<div class="setup">
@@ -328,5 +357,17 @@
 	.error {
 		color: var(--warn-tx);
 		font-size: 0.8rem;
+	}
+
+	/* Save-failure banner: a failed save must read as a clear error, never a silent no-op. */
+	.save-error {
+		margin: -1.5rem 0 0;
+		padding: 0.7rem 1rem;
+		background: var(--warn-bg, #f8eee7);
+		border: 1px solid #d8b39c;
+		border-radius: 2px;
+		color: var(--warn-tx);
+		font-size: 0.85rem;
+		font-weight: 500;
 	}
 </style>
