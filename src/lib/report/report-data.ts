@@ -13,6 +13,7 @@ import { ageNearestBirthday, completedYearsBetween } from '$lib/dates/age';
 import { survivorBenefitAtAge, survivorBenefitStream } from '$lib/engine/survivor-benefit';
 import { computeAccounting } from '$lib/accounting';
 import {
+	effectiveAccountingDiscountRate,
 	isColiParticipant,
 	isSerpParticipant,
 	type Insured,
@@ -652,7 +653,7 @@ function planSpecsFrom(quote: Quote): PlanSpecsDisplay {
 	return {
 		effectiveDate: modelSettings.effectiveDate ? longDate(modelSettings.effectiveDate) : null,
 		longTermTaxRate: pctFixed(company.corporateTaxRate, 2),
-		accountingLiabilityDiscountRate: pctFixed(modelSettings.npvDiscountRate, 2),
+		accountingLiabilityDiscountRate: pctFixed(effectiveAccountingDiscountRate(modelSettings), 2),
 		coliNetRateOfReturn: pctFixed(modelSettings.creditingRate, 2),
 		nra: nra === null ? '65' : nra === 'varies' ? 'Varies' : String(nra),
 		era: nra === null ? '60' : nra === 'varies' ? 'Varies' : String(nra - 5),

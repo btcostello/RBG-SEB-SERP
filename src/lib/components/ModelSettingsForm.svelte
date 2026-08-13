@@ -23,6 +23,11 @@
 
 	// One string field per numeric setting (raw input). Empty -> NaN so it fails validation.
 	let npvDiscountRate = $state(settings ? String(settings.npvDiscountRate) : '');
+	// Split from the liability rate. Seed with the effective accounting rate so a quote saved before
+	// the split (accountingDiscountRate absent) shows the liability rate it was actually using.
+	let accountingDiscountRate = $state(
+		settings ? String(settings.accountingDiscountRate ?? settings.npvDiscountRate) : ''
+	);
 	let creditingRate = $state(settings ? String(settings.creditingRate) : '');
 	let mortalityTable = $state<MortalityTable>(settings?.mortalityTable ?? 'RP-2012U');
 	// Absent means the engine's own default (VUL), so an existing quote saved before this field
@@ -35,6 +40,9 @@
 
 	const candidate = $derived<ModelSettings>({
 		npvDiscountRate: num(npvDiscountRate),
+		// Optional: clearing it means "not set" (undefined), which falls back to the liability rate.
+		accountingDiscountRate:
+			accountingDiscountRate.trim() === '' ? undefined : num(accountingDiscountRate),
 		creditingRate: num(creditingRate),
 		mortalityTable,
 		productType,
@@ -59,9 +67,16 @@
 	}[] = [
 		{
 			key: 'npvDiscountRate',
-			label: 'NPV discount rate (0–1)',
+			label: 'SERP liability discount rate (0–1)',
 			value: () => npvDiscountRate,
 			set: (v) => (npvDiscountRate = v),
+			step: '0.01'
+		},
+		{
+			key: 'accountingDiscountRate',
+			label: 'Accounting discount rate (0–1)',
+			value: () => accountingDiscountRate,
+			set: (v) => (accountingDiscountRate = v),
 			step: '0.01'
 		},
 		{

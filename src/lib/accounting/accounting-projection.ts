@@ -23,6 +23,7 @@
 import { Big, formatMoney } from '$lib/money/money';
 import { ageNearestBirthday, completedYearsBetween } from '$lib/dates/age';
 import {
+	effectiveAccountingDiscountRate,
 	isSerpParticipant,
 	type Company,
 	type Insured,
@@ -323,6 +324,9 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 	const referenceYear = Number(refDate.slice(0, 4));
 	const horizonPlanYears = lifeOfProgramHorizon(results, census, refDate);
 	const calendarYearOf = (planYear: number) => referenceYear + planYear - 1;
+	// The accounting (FASB) side uses its own discount rate, distinct from the liability NPV rate;
+	// absent an explicit value it falls back to the liability rate (old single-rate behaviour).
+	const accountingRate = effectiveAccountingDiscountRate(settings);
 
 	// SERP pension side — BUILT. Assemble each participant's obligation, then roll it forward.
 	const resultById = new Map(results.perParticipant.map((p) => [p.insuredId, p]));
@@ -334,7 +338,7 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		const currentAge = ageNearestBirthday(insured.dateOfBirth, refDate);
 		const pension = serpPensionForParticipant({
 			stream: result.benefitStream,
-			discountRate: settings.npvDiscountRate,
+			discountRate: accountingRate,
 			nra: insured.retirementAge,
 			currentAge,
 			pastServiceYears: Math.max(0, completedYearsBetween(insured.dateOfHire, refDate))
@@ -346,7 +350,7 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 	const serpRaw = serpEarningsByYear({
 		participants: serpParticipants,
 		avgFutureServiceYears,
-		discountRate: settings.npvDiscountRate,
+		discountRate: accountingRate,
 		taxRate: company.corporateTaxRate,
 		horizonPlanYears
 	});
@@ -393,7 +397,7 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		const levelAmort =
 			avgFutureServiceYears > 0 ? pension.priorServiceCost.div(avgFutureServiceYears) : new Big(0);
 		const amort = levelAmort.gt(pension.priorServiceCost) ? pension.priorServiceCost : levelAmort;
-		const interestCost = pension.priorServiceCost.times(settings.npvDiscountRate);
+		const interestCost = pension.priorServiceCost.times(accountingRate);
 		const total = serviceCost.plus(amort).plus(interestCost);
 		return { insuredId, serviceCost, amort, interestCost, total };
 	});

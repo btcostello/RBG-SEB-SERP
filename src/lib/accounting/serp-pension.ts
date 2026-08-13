@@ -56,7 +56,7 @@ export function discountToToday(
 export interface ParticipantPensionParams {
 	/** Benefit stream from the liability module (attained ages → amounts). */
 	stream: BenefitStreamYear[];
-	/** Plan accounting discount rate (the same NPV discount rate the liability uses). */
+	/** Plan accounting (FASB) discount rate — distinct from the liability NPV rate; see caller. */
 	discountRate: number;
 	/** Normal retirement age. */
 	nra: number;

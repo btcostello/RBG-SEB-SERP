@@ -7,7 +7,7 @@
  */
 import { getQuoteRepository } from '$lib/persistence/http-repository';
 import type { QuoteRepository, QuoteSummary } from '$lib/persistence/quote-repository';
-import type { Quote } from '$lib/domain';
+import { duplicateQuote, type Quote } from '$lib/domain';
 
 class SavedQuotesStore {
 	/** Saved quote summaries, refreshed after every mutation. */
@@ -32,6 +32,30 @@ class SavedQuotesStore {
 	async remove(id: string): Promise<void> {
 		await this.repo().delete(id);
 		await this.refresh();
+	}
+
+	/**
+	 * Save a copy of a quote object: clone it under a fresh id and a distinct "(copy)" name, persist
+	 * the copy, and refresh the list. The source quote is passed by value, so this works for both a
+	 * saved snapshot ({@link duplicate}) and the live in-memory quote ("Save as copy" in the setup
+	 * workspace). Returns the new copy.
+	 */
+	async saveCopyOf(quote: Quote): Promise<Quote> {
+		const copy = duplicateQuote(quote, crypto.randomUUID(), this.summaries.map((s) => s.companyName));
+		await this.repo().save(copy);
+		await this.refresh();
+		return copy;
+	}
+
+	/**
+	 * Duplicate a saved quote: load its stored snapshot, then save a copy. Non-destructive — it
+	 * leaves the original and the active quote untouched. Returns the copy, or `null` if the source
+	 * no longer exists.
+	 */
+	async duplicate(id: string): Promise<Quote | null> {
+		const original = await this.repo().get(id);
+		if (!original) return null;
+		return this.saveCopyOf(original);
 	}
 
 	/** Load a full quote by id for reopening (FR33). */

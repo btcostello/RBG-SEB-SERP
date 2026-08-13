@@ -178,3 +178,69 @@ describe('computeAccounting (partial: COLI built, SERP pending)', () => {
 		expect(result.coliByOption['cost-recovery'][2].combinedEarningsImpact).toBe('83000.00');
 	});
 });
+
+describe('discount rate split — accounting rate is independent of the liability NPV rate', () => {
+	// A participant WITH a post-retirement benefit stream, so the PBO (and thus interest cost) is
+	// non-zero and actually responds to the accounting discount rate.
+	function resultsWithStream(): Results {
+		return {
+			perParticipant: [
+				{
+					insuredId: 'i1',
+					finalAverageSalary: '100000.00',
+					annualBenefit: '60000.00',
+					benefitStream: [
+						{ age: 65, amount: '60000.00' },
+						{ age: 66, amount: '60000.00' },
+						{ age: 67, amount: '60000.00' }
+					],
+					totalBenefitCost: '180000.00',
+					netPresentValue: '180000.00'
+				}
+			],
+			aggregate: { totalBenefitCost: '180000.00', netPresentValue: '180000.00' },
+			asOf: refDate
+		};
+	}
+	const base = () => ({ results: resultsWithStream(), census, company, refDate });
+
+	it('SERP interest cost responds to the accounting rate (not the liability NPV rate)', () => {
+		const zeroAcct = computeAccounting({
+			...base(),
+			settings: makeSettings({ npvDiscountRate: 0.05, accountingDiscountRate: 0 })
+		});
+		const posAcct = computeAccounting({
+			...base(),
+			settings: makeSettings({ npvDiscountRate: 0, accountingDiscountRate: 0.05 })
+		});
+		// A 0% accounting rate accrues no interest on the PBO; a 5% rate does.
+		expect(zeroAcct.byParticipant[0].interestCost).toBe('0.00');
+		expect(Number(posAcct.byParticipant[0].interestCost)).toBeGreaterThan(0);
+	});
+
+	it('changing ONLY the liability NPV rate leaves every SERP accounting figure unchanged', () => {
+		const a = computeAccounting({
+			...base(),
+			settings: makeSettings({ npvDiscountRate: 0, accountingDiscountRate: 0.04 })
+		});
+		const b = computeAccounting({
+			...base(),
+			settings: makeSettings({ npvDiscountRate: 0.09, accountingDiscountRate: 0.04 })
+		});
+		expect(b.serp).toEqual(a.serp);
+		expect(b.byParticipant).toEqual(a.byParticipant);
+	});
+
+	it('falls back to the liability rate when the accounting rate is unset (pre-split quotes)', () => {
+		const explicit = computeAccounting({
+			...base(),
+			settings: makeSettings({ npvDiscountRate: 0.06, accountingDiscountRate: 0.06 })
+		});
+		const fallback = computeAccounting({
+			...base(),
+			settings: makeSettings({ npvDiscountRate: 0.06 }) // accountingDiscountRate absent
+		});
+		expect(fallback.serp).toEqual(explicit.serp);
+		expect(fallback.byParticipant).toEqual(explicit.byParticipant);
+	});
+});

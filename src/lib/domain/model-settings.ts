@@ -20,8 +20,19 @@ export const ProductTypeSchema = v.picklist(PRODUCT_TYPES, 'Select a product typ
 export type ProductType = v.InferOutput<typeof ProductTypeSchema>;
 
 export const ModelSettingsSchema = v.object({
-	/** NPV discount rate (default 0 = 0%, spec-documented). A data change, never code (NFR15). */
+	/**
+	 * SERP liability NPV discount rate (default 0 = 0%, spec-documented). Discounts the projected
+	 * benefit stream to a present value. A data change, never code (NFR15).
+	 */
 	npvDiscountRate: RateSchema,
+	/**
+	 * Accounting (FASB) discount rate — drives the PBO and interest cost in the SERP pension expense.
+	 * Split from the liability NPV rate so the two can differ (e.g. a 0% liability view alongside a
+	 * market-based accounting rate). Optional so pre-existing quotes still validate; when absent it
+	 * falls back to {@link ModelSettings.npvDiscountRate} via {@link effectiveAccountingDiscountRate},
+	 * preserving the old single-rate behaviour.
+	 */
+	accountingDiscountRate: v.optional(RateSchema),
 	/** Assumed policy crediting rate (default 0.0575 = 5.75%). */
 	creditingRate: RateSchema,
 	/** Mortality table used for the projection. */
@@ -48,8 +59,18 @@ export type ModelSettings = v.InferOutput<typeof ModelSettingsSchema>;
 /** Documented default model settings (FR3): npvDiscountRate 0%, creditingRate 5.75%, RP-2012U. */
 export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
 	npvDiscountRate: 0,
+	accountingDiscountRate: 0,
 	creditingRate: 0.0575,
 	mortalityTable: 'RP-2012U',
 	productType: 'IUL',
 	premiumYears: 10
 };
+
+/**
+ * The accounting discount rate actually in effect: the explicit {@link ModelSettings.accountingDiscountRate}
+ * when set, otherwise the liability NPV rate. This is the single fallback point that keeps quotes
+ * saved before the split (which carry only `npvDiscountRate`) behaving exactly as before.
+ */
+export function effectiveAccountingDiscountRate(settings: ModelSettings): number {
+	return settings.accountingDiscountRate ?? settings.npvDiscountRate;
+}

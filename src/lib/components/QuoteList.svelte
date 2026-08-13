@@ -16,6 +16,12 @@
 		const quote = await savedQuotes.load(id);
 		if (quote) quoteStore.open(quote);
 	}
+
+	// Duplicate is deliberately non-destructive: the copy appears in the list but the active quote
+	// stays put, so an in-progress edit is never clobbered. Open the copy explicitly to edit it.
+	async function duplicate(id: string) {
+		await savedQuotes.duplicate(id);
+	}
 </script>
 
 {#if savedQuotes.summaries.length > 0}
@@ -28,6 +34,7 @@
 					<span class="name">{summary.companyName}</span>
 					<span class="actions">
 						<button type="button" class="link" onclick={() => open(summary.id)}>Open</button>
+						<button type="button" class="link" onclick={() => duplicate(summary.id)}>Duplicate</button>
 						<button type="button" class="link del" onclick={() => savedQuotes.remove(summary.id)}>
 							Delete
 						</button>

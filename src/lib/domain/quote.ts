@@ -76,3 +76,40 @@ function todayIso(): string {
 	const d = new Date();
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+/**
+ * A "(copy)" name for `base` that does not collide with any name in `taken`. The first duplicate is
+ * "Name (copy)"; further copies get "(copy 2)", "(copy 3)", … so the saved list stays unambiguous.
+ */
+function uniqueCopyName(base: string, taken: Set<string>): string {
+	const first = `${base} (copy)`;
+	if (!taken.has(first)) return first;
+	let n = 2;
+	while (taken.has(`${base} (copy ${n})`)) n++;
+	return `${base} (copy ${n})`;
+}
+
+/**
+ * Build a duplicate of a quote: a deep copy under a new `id` and a distinct "(copy)" company name.
+ * The census, model settings, results snapshot, and report page selection all carry over, so the
+ * copy opens identical to the original — only the id and display name differ. `existingNames` are the
+ * current saved-quote names, used to keep the copy's name unique in the list. Pure: the deep clone
+ * means edits to the copy never touch the original (AR5, immutable-style — see the store).
+ *
+ * The clone is a JSON round-trip (the Quote is fully JSON — money as strings, no Dates/Maps), which
+ * also flattens the live Svelte `$state` proxy the setup workspace passes in; `structuredClone`
+ * cannot clone that proxy, so it must not be used here.
+ */
+export function duplicateQuote(
+	original: Quote,
+	newId: string,
+	existingNames: Iterable<string> = []
+): Quote {
+	const copy: Quote = JSON.parse(JSON.stringify(original));
+	copy.id = newId;
+	copy.company = {
+		...copy.company,
+		name: uniqueCopyName(original.company.name, new Set(existingNames))
+	};
+	return copy;
+}

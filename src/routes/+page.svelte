@@ -59,6 +59,38 @@
 		}
 	}
 
+	/**
+	 * Fork the CURRENT in-memory quote — unsaved edits included — into a new saved copy and switch to
+	 * editing that copy. The original's last saved snapshot (if any) is untouched, and no content is
+	 * lost: the copy is a full clone of the live state. Same validate-first + surface-failures
+	 * guarantees as {@link saveCurrent}.
+	 */
+	async function saveAsCopy() {
+		if (!quoteStore.current) return;
+		saveError = null;
+		if (!v.is(QuoteSchema, quoteStore.current)) {
+			saveError =
+				'Some inputs are incomplete or invalid. Fix the census rows marked "!" before copying — nothing was saved.';
+			return;
+		}
+		if (runState.status !== 'done') {
+			try {
+				quoteStore.setResults(liability.results);
+			} catch {
+				// Leave the prior results snapshot in place.
+			}
+		}
+		try {
+			const copy = await savedQuotes.saveCopyOf(quoteStore.current);
+			quoteStore.open(copy); // continue editing the fork
+			saved = true;
+			setTimeout(() => (saved = false), 1500);
+		} catch (e) {
+			saveError =
+				e instanceof Error ? `Could not save copy: ${e.message}` : 'Could not save a copy. Please try again.';
+		}
+	}
+
 	// --- Create-quote form state ---
 	// Only the company name is collected up front; the corporate tax rate starts at a documented
 	// default and is set by the operator in the company form after the quote is created.
@@ -125,6 +157,7 @@
 					<button class="btn btn-primary" type="button" onclick={saveCurrent}>
 						{saved ? 'Saved ✓' : 'Save quote'}
 					</button>
+					<button class="btn btn-ghost" type="button" onclick={saveAsCopy}>Save as copy</button>
 					<button class="btn btn-ghost" type="button" onclick={() => quoteStore.close()}>
 						New quote
 					</button>
