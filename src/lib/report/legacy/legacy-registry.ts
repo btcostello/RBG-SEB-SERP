@@ -31,6 +31,7 @@ import LegacyFinOverviewPageB from './pages/LegacyFinOverviewPageB.svelte';
 import LegacyFundingOverviewPage from './pages/LegacyFundingOverviewPage.svelte';
 import LegacyCashFlowSummaryPage from './pages/LegacyCashFlowSummaryPage.svelte';
 import LegacyFinancialSummaryPage from './pages/LegacyFinancialSummaryPage.svelte';
+import LegacyButterflyPage from './pages/LegacyButterflyPage.svelte';
 import LegacyEarningsImpactPage from './pages/LegacyEarningsImpactPage.svelte';
 import LegacyEarningsLedgerOption1Page from './pages/LegacyEarningsLedgerOption1Page.svelte';
 import LegacyEarningsLedgerOption2Page from './pages/LegacyEarningsLedgerOption2Page.svelte';
@@ -172,6 +173,15 @@ export const legacyReportPages: LegacyReportPage[] = [
 		id: 'j1-financial-summary',
 		title: 'Financial Overview — Summary (Funding Wherewithal)',
 		component: LegacyFinancialSummaryPage,
+		props: { strategyId: 'premium-deposit' }
+	},
+	// The same figures in the source's own butterfly arrangement: two wings around the Schiff
+	// mark. Landscape, like the source sheet (792 x 612pt), and likewise unnumbered.
+	{
+		id: 'j1-butterfly',
+		title: 'Summary — Butterfly Chart',
+		component: LegacyButterflyPage,
+		landscape: true,
 		props: { strategyId: 'premium-deposit' }
 	}
 ];
