@@ -16,10 +16,17 @@ import {
 	effectiveAccountingDiscountRate,
 	isColiParticipant,
 	isSerpParticipant,
+	toWireGender,
 	type Insured,
 	type ParticipantResult,
 	type Quote
 } from '$lib/domain';
+import {
+	actuarialDeaths,
+	lifeExpectancyDeaths,
+	lifeTable,
+	type CohortMember
+} from '$lib/engine/mortality';
 
 // ---------------------------------------------------------------------------
 // Display formatters
@@ -473,6 +480,25 @@ export interface MortalityAssumptions {
 	oldestAge: number | null;
 	/** Single life expectancy across SERP participants, or "Varies" (the shared rule). */
 	lifeExpectancyDisplay: string;
+	/** Projection horizon, in years, that both chart series span. */
+	years: number;
+	/** Expected deaths per year under the mortality table. Null when there is nothing to plot. */
+	actuarial: MortalityChartSeries | null;
+	/** Deaths per year on the assumed-life-expectancy basis (each life dies whole in one year). */
+	assumed: MortalityChartSeries | null;
+	/**
+	 * SERP participants left out of the series because the tables cannot cover them — an age
+	 * under 18, or a retirement age outside the range where the employee and retiree tables meet.
+	 * Surfaced rather than swallowed so a partial chart never reads as a complete one.
+	 */
+	excludedCount: number;
+}
+
+/** One plotted series: deaths per projection year, and the running total. */
+export interface MortalityChartSeries {
+	/** Index 0 is projection year 1. */
+	annual: readonly number[];
+	cumulative: readonly number[];
 }
 
 /** Headline figures for one funding option (page 4.3). */
@@ -623,7 +649,10 @@ function pctFixed(rate: number, decimals: number): string {
  * For a per-participant value shown plan-wide: the common value across SERP participants, or the
  * sentinel 'varies' if they differ, or null if there are no SERP participants (caller defaults).
  */
-function commonSerpValue(census: Insured[], select: (i: Insured) => number): number | 'varies' | null {
+function commonSerpValue(
+	census: Insured[],
+	select: (i: Insured) => number
+): number | 'varies' | null {
 	const serp = census.filter(isSerpParticipant);
 	if (serp.length === 0) return null;
 	const first = select(serp[0]);
@@ -631,17 +660,57 @@ function commonSerpValue(census: Insured[], select: (i: Insured) => number): num
 }
 
 /**
- * Census age span and the assumed life expectancy, for the Appendix G chart footnote. Ages are
- * nearest-birthday at the plan reference date, matching the census and projections pages.
+ * Projection horizon for the Appendix G chart, matching the source sheet's x-axis (year 0 to
+ * just past 65). Long enough that the cumulative series flattens out at the participant count.
+ */
+export const MORTALITY_CHART_YEARS = 68;
+
+/**
+ * Census age span, assumed life expectancy, and the two plotted death series for the Appendix G
+ * chart. Ages are nearest-birthday at the plan reference date, matching the census and
+ * projections pages.
+ *
+ * Both series come from `engine/mortality` and need no model run — they depend only on census
+ * ages, genders and retirement ages, so the chart fills in from inputs alone.
  */
 function mortalityAssumptionsFrom(census: Insured[], refDate: string): MortalityAssumptions {
 	const serp = census.filter(isSerpParticipant);
 	const ages = serp.map((insured) => ageNearestBirthday(insured.dateOfBirth, refDate));
 	const le = commonSerpValue(census, (insured) => insured.lifeExpectancy);
+
+	// Only participants the tables actually cover go into the series. Probing with a life table
+	// rather than re-deriving the age rules here keeps this correct if the table is ever swapped;
+	// `deriveReport` runs on every render, so a stray retirement age must not throw the report.
+	const members: CohortMember[] = [];
+	let excludedCount = 0;
+	for (const insured of serp) {
+		const member: CohortMember = {
+			gender: toWireGender(insured.gender),
+			currentAge: ageNearestBirthday(insured.dateOfBirth, refDate),
+			retirementAge: insured.retirementAge,
+			lifeExpectancyAge: insured.lifeExpectancy
+		};
+		try {
+			lifeTable({
+				gender: member.gender,
+				startAge: member.currentAge,
+				retirementAge: member.retirementAge
+			});
+			members.push(member);
+		} catch {
+			excludedCount += 1;
+		}
+	}
+
+	const hasSeries = members.length > 0;
 	return {
 		youngestAge: ages.length > 0 ? Math.min(...ages) : null,
 		oldestAge: ages.length > 0 ? Math.max(...ages) : null,
-		lifeExpectancyDisplay: le === null ? '—' : le === 'varies' ? 'Varies' : `Age ${le}`
+		lifeExpectancyDisplay: le === null ? '—' : le === 'varies' ? 'Varies' : `Age ${le}`,
+		years: MORTALITY_CHART_YEARS,
+		actuarial: hasSeries ? actuarialDeaths(members, MORTALITY_CHART_YEARS) : null,
+		assumed: hasSeries ? lifeExpectancyDeaths(members, MORTALITY_CHART_YEARS) : null,
+		excludedCount
 	};
 }
 
@@ -657,7 +726,8 @@ function planSpecsFrom(quote: Quote): PlanSpecsDisplay {
 		coliNetRateOfReturn: pctFixed(modelSettings.creditingRate, 2),
 		nra: nra === null ? '65' : nra === 'varies' ? 'Varies' : String(nra),
 		era: nra === null ? '60' : nra === 'varies' ? 'Varies' : String(nra - 5),
-		salaryScale: growth === null ? pctFixed(0.03, 1) : growth === 'varies' ? 'Varies' : pctFixed(growth, 1)
+		salaryScale:
+			growth === null ? pctFixed(0.03, 1) : growth === 'varies' ? 'Varies' : pctFixed(growth, 1)
 	};
 }
 
@@ -735,8 +805,7 @@ function benefitFormulaFrom(census: Insured[]): BenefitFormulaDisplay {
 		survivorTier1Years: typeof tier1Years === 'number' ? tier1Years : 0,
 		survivorTier2Pct: typeof tier2Pct === 'number' ? tier2Pct : 0,
 		survivorTier2Years: typeof tier2Years === 'number' ? tier2Years : 0,
-		survivorGuaranteedYears:
-			yearsVary ? 'varies' : Number(tier1Years) + Number(tier2Years)
+		survivorGuaranteedYears: yearsVary ? 'varies' : Number(tier1Years) + Number(tier2Years)
 	};
 }
 
@@ -866,7 +935,14 @@ function optionLedgerFor(
 	const at = (planYear: number): Acc => {
 		let acc = byYear.get(planYear);
 		if (!acc) {
-			acc = { gross: zero, premiums: zero, deathProceeds: zero, draws: zero, csv: zero, face: zero };
+			acc = {
+				gross: zero,
+				premiums: zero,
+				deathProceeds: zero,
+				draws: zero,
+				csv: zero,
+				face: zero
+			};
 			byYear.set(planYear, acc);
 		}
 		return acc;
@@ -886,9 +962,7 @@ function optionLedgerFor(
 		for (const year of years) {
 			const acc = at(year.policyYear);
 			acc.premiums = acc.premiums.plus(new Big(year.premium));
-			acc.draws = acc.draws
-				.plus(new Big(year.withdrawal ?? '0'))
-				.plus(new Big(year.loan ?? '0'));
+			acc.draws = acc.draws.plus(new Big(year.withdrawal ?? '0')).plus(new Big(year.loan ?? '0'));
 			acc.csv = acc.csv.plus(new Big(year.cashSurrenderValue));
 			acc.face = acc.face.plus(new Big(year.deathBenefit));
 			// Proceeds are received in the year the participant is assumed to die.
@@ -1144,7 +1218,9 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		ages.length === 0 ? null : Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
 	const serpAges = serp.map((i) => ageNearestBirthday(i.dateOfBirth, asOf));
 	const averageAgeSerp =
-		serpAges.length === 0 ? null : Math.round(serpAges.reduce((a, b) => a + b, 0) / serpAges.length);
+		serpAges.length === 0
+			? null
+			: Math.round(serpAges.reduce((a, b) => a + b, 0) / serpAges.length);
 	const sumSalaries = (list: Insured[]) =>
 		list.reduce((acc, i) => acc.plus(new Big(i.currentSalary)), new Big(0));
 	const coveredPayroll = wholeDollars(sumSalaries(serp));
@@ -1154,9 +1230,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	const legacyRefDate = quote.modelSettings.effectiveDate ?? asOf;
 	const legacyCensus = legacyCensusFrom(census, legacyRefDate);
 	const legacyProjections = legacyProjectionsFrom(census, legacyRefDate, resultById);
-	const legacySerpBenefitTotal = results
-		? wholeDollars(results.aggregate.totalBenefitCost)
-		: null;
+	const legacySerpBenefitTotal = results ? wholeDollars(results.aggregate.totalBenefitCost) : null;
 
 	// Plan design
 	const firstPaymentAge = settings.retirementAge + settings.benefitWaitingPeriod;

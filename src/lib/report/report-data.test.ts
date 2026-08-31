@@ -172,9 +172,30 @@ describe('deriveReport', () => {
 								faceAmount: '100000.00',
 								firstYearPremium: '10000.00',
 								illustrationYears: [
-									{ policyYear: 1, age: 82, premium: '10000.00', accountValue: '8000.00', cashSurrenderValue: '0.00', deathBenefit: '100000.00' },
-									{ policyYear: 2, age: 83, premium: '10000.00', accountValue: '17000.00', cashSurrenderValue: '0.00', deathBenefit: '100000.00' },
-									{ policyYear: 3, age: 84, premium: '0.00', accountValue: '25000.00', cashSurrenderValue: '0.00', deathBenefit: '100000.00' }
+									{
+										policyYear: 1,
+										age: 82,
+										premium: '10000.00',
+										accountValue: '8000.00',
+										cashSurrenderValue: '0.00',
+										deathBenefit: '100000.00'
+									},
+									{
+										policyYear: 2,
+										age: 83,
+										premium: '10000.00',
+										accountValue: '17000.00',
+										cashSurrenderValue: '0.00',
+										deathBenefit: '100000.00'
+									},
+									{
+										policyYear: 3,
+										age: 84,
+										premium: '0.00',
+										accountValue: '25000.00',
+										cashSurrenderValue: '0.00',
+										deathBenefit: '100000.00'
+									}
 								]
 							}
 						}
@@ -247,5 +268,58 @@ describe('deriveReport', () => {
 		expect(model.earningsLedgerSerp).toBeNull();
 		expect(model.auditTrail).toBeNull();
 		expect(model.costAllocation).toBeNull();
+	});
+});
+
+describe('mortality assumptions (Appendix G chart)', () => {
+	it('fills both series from census inputs alone, with no model run', () => {
+		const quote = buildQuote();
+		quote.results = null;
+		const m = deriveReport(quote, '2026-07-18').mortalityAssumptions;
+
+		expect(m.actuarial).not.toBeNull();
+		expect(m.assumed).not.toBeNull();
+		expect(m.actuarial!.annual).toHaveLength(m.years);
+		expect(m.assumed!.cumulative).toHaveLength(m.years);
+		expect(m.excludedCount).toBe(0);
+	});
+
+	it('lands both bases on the same total — the point of the comparison', () => {
+		const m = deriveReport(buildQuote(), '2026-07-18').mortalityAssumptions;
+		const last = m.years - 1;
+		// Two SERP participants. The assumed basis kills both outright inside the window.
+		expect(m.assumed!.cumulative[last]).toBe(2);
+		// The table converges on the same total but does not quite reach it: the younger
+		// participant is only in her 110s at year 68, so a sliver of survival remains beyond the
+		// horizon. Just short of 2, by well under a thousandth of a life.
+		expect(m.actuarial!.cumulative[last]).toBeLessThan(2);
+		expect(m.actuarial!.cumulative[last]).toBeGreaterThan(2 - 1e-4);
+	});
+
+	it('spreads the table series and spikes the assumed one', () => {
+		const m = deriveReport(buildQuote(), '2026-07-18').mortalityAssumptions;
+		expect(Math.max(...m.actuarial!.annual)).toBeLessThan(1);
+		expect(Math.max(...m.assumed!.annual)).toBeGreaterThanOrEqual(1);
+	});
+
+	it('excludes participants the table cannot cover instead of throwing', () => {
+		// deriveReport runs on every render, so one unusable retirement age must not take the
+		// whole report down — it drops out of the curves and is counted in the footnote.
+		const quote = buildQuote();
+		quote.census[1] = makeInsured({ ...quote.census[1], retirementAge: 45 });
+
+		expect(() => deriveReport(quote, '2026-07-18')).not.toThrow();
+		const m = deriveReport(quote, '2026-07-18').mortalityAssumptions;
+		expect(m.excludedCount).toBe(1);
+		expect(m.assumed!.cumulative[m.years - 1]).toBe(1);
+	});
+
+	it('reports no series when there is nobody to project', () => {
+		const quote = buildQuote();
+		quote.census = [];
+		const m = deriveReport(quote, '2026-07-18').mortalityAssumptions;
+		expect(m.actuarial).toBeNull();
+		expect(m.assumed).toBeNull();
+		expect(m.excludedCount).toBe(0);
 	});
 });

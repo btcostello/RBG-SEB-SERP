@@ -32,18 +32,34 @@ A running checklist of data points the Legacy Report needs but the app cannot ye
 (`RP-2012U`) which is stored and displayed but never used in a calculation — the engine assumes
 death at each participant's `lifeExpectancy` age instead of applying survival rates.
 
-Blocks the Appendix G mortality chart (page 24 below), and would be needed for anything
-survival-weighted — including the "% of participants living at average life expectancy" footnote
+Blocked the Appendix G mortality chart (page 24 below) — **now built** — and is still needed for
+anything survival-weighted — including the "% of participants living at average life expectancy" footnote
 on 5.2 and the mortality-weighted pension expense in the GAAP layer.
 
 To resolve, three separate things are needed:
-1. ☐ **Table data** — the source uses **RP-2000 "white collar" with scale AA improvements
-   projected to the current year**, which is *not* the RP-2012U the app names. Confirm which
-   table(s) to support; the enum will need extending either way.
-2. ☐ **Projection scale** — scale AA is applied "through to current year", so the loader needs
-   the improvement scale and a projection year, not just base rates.
-3. ☐ **Survival calculations** — BOY living / deaths per year from a starting cohort, which is
-   what the chart plots and what mortality-weighting needs.
+1. ☑ **Table data** — **loaded**: `src/lib/engine/mortality/` holds Pri-2012 white collar,
+   amount-weighted (employee 18–80, retiree and contingent survivor 50–120), with a
+   `mortalityRate(gender, basis, age)` lookup. Operator supplied the SOA workbook and chose this
+   table; note it is **not** the RP-2000 white collar + scale AA the source proposals use, so
+   figures will not tie to the sample PDFs exactly.
+2. ☐ **Projection scale** — still open, and now a *different* scale: Pri-2012 projects with an
+   MP improvement scale, not scale AA. The loaded rates are unprojected 2012 base rates; the
+   scale is a separate SOA dataset that is not in the supplied workbook.
+3. ☑ **Survival calculations** — **built**: `life-table.ts` (one life — `l(x)`, deaths, tPx,
+   curtate/complete life expectancy) and `cohort.ts` (many lives — `actuarialDeaths`,
+   `lifeExpectancyDeaths`, `expectedSurvivors`). Discrete integer-age arithmetic; the only
+   within-year assumption is the half-year in `completeLifeExpectancy`, which is opt-in.
+   **Operator decision: participants move from the `employee` table to `retiree` at retirement
+   age, default 65.** That switch is a step up in rate (male age 64 employee 0.00408 → age 65
+   retiree 0.00812), which is expected — annuitant tables carry no active-employee selection.
+   Only retirement ages 50–81 tile the two tables without a gap; outside that the module throws.
+
+The Appendix G chart is wired: `report-data.mortalityAssumptions` carries both series over a
+68-year horizon and the page plots them with census-scaled axes.
+
+The `mortalityTable` enum is deliberately **not** extended yet: no *quote* setting selects these
+rates — the modules are called directly — so offering "Pri-2012 White Collar" as an option would
+imply a switch that does nothing. Extend it when a second table or the improvement scale lands.
 
 Note the source's own caveat on the supporting table sheet: *"First whole life projected to have
 matured by the end of year 7"* — the sample's figures assume a specific product maturity.
@@ -485,20 +501,23 @@ probably need to load up separately."
 **The report's first chart.** Two stacked panels (Annual Impact, Cumulative Impact) comparing
 deaths under an assumed-life-expectancy basis against an actuarial table.
 
-What is built: titles, axes with the source's 5-year gridlines out to year 65, per-panel y-scales
-(0–3.5 annual, 0–25 cumulative), legend, and the footnote. **Plot areas are empty** pending the
-mortality table.
+**Both panels plot.** Titles, axes with the source's 5-year gridlines out to year 65, legend and
+footnote, plus the two series from `engine/mortality`. Y-scales are derived from the census
+rather than the source's fixed 0–3.5 / 0–25, which were sized for its 21 participants.
 
 What is real today:
 - ☑ **Footnote** — "Youngest Participant = Age X; Oldest Participant = Age Y; Life Expectancy =
   Z", from the census at the plan reference date. Life expectancy uses the shared "Varies" rule.
 
 Gaps:
-- ☐ **Both series** → see the **mortality table** subsystem note at the top of this file.
+- ☑ **Both series** — Pri-2012 white collar, employee → retiree at each participant's retirement
+  age. Needs no model run; census ages, genders and retirement ages are enough. Participants the
+  table cannot cover are excluded and counted in a second footnote rather than silently dropped.
+- ☐ **Improvement scale** → see item 2 of the **mortality table** note at the top of this file;
+  the plotted rates are unprojected 2012 base rates.
 - ☐ **Supporting table sheet not built.** The source's second Appendix G sheet is the raw
-  living/deaths table behind the chart. Deliberately skipped: with no mortality data it would be
-  ~68 rows × 6 columns of "—" with nothing derivable. Easy to add once the table loads — say if
-  you want the empty scaffold sooner.
+  living/deaths table behind the chart. Now derivable — `lifeTable`/`expectedSurvivors` produce
+  exactly those columns — but not built; say if you want it.
 
 Chart design notes (first chart, so conventions set here):
 - Series colours are the report's own teal/copper, with the teal nudged from `#1f7a8c` to
