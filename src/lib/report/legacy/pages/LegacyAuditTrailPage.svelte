@@ -39,4 +39,5 @@
 	firstColumnHeader="Cal Year End 12/31"
 	{columns}
 	{rows}
+	dense
 />

@@ -44,8 +44,7 @@
 		<ul>
 			<li>
 				Your retirement benefit is a defined benefit of <strong>{s.benefitPercentDisplay}</strong>
-				times your projected highest consecutive {spanYears(s.fasAveragingPeriod)} average
-				salary
+				times your projected highest consecutive {spanYears(s.fasAveragingPeriod)} average salary
 			</li>
 		</ul>
 
@@ -54,8 +53,8 @@
 			<span class="v" class:gap={!s.annualBenefit}>{val(s.annualBenefit)}</span>
 		</div>
 		<p class="sub">
-			(Your assumed projected highest consecutive {spanYears(s.fasAveragingPeriod)} average
-			salary is: <span class:gap={!s.finalAverageSalary}>{val(s.finalAverageSalary)}</span>)
+			(Your assumed projected highest consecutive {spanYears(s.fasAveragingPeriod)} average salary is:
+			<span class:gap={!s.finalAverageSalary}>{val(s.finalAverageSalary)}</span>)
 		</p>
 
 		<div class="line">
@@ -103,8 +102,8 @@
 
 		<div class="notes">
 			<p>
-				<span class="note-label">NOTE:</span> The benefits illustrated assume an average salary growth
-				of {s.salaryGrowthDisplay}, compounded annually.
+				<span class="note-label">NOTE:</span> The benefits illustrated assume an average salary
+				growth of {s.salaryGrowthDisplay}, compounded annually.
 			</p>
 			<p>
 				<span class="note-label">NOTE:</span> The benefits illustrated are projections based on a series
@@ -216,12 +215,12 @@
 		font-size: 8pt;
 		color: var(--muted);
 		line-height: 1.4;
-		padding-left: 52px;
-		text-indent: -52px;
+		/* Hanging indent via grid, not a negative text-indent: text-indent inherits into the
+		   label, which dragged "NOTE:" out of its box and into the page's left margin. */
+		display: grid;
+		grid-template-columns: 52px 1fr;
 	}
 	.note-label {
-		display: inline-block;
-		width: 44px;
 		font-weight: 600;
 	}
 	.empty {

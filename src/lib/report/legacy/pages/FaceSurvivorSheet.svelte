@@ -51,7 +51,9 @@
 					<th colspan="3"></th>
 					<th colspan="2" class="group">Total Survivor Benefit Payable</th>
 					<th colspan="2" class="group">After-tax Total Survivor Benefit Payable</th>
-					<th colspan="2" class="group">COLI Face Amount<span class="sub">{faceColumnLabel}</span></th>
+					<th colspan="2" class="group"
+						>COLI Face Amount<span class="sub">{faceColumnLabel}</span></th
+					>
 					<th colspan="2" class="group">
 						Ratio of COLI Face Amount<span class="sub">to After-tax Survivor Benefit</span>
 					</th>
@@ -153,7 +155,18 @@
 	th.txt,
 	td.txt {
 		text-align: left;
+	}
+	th.txt {
 		white-space: nowrap;
+	}
+	/*
+	 * Names wrap. With eleven columns the numeric side already claims ~500px of the 604.8px
+	 * content width, so a nowrap name column pushed the whole table into (and past) the right
+	 * margin as soon as a participant had a long name. Breaking anywhere keeps a single
+	 * unbroken surname from doing the same.
+	 */
+	td.txt {
+		overflow-wrap: anywhere;
 	}
 	td.num {
 		text-align: right;

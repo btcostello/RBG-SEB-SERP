@@ -23,7 +23,8 @@
 		firstColumnHeader = '',
 		columns,
 		rows,
-		notes = []
+		notes = [],
+		dense = false
 	}: {
 		report: ReportModel;
 		pageNo: string;
@@ -33,6 +34,8 @@
 		columns: SheetColumn[];
 		rows: SheetRow[];
 		notes?: string[];
+		/** Narrow the cell gutters for sheets wide enough to overrun the right margin (9+ columns). */
+		dense?: boolean;
 	} = $props();
 
 	/** Collapse consecutive columns sharing a group into spanning header cells. */
@@ -60,7 +63,7 @@
 		{#if subtitle}<div class="subtitle">{subtitle}</div>{/if}
 	</div>
 
-	<table>
+	<table class:dense>
 		<thead>
 			{#if hasGroups}
 				<tr class="groups">
@@ -135,6 +138,16 @@
 	th,
 	td {
 		padding: 1.4px 6px;
+	}
+	/*
+	 * Narrow gutters for the widest sheets. At nine columns the default 6px gutters spend 120px
+	 * of the 604.8px content width on padding alone, which pushed the table past the right
+	 * margin; 4px brings it back inside without shrinking the type.
+	 */
+	.dense th,
+	.dense td {
+		padding-left: 4px;
+		padding-right: 4px;
 	}
 	thead th {
 		font-size: 6.6pt;
