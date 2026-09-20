@@ -5,9 +5,10 @@
 	 * The report's first chart page: two stacked panels (annual and cumulative) comparing deaths
 	 * under an assumed-life-expectancy basis against an actuarial table.
 	 *
-	 * Both series come from `engine/mortality` via `report.mortalityAssumptions` — Pri-2012 white
-	 * collar, participants moving from the employee to the retiree table at their retirement age.
-	 * They need no model run: census ages, genders and retirement ages are enough.
+	 * Both series come from `engine/mortality` via `report.mortalityAssumptions` — the IRS static
+	 * mortality tables for the plan's valuation year, participants moving from the non-annuitant to
+	 * the annuitant table at their retirement age. They need no model run: census ages, genders and
+	 * retirement ages are enough.
 	 *
 	 * The chart's whole point is the *shape* difference. The assumed-life-expectancy basis kills
 	 * each participant whole in one year, so it steps; the table spreads the same deaths across

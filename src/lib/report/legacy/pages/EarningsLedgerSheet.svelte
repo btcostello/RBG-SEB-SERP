@@ -8,7 +8,10 @@
 	 * `report.earningsLedgerSerp` (option-independent), and COLI [4] + combined [5] via
 	 * `report.earningsLedgerByOption[optionId]`. Columns show "—" before a run; the per-option
 	 * columns also show "—" when that option's solve was infeasible (the SERP columns still show).
-	 * The `**` mortality-weighting footnote is not yet applied (death-at-LE basis).
+	 * The `**` footnote on column [3] says plainly that the column is NOT survival-weighted. The
+	 * source's version claims the opposite — that the column "reflects actuarial mortality
+	 * projections required under GAAP" — which is true of the source's own model and not of this
+	 * one. See pages 2.4, 4.5 and 5.1, corrected the same way, and DATA-GAPS.md.
 	 */
 	import type { ReportModel } from '../../report-data';
 	import LegacyPageShell from './LegacyPageShell.svelte';
@@ -102,9 +105,10 @@
 	<div class="notes">
 		<p><sup>{closingNote.marker}</sup> {closingNote.text}</p>
 		<p>
-			<sup>**</sup> Reflects impact of actuarial mortality projections required under GAAP Accounting;
-			the projected proportion of plan participants living at the beginning of the year of average
-			life expectancy is not yet computed.
+			<sup>**</sup> Each participant is assumed to die at the life expectancy entered for them, so
+			this column is not weighted by survival probability. A valuation that applies an actuarial
+			mortality table would spread the same amounts across a range of ages; Appendix G illustrates
+			the difference in shape.
 		</p>
 		<p>
 			<sup>^</sup> Represents Total over the life of the program, not limited to the {LEDGER_YEARS}

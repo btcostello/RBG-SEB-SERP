@@ -486,12 +486,18 @@ The **only** column that resolves today is the calendar year (30 years from the 
   option (`ColiAccountingYear.combinedEarningsImpact`).
 - ☑ **Totals row (`^`) — RESOLVED (2026-07-25).** Life-of-program totals (the accounting horizon,
   not the 30 displayed years). Verified: at a 0% discount rate, total [1] equals −PBO.
-- ☐ **Mortality-survival percentage** (footnote `**`) — the source states "**41.3%** of plan
-  participants are projected to be living at the beginning of the year of average life
-  expectancy" (verified against `Sample Report.pdf` 2026-09-20; this note previously said 64.3%,
-  which was wrong). Now computable: `expectedSurvivors` over the census at the average
-  life-expectancy year gives exactly this figure. The page currently prints a neutral wording
-  instead of a number.
+- ☑ **Mortality-survival percentage** (footnote `**`) — RESOLVED (2026-09-20), by removing the
+  claim rather than computing the number. The source's footnote says column [3] "reflects the impact
+  of actuarial mortality projections required under GAAP Accounting" and quotes the proportion of
+  participants living at average life expectancy (41.3% in the sample; this note previously said
+  64.3%, which was wrong). **That is true of the source's model and not of ours** — column [3] is
+  unweighted death-at-LE. Filling in the percentage would have dressed an unweighted figure as a
+  weighted one, so the footnote now states plainly that the column is not survival-weighted and
+  points at Appendix G for the difference in shape. Same correction as pages 2.4, 4.5 and 5.1.
+
+  ⚠ **If survival weighting is built**, this reverts: the claim becomes true, the percentage becomes
+  meaningful, and `expectedSurvivors` over the census at the average life-expectancy year computes it.
+
 - ☐ **Option 2's `~` note figures** — total premiums paid, net benefits paid from Company cash
   flow, and COLI mortality gains in excess of those expenses. All three are per-option totals;
   the first two are close to values already derived for page 4.5 (`cashFlowByOption`), the third
@@ -692,8 +698,10 @@ Gaps:
 - ☑ **Both series** — Pri-2012 white collar, employee → retiree at each participant's retirement
   age. Needs no model run; census ages, genders and retirement ages are enough. Participants the
   table cannot cover are excluded and counted in a second footnote rather than silently dropped.
-- ☐ **Improvement scale** → see item 2 of the **mortality table** note at the top of this file;
-  the plotted rates are unprojected 2012 base rates.
+- ☑ **Improvement scale** — RESOLVED. The chart reads whatever `table.ts` provides, which since
+  the engine re-point is the **IRS static mortality table for the plan's valuation year**, already
+  projected with the 2024 Adjusted Scale MP-2021. The earlier note here said the plotted rates were
+  unprojected 2012 base rates; that stopped being true when the engine was re-pointed.
 - ☐ **Supporting table sheet not built.** The source's second Appendix G sheet is the raw
   living/deaths table behind the chart. Now derivable — `lifeTable`/`expectedSurvivors` produce
   exactly those columns — but not built; say if you want it.
