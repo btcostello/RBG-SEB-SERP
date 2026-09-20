@@ -24,6 +24,7 @@
 	<span class="brand">SERP-<span>PLUS</span></span>
 	<div class="links">
 		<a href="/">Setup</a>
+		<a href="/ledgers">Ledgers</a>
 		<a href="/report">Simple Report</a>
 		<a href="/report/interactive">Interactive Report</a>
 		<a href="/report/legacy">Legacy Report</a>

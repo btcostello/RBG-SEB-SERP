@@ -10,10 +10,8 @@
 	 */
 	import { quoteStore } from '$lib/stores/quote.svelte';
 	import { liability } from '$lib/stores/liability.svelte';
-	import { runState } from '$lib/stores/run-state.svelte';
 	import { Big } from '$lib/money/money';
 	import { deriveReport, wholeDollars, REPORT_FUNDING_OPTIONS } from '$lib/report/report-data';
-	import AssetResults from './AssetResults.svelte';
 
 	function todayIso(): string {
 		const d = new Date();
@@ -167,13 +165,6 @@
 			{/if}
 		</section>
 
-		<!-- Per-policy detail (advanced) -->
-		{#if runState.status === 'done' && runState.designed.length > 0}
-			<details class="advanced">
-				<summary>Per-policy detail &amp; compliance flags</summary>
-				<div class="advanced-body"><AssetResults /></div>
-			</details>
-		{/if}
 	</div>
 {/if}
 
@@ -383,23 +374,5 @@
 		font-size: 0.76rem;
 		color: var(--muted);
 		margin: 0.9rem 0 0;
-	}
-
-	/* advanced disclosure */
-	.advanced summary {
-		font-size: 0.78rem;
-		font-weight: 600;
-		letter-spacing: 0.04em;
-		color: var(--ink-soft);
-		cursor: pointer;
-		padding: 0.6rem 0;
-		border-top: 1px solid var(--line);
-	}
-	.advanced summary:hover {
-		color: var(--ink);
-	}
-	.advanced-body {
-		overflow-x: auto;
-		padding-top: 0.5rem;
 	}
 </style>
