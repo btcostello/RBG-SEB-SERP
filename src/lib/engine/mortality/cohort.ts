@@ -15,7 +15,11 @@
  *
  * Members carry an optional `weight`, so the same functions serve headcount (weight 1, what the
  * chart wants) and amount-weighted aggregation (weight = benefit amount, what mortality-weighted
- * pension expense will want). The underlying table is itself amount-weighted.
+ * pension expense will want).
+ *
+ * The table-based functions take a `valuationYear` — the static table is rebuilt each calendar
+ * year (see ./table.ts). {@link lifeExpectancyDeaths} does not: it reads no table at all, only the
+ * assumed death age each member carries.
  */
 import type { Gender } from '$lib/domain/insured';
 import { DEFAULT_RETIREMENT_AGE, terminalAge } from './table';
@@ -26,7 +30,7 @@ export interface CohortMember {
 	readonly gender: Gender;
 	/** Exact age at the start of the projection. */
 	readonly currentAge: number;
-	/** Age at which this life moves to the retiree table. Defaults to 65. */
+	/** Age at which this life moves to the annuitant table. Defaults to 65. */
 	readonly retirementAge?: number;
 	/** Assumed age at death, used only by {@link lifeExpectancyDeaths}. */
 	readonly lifeExpectancyAge?: number;
@@ -65,7 +69,11 @@ function withCumulative(annual: number[]): DeathSeries {
  * a long enough horizon the cumulative series approaches the total weight of the group, since
  * the table terminates at q = 1.
  */
-export function actuarialDeaths(members: readonly CohortMember[], years: number): DeathSeries {
+export function actuarialDeaths(
+	members: readonly CohortMember[],
+	years: number,
+	valuationYear: number
+): DeathSeries {
 	assertYears(years);
 	const annual = new Array<number>(years).fill(0);
 
@@ -73,11 +81,17 @@ export function actuarialDeaths(members: readonly CohortMember[], years: number)
 		const { gender, currentAge, retirementAge = DEFAULT_RETIREMENT_AGE, weight = 1 } = member;
 		// The table stops at its terminal age; past that everyone is already dead and contributes
 		// nothing, so clamping here is exact rather than a truncation.
-		const terminal = terminalAge(gender, 'retiree');
+		const terminal = terminalAge(gender, 'annuitant', valuationYear);
 		const lastAge = Math.min(currentAge + years - 1, terminal ?? currentAge + years - 1);
 		if (lastAge < currentAge) continue;
 
-		const rows = lifeTable({ gender, startAge: currentAge, retirementAge, toAge: lastAge });
+		const rows = lifeTable({
+			gender,
+			startAge: currentAge,
+			retirementAge,
+			valuationYear,
+			toAge: lastAge
+		});
 		for (const row of rows) {
 			annual[row.year - 1] += weight * row.deaths;
 		}
@@ -115,18 +129,25 @@ export function lifeExpectancyDeaths(members: readonly CohortMember[], years: nu
  */
 export function expectedSurvivors(
 	members: readonly CohortMember[],
-	years: number
+	years: number,
+	valuationYear: number
 ): readonly number[] {
 	assertYears(years);
 	const living = new Array<number>(years).fill(0);
 
 	for (const member of members) {
 		const { gender, currentAge, retirementAge = DEFAULT_RETIREMENT_AGE, weight = 1 } = member;
-		const terminal = terminalAge(gender, 'retiree');
+		const terminal = terminalAge(gender, 'annuitant', valuationYear);
 		const lastAge = Math.min(currentAge + years - 1, terminal ?? currentAge + years - 1);
 		if (lastAge < currentAge) continue;
 
-		const rows = lifeTable({ gender, startAge: currentAge, retirementAge, toAge: lastAge });
+		const rows = lifeTable({
+			gender,
+			startAge: currentAge,
+			retirementAge,
+			valuationYear,
+			toAge: lastAge
+		});
 		for (const row of rows) {
 			living[row.year - 1] += weight * row.livingAtStart;
 		}

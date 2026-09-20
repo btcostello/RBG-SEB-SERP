@@ -666,14 +666,27 @@ function commonSerpValue(
 export const MORTALITY_CHART_YEARS = 68;
 
 /**
+ * The valuation year a report values on — the calendar year of its reference date, which is the
+ * plan effective date when one is set and today otherwise. The IRS static mortality table is
+ * rebuilt annually, so this is what selects the table.
+ */
+export function valuationYearOf(refDate: string): number {
+	return new Date(refDate).getUTCFullYear();
+}
+
+/**
  * Census age span, assumed life expectancy, and the two plotted death series for the Appendix G
  * chart. Ages are nearest-birthday at the plan reference date, matching the census and
  * projections pages.
  *
  * Both series come from `engine/mortality` and need no model run — they depend only on census
  * ages, genders and retirement ages, so the chart fills in from inputs alone.
+ *
+ * The mortality table is the IRS static table for the **year of `refDate`** — the plan effective
+ * date where one is set, else today. That is the valuation year for the whole report.
  */
 function mortalityAssumptionsFrom(census: Insured[], refDate: string): MortalityAssumptions {
+	const valuationYear = valuationYearOf(refDate);
 	const serp = census.filter(isSerpParticipant);
 	const ages = serp.map((insured) => ageNearestBirthday(insured.dateOfBirth, refDate));
 	const le = commonSerpValue(census, (insured) => insured.lifeExpectancy);
@@ -694,7 +707,8 @@ function mortalityAssumptionsFrom(census: Insured[], refDate: string): Mortality
 			lifeTable({
 				gender: member.gender,
 				startAge: member.currentAge,
-				retirementAge: member.retirementAge
+				retirementAge: member.retirementAge,
+				valuationYear
 			});
 			members.push(member);
 		} catch {
@@ -708,7 +722,7 @@ function mortalityAssumptionsFrom(census: Insured[], refDate: string): Mortality
 		oldestAge: ages.length > 0 ? Math.max(...ages) : null,
 		lifeExpectancyDisplay: le === null ? '—' : le === 'varies' ? 'Varies' : `Age ${le}`,
 		years: MORTALITY_CHART_YEARS,
-		actuarial: hasSeries ? actuarialDeaths(members, MORTALITY_CHART_YEARS) : null,
+		actuarial: hasSeries ? actuarialDeaths(members, MORTALITY_CHART_YEARS, valuationYear) : null,
 		assumed: hasSeries ? lifeExpectancyDeaths(members, MORTALITY_CHART_YEARS) : null,
 		excludedCount
 	};

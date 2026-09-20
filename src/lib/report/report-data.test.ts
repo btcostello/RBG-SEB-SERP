@@ -23,6 +23,11 @@ describe('report formatters', () => {
 	});
 });
 
+/** Shifts an ISO date by whole years, keeping month and day. */
+function shiftYears(iso: string, years: number): string {
+	return `${Number(iso.slice(0, 4)) + years}${iso.slice(4)}`;
+}
+
 function buildQuote(): Quote {
 	return {
 		schemaVersion: SCHEMA_VERSION,
@@ -302,16 +307,54 @@ describe('mortality assumptions (Appendix G chart)', () => {
 		expect(Math.max(...m.assumed!.annual)).toBeGreaterThanOrEqual(1);
 	});
 
-	it('excludes participants the table cannot cover instead of throwing', () => {
-		// deriveReport runs on every render, so one unusable retirement age must not take the
-		// whole report down — it drops out of the curves and is counted in the footnote.
+	it('covers retirement ages the old white collar basis could not', () => {
+		// Under Pri-2012 white collar this dropped the participant from the chart: the employee
+		// series stopped at 80, so only retirement ages 50-81 tiled without a gap. The IRS tables
+		// run 0-120 on both bases, so 45 is now an ordinary retirement age.
 		const quote = buildQuote();
 		quote.census[1] = makeInsured({ ...quote.census[1], retirementAge: 45 });
+
+		const m = deriveReport(quote, '2026-07-18').mortalityAssumptions;
+		expect(m.excludedCount).toBe(0);
+	});
+
+	it('excludes participants the table cannot cover instead of throwing', () => {
+		// deriveReport runs on every render, so one unusable participant must not take the whole
+		// report down — they drop out of the curves and are counted in the footnote.
+		const quote = buildQuote();
+		quote.census[1] = makeInsured({ ...quote.census[1], dateOfBirth: '1899-01-01' });
 
 		expect(() => deriveReport(quote, '2026-07-18')).not.toThrow();
 		const m = deriveReport(quote, '2026-07-18').mortalityAssumptions;
 		expect(m.excludedCount).toBe(1);
-		expect(m.assumed!.cumulative[m.years - 1]).toBe(1);
+	});
+
+	it('values on the plan effective date’s year, not a fixed table', () => {
+		// The IRS static table is rebuilt annually, so the same census valued ten years later must
+		// read improved rates. Ages are held constant — births and the effective date move together
+		// — so the only thing that can move the curve is the valuation year.
+		const near = buildQuote();
+		near.modelSettings = { ...near.modelSettings, effectiveDate: '2026-01-01' };
+
+		const far = buildQuote();
+		far.modelSettings = { ...far.modelSettings, effectiveDate: '2036-01-01' };
+		far.census = far.census.map((insured) =>
+			makeInsured({
+				...insured,
+				dateOfBirth: shiftYears(insured.dateOfBirth, 10),
+				dateOfHire: shiftYears(insured.dateOfHire, 10)
+			})
+		);
+
+		const a = deriveReport(near, '2026-01-01').mortalityAssumptions;
+		const b = deriveReport(far, '2036-01-01').mortalityAssumptions;
+
+		expect(b.youngestAge).toBe(a.youngestAge);
+		expect(b.oldestAge).toBe(a.oldestAge);
+		// Same ages, improved rates: fewer deaths in the first year on the later valuation.
+		expect(b.actuarial!.annual[0]).toBeLessThan(a.actuarial!.annual[0]);
+		// The assumed-life-expectancy series reads no table, so it must be identical.
+		expect(b.assumed!.annual).toEqual(a.assumed!.annual);
 	});
 
 	it('reports no series when there is nobody to project', () => {

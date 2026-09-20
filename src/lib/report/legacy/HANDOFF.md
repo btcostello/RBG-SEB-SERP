@@ -465,3 +465,11 @@ also carry `width: 100%` so they compress rather than clip if a print path ignor
 - Buy-sell lines on page 4.3 → **excluded** (errors in the sample PDF).
 - Earnings Summary section on page 4.5 → **excluded** (redundant to the cash-flow rows).
 - Benefit calc rule (when wired): **additive** — Fixed $ + (%FAS × FAS) + (UnitCredit × service × FAS).
+- **Mortality (2026-09-20):** IRS basis, **built and verified**. 2024 Adjusted Scale MP-2021 +
+  the IRS base tables (§ 1.430(h)(3)-1(d), 2012 base), static tables constructed per
+  § 1.430(h)(3)-1(c)(3), valuation year from the plan effective date. Reproduces the regulation’s
+  worked example exactly and the IRS’s published 2024 static table to within one unit of the fifth
+  decimal. The entered per-participant life expectancy stays the deterministic demonstration death
+  age; the table supplies year-by-year probabilities only. The engine, `cohort.ts` and the Appendix
+  G chart all read it now, keyed on the valuation year from the plan effective date. Retirement ages
+  are no longer confined to 50-81. See DATA-GAPS.md item 2.

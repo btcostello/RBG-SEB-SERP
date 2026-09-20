@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
 	actuarialDeaths,
+	mortalityRate,
 	expectedSurvivors,
 	lifeExpectancyDeaths,
 	survivalProbability,
 	type CohortMember
 } from './index';
+
+/** The year these tests value on; the static table is rebuilt annually. */
+const YEAR = 2026;
 
 /** Three lives, the shape a small SERP census takes. */
 const CENSUS: CohortMember[] = [
@@ -16,13 +20,13 @@ const CENSUS: CohortMember[] = [
 
 describe('actuarialDeaths', () => {
 	it('returns a series of the requested length', () => {
-		const series = actuarialDeaths(CENSUS, 40);
+		const series = actuarialDeaths(CENSUS, 40, YEAR);
 		expect(series.annual).toHaveLength(40);
 		expect(series.cumulative).toHaveLength(40);
 	});
 
 	it('accumulates into the cumulative series', () => {
-		const { annual, cumulative } = actuarialDeaths(CENSUS, 30);
+		const { annual, cumulative } = actuarialDeaths(CENSUS, 30, YEAR);
 		let running = 0;
 		annual.forEach((value, i) => {
 			running += value;
@@ -31,7 +35,7 @@ describe('actuarialDeaths', () => {
 	});
 
 	it('spreads deaths rather than spiking them', () => {
-		const { annual } = actuarialDeaths(CENSUS, 40);
+		const { annual } = actuarialDeaths(CENSUS, 40, YEAR);
 		// Every year carries some expected mortality, and no single year takes a whole life.
 		expect(annual.every((v) => v > 0)).toBe(true);
 		expect(Math.max(...annual)).toBeLessThan(1);
@@ -39,36 +43,36 @@ describe('actuarialDeaths', () => {
 
 	it('buries the whole group given a long enough horizon', () => {
 		// The table terminates at q = 1, so cumulative deaths converge on the group's weight.
-		const series = actuarialDeaths(CENSUS, 80);
+		const series = actuarialDeaths(CENSUS, 80, YEAR);
 		expect(series.cumulative[series.cumulative.length - 1]).toBeCloseTo(CENSUS.length, 9);
 	});
 
 	it('scales linearly with weight', () => {
-		const one = actuarialDeaths([{ gender: 'M', currentAge: 60 }], 20);
-		const ten = actuarialDeaths([{ gender: 'M', currentAge: 60, weight: 10 }], 20);
+		const one = actuarialDeaths([{ gender: 'M', currentAge: 60 }], 20, YEAR);
+		const ten = actuarialDeaths([{ gender: 'M', currentAge: 60, weight: 10 }], 20, YEAR);
 		ten.annual.forEach((value, i) => expect(value).toBeCloseTo(one.annual[i] * 10, 12));
 	});
 
 	it('adds members together', () => {
 		const a: CohortMember = { gender: 'M', currentAge: 60 };
 		const b: CohortMember = { gender: 'F', currentAge: 55 };
-		const both = actuarialDeaths([a, b], 25);
-		const apart = [actuarialDeaths([a], 25), actuarialDeaths([b], 25)];
+		const both = actuarialDeaths([a, b], 25, YEAR);
+		const apart = [actuarialDeaths([a], 25, YEAR), actuarialDeaths([b], 25, YEAR)];
 		both.annual.forEach((value, i) =>
 			expect(value).toBeCloseTo(apart[0].annual[i] + apart[1].annual[i], 12)
 		);
 	});
 
 	it("year one's deaths are just q at the current age", () => {
-		// Male aged 60, pre-retirement, so the employee table: q(60) = 0.00287.
-		expect(actuarialDeaths([{ gender: 'M', currentAge: 60 }], 5).annual[0]).toBeCloseTo(
-			0.00287,
+		// Male aged 60, pre-retirement, so the non-annuitant table for the valuation year.
+		expect(actuarialDeaths([{ gender: 'M', currentAge: 60 }], 5, YEAR).annual[0]).toBeCloseTo(
+			mortalityRate('M', 'nonAnnuitant', 60, YEAR)!,
 			12
 		);
 	});
 
 	it('handles a horizon that runs past the terminal age', () => {
-		const series = actuarialDeaths([{ gender: 'M', currentAge: 100 }], 60);
+		const series = actuarialDeaths([{ gender: 'M', currentAge: 100 }], 60, YEAR);
 		expect(series.annual).toHaveLength(60);
 		// Dead by 120 — year 21 onward is empty, and the total is still exactly one life.
 		expect(series.cumulative[series.cumulative.length - 1]).toBeCloseTo(1, 12);
@@ -76,8 +80,8 @@ describe('actuarialDeaths', () => {
 	});
 
 	it('rejects a nonsense horizon', () => {
-		expect(() => actuarialDeaths(CENSUS, 0)).toThrow(/at least 1/);
-		expect(() => actuarialDeaths(CENSUS, 2.5)).toThrow(/whole number/);
+		expect(() => actuarialDeaths(CENSUS, 0, YEAR)).toThrow(/at least 1/);
+		expect(() => actuarialDeaths(CENSUS, 2.5, YEAR)).toThrow(/whole number/);
 	});
 });
 
@@ -139,7 +143,7 @@ describe('the two bases against each other', () => {
 	it('agree on the total and disagree on the timing', () => {
 		// This is the point of the Appendix G chart: same group, same eventual total, very
 		// different shape.
-		const actuarial = actuarialDeaths(CENSUS, 80);
+		const actuarial = actuarialDeaths(CENSUS, 80, YEAR);
 		const assumed = lifeExpectancyDeaths(CENSUS, 80);
 		expect(actuarial.cumulative[79]).toBeCloseTo(assumed.cumulative[79], 9);
 		expect(Math.max(...actuarial.annual)).toBeLessThan(Math.max(...assumed.annual));
@@ -148,26 +152,26 @@ describe('the two bases against each other', () => {
 
 describe('expectedSurvivors', () => {
 	it('starts with the whole group', () => {
-		expect(expectedSurvivors(CENSUS, 30)[0]).toBe(CENSUS.length);
+		expect(expectedSurvivors(CENSUS, 30, YEAR)[0]).toBe(CENSUS.length);
 	});
 
 	it('declines every year', () => {
-		const living = expectedSurvivors(CENSUS, 50);
+		const living = expectedSurvivors(CENSUS, 50, YEAR);
 		for (let i = 1; i < living.length; i++) {
 			expect(living[i]).toBeLessThanOrEqual(living[i - 1]);
 		}
 	});
 
 	it('ties to the deaths series', () => {
-		const living = expectedSurvivors(CENSUS, 40);
-		const { annual } = actuarialDeaths(CENSUS, 40);
+		const living = expectedSurvivors(CENSUS, 40, YEAR);
+		const { annual } = actuarialDeaths(CENSUS, 40, YEAR);
 		for (let i = 1; i < living.length; i++) {
 			expect(living[i]).toBeCloseTo(living[i - 1] - annual[i - 1], 12);
 		}
 	});
 
 	it('is the survival probability for a single life', () => {
-		const living = expectedSurvivors([{ gender: 'F', currentAge: 50 }], 30);
-		expect(living[20]).toBeCloseTo(survivalProbability('F', 50, 70), 12);
+		const living = expectedSurvivors([{ gender: 'F', currentAge: 50 }], 30, YEAR);
+		expect(living[20]).toBeCloseTo(survivalProbability('F', 50, 70, YEAR), 12);
 	});
 });

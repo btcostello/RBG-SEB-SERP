@@ -16,6 +16,9 @@
  * `l(x)` is a *probability* by default (radix 1), not a headcount: `livingAtStart` is the chance
  * this one life reaches that age. Pass a `radix` to scale to a cohort instead.
  *
+ * Every entry point takes a `valuationYear`: the underlying static table is rebuilt each calendar
+ * year, so there is no rate without one — see the note in ./table.ts.
+ *
  * Rates and probabilities are plain numbers, not big.js — see the note in ./table.ts.
  */
 import type { Gender } from '$lib/domain/insured';
@@ -52,6 +55,11 @@ export interface LifeTableOptions {
 	readonly startAge: number;
 	/** Age at which the life moves to the retiree table. Defaults to 65. */
 	readonly retirementAge?: number;
+	/**
+	 * Calendar year of the static mortality table to read. Required — see the note in ./table.ts:
+	 * a static table is rebuilt every year, so a rate without a year is not a rate.
+	 */
+	readonly valuationYear: number;
 	/** Lives at `startAge`. Defaults to 1, making `livingAtStart` a survival probability. */
 	readonly radix?: number;
 	/** Last age to project. Defaults to the table's terminal age, where survival reaches zero. */
@@ -72,12 +80,22 @@ export function lifeTable(options: LifeTableOptions): LifeTableRow[] {
 		gender,
 		startAge,
 		retirementAge = DEFAULT_RETIREMENT_AGE,
+		valuationYear,
 		radix = 1,
-		toAge = terminalAge(gender, 'retiree') ?? undefined
+		toAge = terminalAge(gender, 'annuitant', valuationYear) ?? undefined
 	} = options;
 
 	if (!Number.isInteger(startAge)) {
 		throw new Error('lifeTable: startAge must be a whole number');
+	}
+	assertSupportedRetirementAge(retirementAge);
+	if (rateForAge(gender, startAge, valuationYear, retirementAge) === null) {
+		// Checked before anything derived from the table, so the message names the real problem —
+		// an age off the tables, or a valuation year before they begin — rather than a downstream
+		// symptom such as a missing terminal age.
+		throw new Error(
+			`lifeTable: the tables do not cover age ${startAge} in valuation year ${valuationYear}`
+		);
 	}
 	if (toAge === undefined) {
 		throw new Error('lifeTable: table has no terminal age; pass an explicit toAge');
@@ -88,7 +106,6 @@ export function lifeTable(options: LifeTableOptions): LifeTableRow[] {
 	if (!(radix >= 0)) {
 		throw new Error('lifeTable: radix must be zero or greater');
 	}
-	assertSupportedRetirementAge(retirementAge);
 	if (toAge < startAge) {
 		throw new Error(`lifeTable: toAge ${toAge} is before startAge ${startAge}`);
 	}
@@ -98,7 +115,7 @@ export function lifeTable(options: LifeTableOptions): LifeTableRow[] {
 	let cumulativeDeaths = 0;
 
 	for (let age = startAge; age <= toAge; age++) {
-		const q = rateForAge(gender, age, retirementAge);
+		const q = rateForAge(gender, age, valuationYear, retirementAge);
 		if (q === null) {
 			throw new Error(
 				`lifeTable: no ${basisForAge(age, retirementAge)} rate for ${gender} at age ${age}; ` +
@@ -132,11 +149,18 @@ export function survivalProbability(
 	gender: Gender,
 	fromAge: number,
 	toAge: number,
+	valuationYear: number,
 	retirementAge: number = DEFAULT_RETIREMENT_AGE
 ): number {
 	if (toAge <= fromAge) return 1;
 	// Surviving *to* toAge means living through the years beginning at fromAge … toAge − 1.
-	const rows = lifeTable({ gender, startAge: fromAge, retirementAge, toAge: toAge - 1 });
+	const rows = lifeTable({
+		gender,
+		startAge: fromAge,
+		retirementAge,
+		valuationYear,
+		toAge: toAge - 1
+	});
 	return rows.reduce((p, row) => p * (1 - row.q), 1);
 }
 
@@ -148,9 +172,10 @@ export function survivalProbability(
 export function curtateLifeExpectancy(
 	gender: Gender,
 	age: number,
+	valuationYear: number,
 	retirementAge: number = DEFAULT_RETIREMENT_AGE
 ): number {
-	const rows = lifeTable({ gender, startAge: age, retirementAge });
+	const rows = lifeTable({ gender, startAge: age, retirementAge, valuationYear });
 	// Σ tPx for t ≥ 1 is the same as Σ l(x+t)/l(x), which is every row's opening lives except
 	// the first, plus the (zero) tail after the terminal row.
 	return rows.slice(1).reduce((sum, row) => sum + row.livingAtStart, 0);
@@ -168,7 +193,8 @@ export function curtateLifeExpectancy(
 export function completeLifeExpectancy(
 	gender: Gender,
 	age: number,
+	valuationYear: number,
 	retirementAge: number = DEFAULT_RETIREMENT_AGE
 ): number {
-	return curtateLifeExpectancy(gender, age, retirementAge) + 0.5;
+	return curtateLifeExpectancy(gender, age, valuationYear, retirementAge) + 0.5;
 }

@@ -3,40 +3,49 @@
  *
  * Layered so each piece is usable on its own:
  *
- *   pri-2012-white-collar.ts  the rates
+ *   irs-base-2012.ts          the IRS base rates (§ 1.430(h)(3)-1(d), 2012 base)
+ *   irs-static.ts             the IRS static-table construction for a valuation year
  *   table.ts                  lookup + which table applies at a given age
+ *   pri-2012-white-collar.ts  the former basis, retained for comparison only
  *   life-table.ts             one life: l(x), deaths, tPx, life expectancy
  *   cohort.ts                 many lives: expected deaths / survivors per year
  *   scale-mp-2021-adjusted-2024.ts   the IRS mortality improvement scale
- *   irs-base-2012.ts          the IRS base rates (§ 1.430(h)(3)-1(d), 2012 base)
  *   improvement.ts            projecting a base rate forward to a valuation year
- *   irs-static.ts             the IRS static-table construction for a valuation year
  *
  * Everything is pure, deterministic and discrete on integer ages — see the module headers for the
  * recursion and the one place a within-year assumption appears
  * (`completeLifeExpectancy`).
  *
- * The IRS basis — base tables, improvement scale and static construction — is loaded and verified
- * against the regulation's own published figures, but **nothing in the engine reads it yet**: the
- * lookup above is still unprojected Pri-2012 white collar. Re-pointing it is the next step.
- * See DATA-GAPS.md item 2.
+ * The basis is the **IRS static mortality tables**: the § 1.430(h)(3)-1(d) base tables projected
+ * with the 2024 Adjusted Scale MP-2021 under § 1.430(h)(3)-1(c)(3). Because a static table is
+ * rebuilt each calendar year, **every rate lookup takes a valuation year** — from the plan
+ * effective date (operator decision, 2026-09-20). See DATA-GAPS.md item 2.
  */
 export {
 	DEFAULT_RETIREMENT_AGE,
 	MORTALITY_BASES,
-	PRI_2012_WHITE_COLLAR,
 	SUPPORTED_RETIREMENT_AGES,
+	TABLE_AGE_RANGE,
 	ageRange,
 	assertSupportedRetirementAge,
 	basisForAge,
 	mortalityRate,
 	rateForAge,
+	staticSeries,
 	terminalAge,
 	type AgeRange,
-	type MortalityBasis,
+	type MortalityBasis
+} from './table';
+
+/**
+ * The Pri-2012 white collar rates, kept for comparison only. They are **not** the engine's basis
+ * — see the header above — and nothing in the engine reads them.
+ */
+export {
+	PRI_2012_WHITE_COLLAR,
 	type MortalitySeries,
 	type MortalityTableData
-} from './table';
+} from './pri-2012-white-collar';
 
 export {
 	completeLifeExpectancy,

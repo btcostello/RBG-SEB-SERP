@@ -26,6 +26,39 @@ A running checklist of data points the Legacy Report needs but the app cannot ye
 - ☑ **Boilerplate/disclosure text** → leave hardcoded (firm-standard, not per-quote).
 - ☑ **Section page numbers** ("1.1", "2.1"…) → hardcoded per page is fine for now.
 
+## Decisions (operator, 2026-09-20) — mortality
+- ☑ **Improvement scale** → the IRS 2024 Adjusted Scale MP-2021 (operator-supplied workbooks).
+- ☑ **Projection basis** → **static** to a single valuation year, not generational.
+- ☑ **Valuation year** → derived from `ModelSettings.effectiveDate`, not a separate input.
+- ☑ **Base table** → the **IRS base mortality tables** (§ 1.430(h)(3)-1(d), base year 2012),
+  replacing the interim Pri-2012 white collar choice. Loaded 2026-09-20 from TD 9983.
+- ☑ **Static construction** → **the IRS one** (§ 1.430(h)(3)-1(c)(3)), not a plain carry-forward.
+- ☑ **Scope** → mortality drives the Appendix G chart, the 5.2 survival footnote, **and** the
+  mortality weighting of GAAP pension expense. It does **not** replace the per-participant entered
+  `lifeExpectancy`.
+
+### Where the entered life expectancy ends, and mortality begins
+
+Operator direction (2026-09-20): the entered life expectancy exists to give a **clear, deterministic
+point of death for demonstration** — "asking someone to understand mortality tables is more
+complicated than just letting them pick a death age", and that is fine wherever a single death age
+is all that is needed. Fractional mortality within each year is a separate matter. The rule that
+follows, and that the build should hold to:
+
+- **Entered LE governs every single-death-age use, unchanged.** It ends the benefit stream, sets the
+  COLI solve targets (Option 4 recovers cumulative premium at LE), and drives the cash-flow pages.
+  These are the client-facing demonstration and they stay legible.
+- **The table governs every year-by-year probability**: the Appendix G chart, the 5.2 survival
+  footnote, and the survival weighting inside the GAAP pension expense and PBO.
+- **Weighting runs the full table horizon, not truncated at the entered LE.** A PBO cut off at an
+  assumed death age is neither the deterministic figure nor the actuarial one, and would tie to
+  nothing. Truncating would also silently drop the tail that survival weighting exists to capture.
+- **Therefore the accounting totals will not tie to the cash-flow totals, and the pages must say
+  so.** Two bases, disclosed, is defensible; one number that is quietly a blend of both is not.
+- When the weighting is built, the benefit stream it weights must follow the plan’s own terms from
+  `benefitFormula` — payments certain through a guaranteed period, life-contingent after it, with
+  the survivor continuation on death — rather than a flat life-contingent assumption.
+
 ## ⚠ Missing subsystem — mortality table data
 
 `ModelSettings.mortalityTable` is an **enum with no data behind it**. It offers a single value
@@ -42,9 +75,42 @@ To resolve, three separate things are needed:
    `mortalityRate(gender, basis, age)` lookup. Operator supplied the SOA workbook and chose this
    table; note it is **not** the RP-2000 white collar + scale AA the source proposals use, so
    figures will not tie to the sample PDFs exactly.
-2. ☐ **Projection scale** — still open, and now a *different* scale: Pri-2012 projects with an
-   MP improvement scale, not scale AA. The loaded rates are unprojected 2012 base rates; the
-   scale is a separate SOA dataset that is not in the supplied workbook.
+2. ☑ **Projection scale and base table** — **built and verified (2026-09-20).** Operator supplied
+   the IRS scale and chose the IRS pairing, so the mortality basis is now:
+   - `scale-mp-2021-adjusted-2024.ts` — the **2024 Adjusted Scale MP-2021** improvement rates from
+     the two IRS workbooks (ages 20–120 × years 2013–2036 + a 2037+ ultimate, both genders).
+   - `irs-base-2012.ts` — the **IRS base mortality tables**, Treas. Reg. § 1.430(h)(3)-1(d)
+     Table 2, transcribed from TD 9983 (88 FR 72357). Base year 2012, ages 0–120, non-annuitant
+     and annuitant by gender, plus the small-plan weighting factors.
+   - `improvement.ts` — `projectRate` and the cumulative improvement factor.
+   - `irs-static.ts` — the § 1.430(h)(3)-1(c)(3) **static table construction**: base rate ×
+     CIF(2012→Y) × CIF(Y→Y+n), with n = 8 (M) / 9 (F), +1 per year below age 80, −1/3 per year
+     above, floored at zero, and linear interpolation across a fractional n.
+
+   **Two independent correctness gates now pass**, which is more than any other calculation in this
+   codebase has: the regulation’s own worked example (male annuitant 68 in 2024 — base 0.01418,
+   factor 0.9827, rate 0.01393) reproduces exactly, and rebuilding the IRS’s **published 2024
+   static table** matches 229 of 242 rates exactly and all 242 within one unit of the fifth
+   decimal. The thirteen sit within 5×10⁻⁶ of a rounding boundary — the IRS worked from unrounded
+   MP-2021 rates and only the four-decimal scale is published, so that gap is not closable from
+   public data. `irs-static-2024.fixture.ts` holds the published table.
+
+   ☑ **The engine is on the new basis (2026-09-20).** `table.ts` now reads the IRS static table
+   for a valuation year, and `life-table.ts` / `cohort.ts` thread that year through; the Appendix G
+   chart passes the year of the report reference date (`report-data.valuationYearOf`), which is the
+   plan effective date where one is set. The bases are the regulation’s own:
+   `nonAnnuitant` before benefits commence, `annuitant` from commencement **and for a beneficiary**
+   (§ 1.430(h)(3)-1(b)(4)(i)), so survivor mortality no longer has a separate basis.
+
+   Three consequences worth knowing:
+   - **The retirement-age restriction is gone.** The white collar employee series stopped at 80,
+     which confined retirement to ages 50-81; the IRS tables run 0-120 on both bases, so any age
+     tiles. A participant retiring at 45 is now charted rather than excluded.
+   - **The chart moved**, as expected — different table, and now projected. Verified in-browser: the
+     actuarial curve still spreads across the horizon and its cumulative reaches the participant
+     count, while the assumed-life-expectancy series still spikes.
+   - **`pri-2012-white-collar.ts` is retained for comparison only** and nothing in the engine reads
+     it. Its transcription guards moved to `pri-2012-white-collar.test.ts`.
 3. ☑ **Survival calculations** — **built**: `life-table.ts` (one life — `l(x)`, deaths, tPx,
    curtate/complete life expectancy) and `cohort.ts` (many lives — `actuarialDeaths`,
    `lifeExpectancyDeaths`, `expectedSurvivors`). Discrete integer-age arithmetic; the only
@@ -67,15 +133,19 @@ matured by the end of year 7"* — the sample's figures assume a specific produc
 ## ⚠ Missing subsystem — GAAP accounting engine (partial: `src/lib/accounting/`)
 
 The accounting module now exists and the **5.2 earnings ledger (5.2-1…5.2-4) is fully wired** — all
-five columns are live (SERP [1][2][3], COLI [4], combined [5]). **Six pages remain placeholders:**
-6.1…6.6 (SERP/COLI entry worksheets, audit trail, cost allocation), which need the balance-sheet
-items (AOCI, deferred tax asset, unfunded accrued pension cost) and the 6.6 per-participant split.
+five columns are live (SERP [1][2][3], COLI [4], combined [5]). **6.5 (audit trail, nine columns)**
+and **6.6 (pension expense allocation by participant)** are wired too, from `report.auditTrail` and
+`report.costAllocation`. **Four pages remain placeholders:** 6.1–6.3 (SERP entries, reconciliation,
+notes) and 6.4 (COLI entries) — operator flagged 6.1 and 6.4 as the harder two. They need the
+balance-sheet items still `null` on `SerpAccountingYear`: **AOCI balance**, **deferred tax asset
+balance**, and **unfunded accrued pension cost**, plus the double-entry debit/credit structure over
+the First-Month / Calendar-Year period columns. `computeAccounting` status stays `'partial'`.
 
 Underlying quantities, with build status:
 
 | Quantity | Status |
 |---|---|
-| **Service cost** | ☑ BUILT — straight-line accrual of the PBO over total service (`serp-pension.ts`). 6.6 per-participant split still to do. |
+| **Service cost** | ☑ BUILT — straight-line accrual of the PBO over total service (`serp-pension.ts`), including the 6.6 per-participant split. |
 | **Interest cost / accrual** | ☑ BUILT — discount rate × beginning-of-year PBO. |
 | **Projected Benefit Obligation (PBO)** | ☑ BUILT — rolled forward `BOY + service + interest − benefits`. |
 | **Prior service cost** | ☑ BUILT — past-service share of PBO, amortised over average future service; unrecognised balance carried. |
