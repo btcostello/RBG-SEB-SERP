@@ -5,6 +5,7 @@
  *
  *   irs-base-2012.ts          the IRS base rates (§ 1.430(h)(3)-1(d), 2012 base)
  *   irs-static.ts             the IRS static-table construction for a valuation year
+ *   irs-417e.ts               the unisex § 417(e) blend — the accounting basis
  *   table.ts                  lookup + which table applies at a given age
  *   pri-2012-white-collar.ts  the former basis, retained for comparison only
  *   life-table.ts             one life: l(x), deaths, tPx, life expectancy
@@ -92,3 +93,5 @@ export {
 	type IrsBaseTableData,
 	type IrsBasis
 } from './irs-static';
+
+export { irs417eRate, irs417eRateUnisex } from './irs-417e';
