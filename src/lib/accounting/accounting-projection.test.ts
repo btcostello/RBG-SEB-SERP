@@ -9,13 +9,19 @@
 import { describe, expect, it } from 'vitest';
 import type { IllustrationYear, Results } from '$lib/domain';
 import { makeInsured, makeSettings } from '$lib/testing/fixtures';
-import { coliEarningsByOption, computeAccounting, lifeOfProgramHorizon } from './accounting-projection';
+import {
+	coliEarningsByOption,
+	computeAccounting,
+	lifeOfProgramHorizon
+} from './accounting-projection';
 
 const company = { name: 'Acme', corporateTaxRate: 0.21 };
 const refDate = '2026-01-01';
 
 /** An illustration year with only the fields the COLI calc reads. */
-function illYear(o: Partial<IllustrationYear> & { policyYear: number; age: number }): IllustrationYear {
+function illYear(
+	o: Partial<IllustrationYear> & { policyYear: number; age: number }
+): IllustrationYear {
 	return {
 		premium: '0.00',
 		accountValue: '0.00',
@@ -50,9 +56,27 @@ function makeResults(): Results {
 						faceAmount: '100000.00',
 						firstYearPremium: '10000.00',
 						illustrationYears: [
-							illYear({ policyYear: 1, age: 82, premium: '10000.00', accountValue: '8000.00', deathBenefit: '100000.00' }),
-							illYear({ policyYear: 2, age: 83, premium: '10000.00', accountValue: '17000.00', deathBenefit: '100000.00' }),
-							illYear({ policyYear: 3, age: 84, premium: '0.00', accountValue: '25000.00', deathBenefit: '100000.00' })
+							illYear({
+								policyYear: 1,
+								age: 82,
+								premium: '10000.00',
+								accountValue: '8000.00',
+								deathBenefit: '100000.00'
+							}),
+							illYear({
+								policyYear: 2,
+								age: 83,
+								premium: '10000.00',
+								accountValue: '17000.00',
+								deathBenefit: '100000.00'
+							}),
+							illYear({
+								policyYear: 3,
+								age: 84,
+								premium: '0.00',
+								accountValue: '25000.00',
+								deathBenefit: '100000.00'
+							})
 						]
 					}
 				}
@@ -64,7 +88,13 @@ function makeResults(): Results {
 }
 
 const census = [makeInsured({ id: 'i1', planMembership: 'BOTH', lifeExpectancy: 84 })];
-const params = () => ({ results: makeResults(), census, company, settings: makeSettings(), refDate });
+const params = () => ({
+	results: makeResults(),
+	census,
+	company,
+	settings: makeSettings(),
+	refDate
+});
 
 describe('lifeOfProgramHorizon', () => {
 	it('is the last plan year across both benefit and illustration streams', () => {
@@ -104,7 +134,13 @@ describe('coliEarningsByOption (COLI earnings recognition)', () => {
 		const lapsed = makeResults();
 		// Truncate the stream before the LE age; only premiums and AV changes remain.
 		lapsed.perParticipant[0].designs!['cost-recovery'].illustrationYears = [
-			illYear({ policyYear: 1, age: 82, premium: '10000.00', accountValue: '8000.00', deathBenefit: '100000.00' })
+			illYear({
+				policyYear: 1,
+				age: 82,
+				premium: '10000.00',
+				accountValue: '8000.00',
+				deathBenefit: '100000.00'
+			})
 		];
 		const rows = coliEarningsByOption(lapsed, census, 2026, 3)['cost-recovery'];
 		expect(rows[0]).toMatchObject({ deathProceeds: '0.00', coliEarningsImpact: '-2000.00' });
@@ -167,9 +203,10 @@ describe('computeAccounting (partial: COLI built, SERP pending)', () => {
 			'netSerpEarningsImpact'
 		] as const;
 		for (const field of builtFields) expect(result.serp[0][field]).toBe('0.00');
-		// AOCI and the deferred tax asset balance are not specced yet — still null.
-		expect(result.serp[0].aociEoy).toBeNull();
-		expect(result.serp[0].deferredTaxAssetEoy).toBeNull();
+		// The balance-sheet items are built too, and are zero on a zero obligation.
+		expect(result.serp[0].aociEoy).toBe('0.00');
+		expect(result.serp[0].aociNetOfTaxEoy).toBe('0.00');
+		expect(result.serp[0].deferredTaxAssetEoy).toBe('0.00');
 	});
 
 	it('fills the combined column [5] = net SERP [3] + COLI [4]', () => {
@@ -203,6 +240,26 @@ describe('discount rate split — accounting rate is independent of the liabilit
 		};
 	}
 	const base = () => ({ results: resultsWithStream(), census, company, refDate });
+
+	it('carries AOCI as the unamortised prior service cost, and the DTA as PBO x tax rate', () => {
+		// The two relationships the post-FAS 158 balance sheet rests on. The same arithmetic holds in
+		// the source report: prior service cost 3,806,707 at 21% gives a 799,408 deferred tax
+		// benefit, and a 3,862,213 obligation gives an 811,064 deferred tax asset.
+		const result = computeAccounting({
+			...base(),
+			settings: makeSettings({ accountingDiscountRate: 0.0575 })
+		});
+		const taxRate = company.corporateTaxRate;
+		expect(Number(result.serp[0].pboEoy)).toBeGreaterThan(0);
+		// Within a cent: the module rounds once from full precision, while these recompute from a
+		// figure that has already been rounded.
+		const withinACent = (a: string | null, b: number) => Math.abs(Number(a) - b) <= 0.01;
+		for (const year of result.serp.slice(0, 5)) {
+			expect(year.aociEoy).toBe(year.unrecognizedPriorServiceCostEoy);
+			expect(withinACent(year.aociNetOfTaxEoy, Number(year.aociEoy) * (1 - taxRate))).toBe(true);
+			expect(withinACent(year.deferredTaxAssetEoy, Number(year.pboEoy) * taxRate)).toBe(true);
+		}
+	});
 
 	it('SERP interest cost responds to the accounting rate (not the liability NPV rate)', () => {
 		const zeroAcct = computeAccounting({

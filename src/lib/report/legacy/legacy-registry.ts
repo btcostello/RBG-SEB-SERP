@@ -40,6 +40,7 @@ import LegacyEarningsLedgerOption4Page from './pages/LegacyEarningsLedgerOption4
 import LegacySerpEntriesPage from './pages/LegacySerpEntriesPage.svelte';
 import LegacySerpReconciliationPage from './pages/LegacySerpReconciliationPage.svelte';
 import LegacySerpNotesPage from './pages/LegacySerpNotesPage.svelte';
+import LegacyPboRollforwardPage from './pages/LegacyPboRollforwardPage.svelte';
 import LegacyColiEntriesPage from './pages/LegacyColiEntriesPage.svelte';
 import LegacyAuditTrailPage from './pages/LegacyAuditTrailPage.svelte';
 import LegacyCostAllocationPage from './pages/LegacyCostAllocationPage.svelte';
@@ -129,6 +130,11 @@ export const legacyReportPages: LegacyReportPage[] = [
 	{ id: 'f1-serp-entries', title: 'SERP Accounting Entry Worksheet', component: LegacySerpEntriesPage },
 	{ id: 'f1-serp-reconciliation', title: 'SERP Accounting — Reconciliation', component: LegacySerpReconciliationPage },
 	{ id: 'f1-serp-notes', title: 'SERP Accounting — Notes', component: LegacySerpNotesPage },
+	{
+		id: 'f1-pbo-rollforward',
+		title: 'Projected Benefit Obligation Roll-Forward',
+		component: LegacyPboRollforwardPage
+	},
 	{ id: 'f2-coli-entries', title: 'COLI Accounting Entry Worksheet', component: LegacyColiEntriesPage },
 	{ id: 'f3-audit-trail', title: 'FASB ASC 715-30 Audit Trail', component: LegacyAuditTrailPage },
 	{ id: 'f4-cost-allocation', title: 'Pension Expense Allocation by Participant', component: LegacyCostAllocationPage },

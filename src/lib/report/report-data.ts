@@ -11,6 +11,9 @@
 import { Big, formatMoney, formatMoneyDisplay } from '$lib/money/money';
 import { ageNearestBirthday, completedYearsBetween } from '$lib/dates/age';
 import { survivorBenefitAtAge, survivorBenefitStream } from '$lib/engine/survivor-benefit';
+import { compositeLedger } from '$lib/ledger/ledger';
+import { coliWorksheetAmounts, serpWorksheetAmounts } from './legacy/worksheets';
+import type { ColiWorksheetAmounts, WorksheetAmounts } from './legacy/worksheets';
 import { computeAccounting } from '$lib/accounting';
 import {
 	effectiveAccountingDiscountRate,
@@ -460,6 +463,21 @@ export interface AuditTrailDisplay {
 }
 
 /**
+ * Obligation roll-forward and balance-sheet position (report page 6.3-2).
+ *
+ * The standard ASC 715-20 reconciliation — how the obligation is built and worked off — followed
+ * by the two balances that sit on the balance sheet beside it. Seven formatted columns per
+ * calendar year: [1] BOY obligation, [2] service cost, [3] interest cost, [4] benefits paid,
+ * [5] EOY obligation, [6] AOCI before tax, [7] deferred tax asset.
+ *
+ * Every component already exists on the audit trail; this presents them as the reconciliation an
+ * accountant reads rather than as a column of costs.
+ */
+export interface PboRollforwardDisplay {
+	byYear: Record<number, string[]>;
+}
+
+/**
  * Reference-year pension expense allocation by participant (report page 6.6). Five formatted
  * columns per SERP participant ([1] service cost, [2] prior-service amortisation, [3] interest,
  * [4] total pension expense, [5] % of total), keyed by insured id, plus the consolidated totals
@@ -584,6 +602,12 @@ export interface ReportModel {
 	earningsLedgerSerp: EarningsLedgerSerpDisplay | null;
 	/** Consolidated FASB ASC 715-30 audit trail (page 6.5), or null pre-run / no SERP participants. */
 	auditTrail: AuditTrailDisplay | null;
+	/** Obligation roll-forward + balance-sheet balances (page 6.3-2), or null pre-run / no SERP. */
+	pboRollforward: PboRollforwardDisplay | null;
+	/** Amounts for the three-period entry worksheets 6.1 / 6.2 / 6.3-1, or null pre-run / no SERP. */
+	worksheets: WorksheetAmounts | null;
+	/** COLI entry amounts for page 6.4, keyed by strategy id. Empty pre-run. */
+	coliWorksheets: Record<string, ColiWorksheetAmounts>;
 	/** Reference-year pension expense allocation by participant (page 6.6), or null pre-run / no SERP. */
 	costAllocation: CostAllocationDisplay | null;
 	/**
@@ -1334,6 +1358,9 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	// total a design built on a solve that missed its target.
 	let earningsLedgerSerp: EarningsLedgerSerpDisplay | null = null;
 	let auditTrail: AuditTrailDisplay | null = null;
+	let pboRollforward: PboRollforwardDisplay | null = null;
+	let worksheets: WorksheetAmounts | null = null;
+	const coliWorksheets: Record<string, ColiWorksheetAmounts> = {};
 	let costAllocation: CostAllocationDisplay | null = null;
 	const earningsLedgerByOption: Record<string, EarningsLedgerOptionDisplay> = {};
 	if (results) {
@@ -1392,6 +1419,26 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 			}
 			auditTrail = { byYear };
 
+			// Page 6.3-2 — the obligation roll-forward, then the balances it sits behind. Benefits
+			// paid REDUCE the obligation, so they are shown as a deduction; everything else on the
+			// roll-forward adds to it.
+			const rollforwardByYear: Record<number, string[]> = {};
+			for (const year of accounting.serp) {
+				rollforwardByYear[year.calendarYear] = [
+					grouped(new Big(year.pboBoy ?? '0')),
+					grouped(new Big(year.serviceCost ?? '0')),
+					grouped(new Big(year.interestCost ?? '0')),
+					grouped(new Big(year.grossBenefitPayments ?? '0').times(-1)),
+					grouped(new Big(year.pboEoy ?? '0')),
+					grouped(new Big(year.aociEoy ?? '0')),
+					grouped(new Big(year.deferredTaxAssetEoy ?? '0'))
+				];
+			}
+			pboRollforward = { byYear: rollforwardByYear };
+
+			// Pages 6.1 / 6.2 / 6.3-1 — the same figures on the three-period worksheet axis.
+			worksheets = serpWorksheetAmounts(accounting, legacyRefDate, taxRate);
+
 			// Page 6.6 — reference-year pension expense allocated by participant, plus the totals row.
 			const pct = (fraction: number | null): string =>
 				fraction == null ? '—' : `${(fraction * 100).toFixed(1)}%`;
@@ -1424,6 +1471,22 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 			const series = accounting.coliByOption[option.id];
 			if (!series) continue;
 			if ((results.aggregate.byOption?.[option.id]?.infeasibleCount ?? 0) > 0) continue;
+
+			// Page 6.4 — the ASC 325-30 entries, which turn on cash SURRENDER value rather than the
+			// account value the 5.2 ledger uses, so they read the illustration streams directly.
+			// compositeLedger already sums them across the option's policies by policy year, and a
+			// policy year is a plan year (every policy is issued at plan start).
+			const composite = compositeLedger(
+				results.perParticipant.map((participant) => participant.designs?.[option.id])
+			);
+			if (composite.length > 0) {
+				coliWorksheets[option.id] = coliWorksheetAmounts(
+					composite.map((row) => new Big(row.cashSurrenderValue)),
+					composite.map((row) => new Big(row.premium)),
+					series.map((year) => new Big(year.deathProceeds ?? '0')),
+					legacyRefDate
+				);
+			}
 			const coliByYear: Record<number, string> = {};
 			const combinedByYear: Record<number, string> = {};
 			let coliTotal = new Big(0);
@@ -1565,6 +1628,9 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		ledgerByOption,
 		earningsLedgerSerp,
 		auditTrail,
+		pboRollforward,
+		worksheets,
+		coliWorksheets,
 		costAllocation,
 		earningsLedgerByOption,
 		mortalityAssumptions: mortalityAssumptionsFrom(census, legacyRefDate),

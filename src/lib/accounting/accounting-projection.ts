@@ -7,14 +7,20 @@
  * GAAP accounting engine" note in `src/lib/report/legacy/DATA-GAPS.md`; every quantity below is
  * one row of that table.
  *
- * ── Status: SCAFFOLD ONLY ────────────────────────────────────────────────────────────────────
- * The monetary figures are NOT computed yet — each is `null` and `status` is `'not-built'`.
- * What IS real today, because it needs no accounting assumptions:
- *   - the plan-year / calendar-year axis, keyed off the plan reference date;
- *   - the life-of-program horizon (max plan year across every benefit and illustration stream),
- *     which the report needs because its totals are life-of-program, NOT the 30 displayed years;
- *   - the per-participant allocation keys for the 6.6 cost-allocation sheet.
- * So wiring a real column later is a binding exercise on a fixed shape, not a rebuild.
+ * ── Status: PARTIAL ──────────────────────────────────────────────────────────────────────────
+ * Built: the SERP pension roll-forward (service cost, interest, prior service cost and its
+ * amortisation, pension expense, PBO), the balance-sheet items beside it (AOCI before and after
+ * tax, the deferred tax asset on the obligation), the COLI earnings recognition per funding
+ * option, and the per-participant allocation. Together these feed the 5.2 earnings ledger, the
+ * 6.3-2 obligation roll-forward, the 6.5 audit trail and the 6.6 allocation.
+ *
+ * Not built: the three-period (stub month / partial year / full year) arithmetic the 6.1, 6.2,
+ * 6.3-1 and 6.4 entry worksheets need, and mortality weighting. Those pages still render their
+ * structure with placeholder amounts. `status` reports `'partial'` until they land.
+ *
+ * Everything is projected for a hypothetical plan. It shows how the accounting is expected to
+ * behave, which is what a CFO needs to get comfortable; it is not the plan's books. Real figures
+ * come from the administrator once the plan is in force.
  *
  * Pure and deterministic, like the liability engine and funding builders: it imports only the
  * money module, the date utility, and domain types — no Svelte, no I/O. Each GAAP formula will be
@@ -75,13 +81,31 @@ export interface SerpAccountingYear {
 	unrecognizedPriorServiceCostBoy: Pending;
 	/** Unrecognised prior service cost balance, end of year = BOY − amortisation (column [9]). */
 	unrecognizedPriorServiceCostEoy: Pending;
-	/** Accumulated other comprehensive income balance, end of year (pre-tax benefit) — 6.x, not built. */
+	/**
+	 * Accumulated other comprehensive income balance, end of year, **before tax**.
+	 *
+	 * Equal to {@link unrecognizedPriorServiceCostEoy} because prior service cost is the only thing
+	 * this model ever puts into AOCI — it recognises no actuarial gains or losses (there is no
+	 * experience to vary from assumption in a projection) and no transition obligation. They are
+	 * kept as separate fields because they are separate concepts: one is an equity account, the
+	 * other is the single item inside it. If gain/loss recognition is ever added, they diverge.
+	 */
 	aociEoy: Pending;
+	/** AOCI end of year net of its deferred tax benefit — the actual hit to equity. */
+	aociNetOfTaxEoy: Pending;
 
 	// --- Tax effect (at Company.corporateTaxRate) ---
 	/** Tax deduction on the pension expense. Report 5.2 column [2]. */
 	benefitTaxDeduction: Pending;
-	/** Deferred tax asset for the future tax benefit of the obligation, end of year (ASC 740-10). */
+	/**
+	 * Deferred tax asset for the future tax benefit of the obligation, end of year (ASC 740-10).
+	 *
+	 * The whole PBO is a temporary difference: the book liability is recognised now, while the
+	 * deduction only arrives when benefits are actually paid, so the tax basis is zero and the DTA
+	 * is `PBO × tax rate`. The source report's entries split the same balance by where its credit
+	 * went — part against AOCI for the initial prior service cost, part against deferred income tax
+	 * expense for each year's pension expense — but the balance is one number.
+	 */
 	deferredTaxAssetEoy: Pending;
 
 	/**
@@ -240,7 +264,8 @@ export function coliEarningsByOption(
 
 	// Gather every option id the run designed, so the result tracks the app's options.
 	const optionIds = new Set<string>();
-	for (const p of results.perParticipant) for (const id of Object.keys(p.designs ?? {})) optionIds.add(id);
+	for (const p of results.perParticipant)
+		for (const id of Object.keys(p.designs ?? {})) optionIds.add(id);
 
 	const out: Record<string, ColiAccountingYear[]> = {};
 	for (const optionId of optionIds) {
@@ -290,7 +315,8 @@ function accumulateColiPolicy(
 	if (!years || years.length === 0) return;
 
 	// The death (life-expectancy) year, keyed by attained age — the same rule the report uses.
-	const leRow = lifeExpectancy === undefined ? undefined : years.find((y) => y.age === lifeExpectancy);
+	const leRow =
+		lifeExpectancy === undefined ? undefined : years.find((y) => y.age === lifeExpectancy);
 	const lePlanYear = leRow?.policyYear;
 
 	const ordered = [...years].sort((a, b) => a.policyYear - b.policyYear);
@@ -301,12 +327,15 @@ function accumulateColiPolicy(
 		const isDeathYear = year.policyYear === lePlanYear;
 		const accountValue = new Big(year.accountValue);
 		// Released at death: the account value change is the full give-back of the prior balance.
-		const change = isDeathYear ? new Big(0).minus(priorAccountValue) : accountValue.minus(priorAccountValue);
+		const change = isDeathYear
+			? new Big(0).minus(priorAccountValue)
+			: accountValue.minus(priorAccountValue);
 
 		const acc = at(year.policyYear);
 		acc.premium = acc.premium.plus(new Big(year.premium));
 		acc.accountValueChange = acc.accountValueChange.plus(change);
-		if (isDeathYear && leRow) acc.deathProceeds = acc.deathProceeds.plus(new Big(leRow.deathBenefit));
+		if (isDeathYear && leRow)
+			acc.deathProceeds = acc.deathProceeds.plus(new Big(leRow.deathBenefit));
 
 		priorAccountValue = isDeathYear ? new Big(0) : accountValue;
 	}
@@ -368,10 +397,12 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		unfundedAccruedPensionCostEoy: formatMoney(raw.unfundedAccruedPensionCostEoy),
 		unrecognizedPriorServiceCostBoy: formatMoney(raw.unrecognizedPriorServiceCostBoy),
 		unrecognizedPriorServiceCostEoy: formatMoney(raw.unrecognizedPriorServiceCostEoy),
-		// AOCI balance and the deferred tax asset balance are 6.x items not yet specced — left null.
-		aociEoy: null,
+		aociEoy: formatMoney(raw.unrecognizedPriorServiceCostEoy),
+		aociNetOfTaxEoy: formatMoney(
+			raw.unrecognizedPriorServiceCostEoy.times(1 - company.corporateTaxRate)
+		),
 		benefitTaxDeduction: formatMoney(raw.benefitTaxDeduction),
-		deferredTaxAssetEoy: null,
+		deferredTaxAssetEoy: formatMoney(raw.pboEoy.times(company.corporateTaxRate)),
 		netSerpEarningsImpact: formatMoney(raw.netSerpEarningsImpact)
 	}));
 
@@ -384,7 +415,9 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		coliByOption[optionId] = coliByOption[optionId].map((year) => ({
 			...year,
 			combinedEarningsImpact: formatMoney(
-				(netSerpByPlanYear.get(year.planYear) ?? new Big(0)).plus(new Big(year.coliEarningsImpact ?? '0'))
+				(netSerpByPlanYear.get(year.planYear) ?? new Big(0)).plus(
+					new Big(year.coliEarningsImpact ?? '0')
+				)
 			)
 		}));
 	}

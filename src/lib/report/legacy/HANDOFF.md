@@ -23,7 +23,7 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 48 pages built
+## 2. Progress — 51 pages built
 
 Source sections A1 → I1. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 
@@ -61,9 +61,14 @@ Source sections A1 → I1. Registered in [legacy-registry.ts](./legacy-registry.
 **Next up:** TOC section F (hypothetical COLI value) is the only source not yet supplied.
 Appendix A–E, G and H are built.
 
-The accounting worksheets are now roughed in, but **ten pages are placeholders blocked on the
-GAAP layer** (5.2-1…5.2-4 and 6.1–6.6). See the "Missing subsystem" section at the top of
-[DATA-GAPS.md](./DATA-GAPS.md) for the single list of quantities they all need.
+**Every accounting page now carries live figures** — 5.2-1…5.2-4, 6.1, 6.2, 6.3-1, the added 6.3-2
+obligation roll-forward, 6.4, 6.5 and 6.6. The three-period axis the entry worksheets use lives in
+`accounting/periods.ts`; `report/legacy/worksheets.ts` maps quantities onto it. Both reproduce the
+source report’s own published columns in tests.
+
+**6.3 was restated onto the post-FAS 158 basis (2026-09-20).** The source version netted
+unrecognized prior service cost against the obligation while 6.1/6.2 booked the full liability, so
+the packet stated two different balance sheets. See DATA-GAPS.md.
 
 ---
 

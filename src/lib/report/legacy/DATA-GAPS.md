@@ -133,13 +133,67 @@ matured by the end of year 7"* — the sample's figures assume a specific produc
 ## ⚠ Missing subsystem — GAAP accounting engine (partial: `src/lib/accounting/`)
 
 The accounting module now exists and the **5.2 earnings ledger (5.2-1…5.2-4) is fully wired** — all
-five columns are live (SERP [1][2][3], COLI [4], combined [5]). **6.5 (audit trail, nine columns)**
-and **6.6 (pension expense allocation by participant)** are wired too, from `report.auditTrail` and
-`report.costAllocation`. **Four pages remain placeholders:** 6.1–6.3 (SERP entries, reconciliation,
-notes) and 6.4 (COLI entries) — operator flagged 6.1 and 6.4 as the harder two. They need the
-balance-sheet items still `null` on `SerpAccountingYear`: **AOCI balance**, **deferred tax asset
-balance**, and **unfunded accrued pension cost**, plus the double-entry debit/credit structure over
-the First-Month / Calendar-Year period columns. `computeAccounting` status stays `'partial'`.
+five columns are live (SERP [1][2][3], COLI [4], combined [5]). **6.5 (audit trail)**, **6.6 (pension
+expense allocation)** and the added **6.3-2 (obligation roll-forward)** are wired too.
+
+**6.1, 6.2, 6.3-1 and 6.4 are now wired too (2026-09-20)**, so every accounting page carries live
+figures. The three-period axis those four share — stub month, first partial calendar year, first
+full calendar year — is built in `accounting/periods.ts`, and `report/legacy/worksheets.ts` decides
+which quantity belongs in each entry.
+
+**The allocation rule**, reverse-engineered from the source and then confirmed against it: a
+plan-year amount is spread evenly across its twelve months and each period collects the months it
+covers. The second calendar year is the interesting one — it is not a plan year, but the tail of
+plan year 1 plus the head of plan year 2. Three independent quantities in the source all land on
+this rule, and the implied plan-year-1 interest of 218,884 is 5.75% × the 3,806,707 opening
+obligation to the dollar. `worksheets.test.ts` reproduces the source's published columns (service
+cost, the accrual entry, its deferred tax, the liability balances and the AOCI balances) and asserts
+that both roll-forwards foot.
+
+Two conventions worth knowing. **Premium on 6.4 is not prorated** — it is a cash event on the policy
+anniversary, which is why the source shows the same premium in all three columns; earnings are
+prorated and the surrender-value movement is the balancing figure. And **"N/A" is distinct from
+zero**: the initial entries are recorded once at inception, so they read N/A by the second calendar
+year, where zero would claim we recorded nothing.
+
+⚠ Still open on 6.4: the source sheet carries **only Options 1 and 2** and we follow it. With four
+options designed, the other two need a continuation sheet or a selector.
+
+### Restated on the post-FAS 158 basis (2026-09-20)
+
+Page 6.3 in the source is **pre-FAS 158**: it nets unrecognized prior service cost against the
+obligation and lands on "Prepaid / (Unfunded Accrued) Pension Cost" as the balance-sheet amount.
+Pages 6.1 and 6.2 are already post-158 — they debit AOCI and credit the full liability — so the
+source packet stated **two different balance sheets**. The sample proves it: 6.1/6.2 carry a
+3,862,213 liability with 2,991,635 in AOCI, while 6.3 reports 75,333, which is exactly 3,862,213
+less the 3,786,880 of unamortized prior service cost.
+
+Our 6.3-1 is now post-158 and agrees with the entries that produce it: funded status recognized in
+full, an "Amounts Recognized in AOCI" block before and after tax, the deferred tax asset on the
+obligation stated explicitly, and "Unrecognized Transition Obligation" dropped as a pre-158 concept.
+Structurally-zero rows (plan assets, expected return, actuarial gain/loss) are kept and labelled, so
+a reader finds them at zero with a reason rather than wondering if they were omitted.
+
+⚠ The accrued-cost measure still appears on the **6.5 audit trail**, columns [6] and [7]. That is
+legitimate as an internal roll-forward, but it is **not** the balance-sheet liability.
+
+### Added beyond the source (2026-09-20)
+
+- **6.3-2 Projected Benefit Obligation Roll-Forward** — BOY obligation, service cost, interest,
+  benefits paid, EOY obligation, plus the AOCI and deferred-tax-asset balances. The source has no
+  such page; every component was already on the audit trail, but as annual costs rather than as the
+  reconciliation an accountant reads. It is the table a CFO looks for first.
+- **Benefit payment entries on 6.1** — the source builds the liability and the deferred tax asset up
+  and never works them off. Paying a benefit draws the liability down, and because a nonqualified
+  benefit is deductible **when paid**, that is also when the deferred tax asset unwinds.
+- **FICA is deliberately not modelled.** Nonqualified deferred comp is subject to FICA under the
+  special timing rule of §3121(v)(2), generally at vesting rather than payment, but the amount turns
+  on each participant's wage base that year — administrator territory. Called out in the 6.1 notes.
+
+**Scope (operator, 2026-09-20):** this is a **sales tool**. These pages exist to help a CFO get
+comfortable with how the plan behaves, on a hypothetical plan — not to be an operational guide. In
+practice many of these figures come from the TPA. Pages should say so rather than implying a
+precision they do not have.
 
 Underlying quantities, with build status:
 
@@ -150,9 +204,9 @@ Underlying quantities, with build status:
 | **Projected Benefit Obligation (PBO)** | ☑ BUILT — rolled forward `BOY + service + interest − benefits`. |
 | **Prior service cost** | ☑ BUILT — past-service share of PBO, amortised over average future service; unrecognised balance carried. |
 | **Pension expense** | ☑ BUILT — service + interest + amortisation. |
-| **Deferred tax asset / expense** | ◑ Partial — the P&L tax deduction (column [2]) is built; the balance-sheet deferred tax **asset** (6.x) is not. |
-| **AOCI balance & amortisation** | ☐ Not built (6.x). |
-| **Unfunded accrued pension cost** | ☐ Not built (6.5 audit-trail balances). |
+| **Deferred tax asset / expense** | ☑ BUILT — the P&L deduction (column [2]), and the balance-sheet `deferredTaxAssetEoy` = PBO × tax rate; the whole obligation is a temporary difference because the benefit is deductible only when paid. |
+| **AOCI balance & amortisation** | ☑ BUILT — `aociEoy` (before tax) and `aociNetOfTaxEoy`. Equal to the unamortised prior service cost, the only item this model puts into AOCI. |
+| **Unfunded accrued pension cost** | ☑ BUILT — 6.5 columns [6]/[7]. ⚠ The **pre-FAS 158** measure, not the balance-sheet liability. |
 | **Mortality weighting** | ☐ Not built — current basis is death-at-LE, unweighted; awaits the mortality table. |
 | **COLI earnings recognition** | ☑ BUILT — `coliEarningsByOption`, page 5.2 column [4]. ΔAV − premium + death benefit at LE, account value released at death (nets to DB − premiums). Account value, not CSV. |
 
