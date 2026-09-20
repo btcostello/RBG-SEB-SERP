@@ -22,6 +22,7 @@
 		hasDesigns,
 		ledgerFor,
 		ledgerTotals,
+		hasDistributions,
 		subjectsFor
 	} from '$lib/ledger/ledger';
 
@@ -54,6 +55,12 @@
 	const rows = $derived(results ? ledgerFor(results, selectedOptionId, activeSubjectId) : []);
 	const totals = $derived(ledgerTotals(rows));
 	const isComposite = $derived(activeSubjectId === COMPOSITE_ID);
+	/**
+	 * Whether to show the withdrawal / loan / loan-balance columns. Driven by the data rather than
+	 * by the option id: Options 2 and 4 distribute the SERP benefit out of the policy and Options 1
+	 * and 3 do not, so this shows the columns exactly where there is something in them.
+	 */
+	const distributing = $derived(hasDistributions(rows));
 
 	/** The design behind a single-policy ledger — the source of the flags strip. */
 	const design = $derived.by(() => {
@@ -141,6 +148,12 @@
 					<span class="k">Total premium</span>
 					<span class="v">{formatMoneyDisplay(totals.totalPremium)}</span>
 				</div>
+				{#if distributing}
+					<div class="fact">
+						<span class="k">Total distributed</span>
+						<span class="v">{formatMoneyDisplay(totals.totalDistribution)}</span>
+					</div>
+				{/if}
 				{#if isComposite}
 					<div class="fact">
 						<span class="k">Policies</span><span class="v">{totals.policyCount}</span>
@@ -179,15 +192,33 @@
 				</p>
 			{/if}
 
+			{#if distributing}
+				<p class="note">
+					This option funds the SERP benefit out of the policy. Cash comes out as a withdrawal while
+					basis lasts and as a loan after that, so the account value falls through the distribution
+					years by design. <strong>Net death benefit</strong> is what the company actually collects —
+					the insurer repays the loan out of the proceeds, and the loan was already received as a distribution
+					while the insured was alive.
+				</p>
+			{/if}
+
 			<table>
 				<thead>
 					<tr>
 						<th class="yr">Policy year</th>
 						<th class="yr">{isComposite ? 'Policies' : 'Age'}</th>
 						<th class="num">Premium</th>
+						{#if distributing}
+							<th class="num">Withdrawal</th>
+							<th class="num">Loan</th>
+							<th class="num">Loan balance</th>
+						{/if}
 						<th class="num">Account value</th>
 						<th class="num">Surrender value</th>
 						<th class="num">Death benefit</th>
+						{#if distributing}
+							<th class="num">Net death benefit</th>
+						{/if}
 					</tr>
 				</thead>
 				<tbody>
@@ -196,9 +227,17 @@
 							<td class="yr">{row.policyYear}</td>
 							<td class="yr">{isComposite ? row.policyCount : (row.age ?? '—')}</td>
 							<td class="num">{formatMoneyDisplay(row.premium)}</td>
+							{#if distributing}
+								<td class="num out">{formatMoneyDisplay(row.withdrawal)}</td>
+								<td class="num out">{formatMoneyDisplay(row.loan)}</td>
+								<td class="num">{formatMoneyDisplay(row.loanBalance)}</td>
+							{/if}
 							<td class="num">{formatMoneyDisplay(row.accountValue)}</td>
 							<td class="num">{formatMoneyDisplay(row.cashSurrenderValue)}</td>
 							<td class="num">{formatMoneyDisplay(row.deathBenefit)}</td>
+							{#if distributing}
+								<td class="num net">{formatMoneyDisplay(row.netDeathBenefit)}</td>
+							{/if}
 						</tr>
 					{/each}
 				</tbody>
@@ -207,7 +246,13 @@
 						<td class="yr">Total</td>
 						<td class="yr"></td>
 						<td class="num">{formatMoneyDisplay(totals.totalPremium)}</td>
-						<td class="num" colspan="3"></td>
+						{#if distributing}
+							<td class="num out">{formatMoneyDisplay(totals.totalWithdrawal)}</td>
+							<td class="num out">{formatMoneyDisplay(totals.totalLoan)}</td>
+							<!-- A running balance has no total; summing it down the years would be nonsense. -->
+							<td class="num"></td>
+						{/if}
+						<td class="num" colspan={distributing ? 4 : 3}></td>
 					</tr>
 				</tfoot>
 			</table>
@@ -383,6 +428,14 @@
 	.num {
 		text-align: right;
 		font-variant-numeric: tabular-nums;
+	}
+	/* Cash leaving the policy — distinguished from the values that stay in it. */
+	.out {
+		color: var(--accent-deep);
+	}
+	/* The figure the company actually collects. */
+	.net {
+		font-weight: 600;
 	}
 	.yr {
 		text-align: left;

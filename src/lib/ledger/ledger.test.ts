@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { ParticipantDesign, ParticipantResult, Results } from '$lib/domain';
 import {
 	COMPOSITE_ID,
+	hasDistributions,
 	compositeLedger,
 	designFor,
 	hasDesigns,
@@ -18,9 +19,18 @@ function year(
 	premium: string,
 	accountValue: string,
 	cashSurrenderValue: string,
-	deathBenefit: string
+	deathBenefit: string,
+	distributions?: { withdrawal?: string; loan?: string; loanBalance?: string }
 ) {
-	return { policyYear, age, premium, accountValue, cashSurrenderValue, deathBenefit };
+	return {
+		policyYear,
+		age,
+		premium,
+		accountValue,
+		cashSurrenderValue,
+		deathBenefit,
+		...distributions
+	};
 }
 
 function design(years: ReturnType<typeof year>[]): ParticipantDesign {
@@ -147,7 +157,14 @@ describe('compositeLedger', () => {
 describe('ledgerTotals', () => {
 	it('totals premium across the whole illustrated life', () => {
 		const rows = participantLedger(designFor(buildResults().perParticipant[0], 'cost-recovery'));
-		expect(ledgerTotals(rows)).toEqual({ totalPremium: '30000.00', years: 3, policyCount: 1 });
+		expect(ledgerTotals(rows)).toEqual({
+			totalPremium: '30000.00',
+			totalWithdrawal: '0.00',
+			totalLoan: '0.00',
+			totalDistribution: '0.00',
+			years: 3,
+			policyCount: 1
+		});
 	});
 
 	it('reports the widest policy count a composite reached', () => {
@@ -155,11 +172,25 @@ describe('ledgerTotals', () => {
 			buildResults().perParticipant.map((p) => designFor(p, 'cost-recovery'))
 		);
 		// Alice's 3 × 10,000 plus Bob's 2 × 25,000.
-		expect(ledgerTotals(rows)).toEqual({ totalPremium: '80000.00', years: 3, policyCount: 2 });
+		expect(ledgerTotals(rows)).toEqual({
+			totalPremium: '80000.00',
+			totalWithdrawal: '0.00',
+			totalLoan: '0.00',
+			totalDistribution: '0.00',
+			years: 3,
+			policyCount: 2
+		});
 	});
 
 	it('is zero over no rows', () => {
-		expect(ledgerTotals([])).toEqual({ totalPremium: '0.00', years: 0, policyCount: 0 });
+		expect(ledgerTotals([])).toEqual({
+			totalPremium: '0.00',
+			totalWithdrawal: '0.00',
+			totalLoan: '0.00',
+			totalDistribution: '0.00',
+			years: 0,
+			policyCount: 0
+		});
 	});
 });
 
@@ -210,5 +241,127 @@ describe('hasDesigns', () => {
 	it('is true only for an option with an illustrated policy', () => {
 		expect(hasDesigns(buildResults(), 'cost-recovery')).toBe(true);
 		expect(hasDesigns(buildResults(), 'benefit-distribution')).toBe(false);
+	});
+});
+
+describe('distribution columns', () => {
+	/** A distributing design: two draw years, the first from basis, the second on loan. */
+	function distributingDesign(): ParticipantDesign {
+		return design([
+			year(1, 50, '50000.00', '40000.00', '0.00', '900000.00'),
+			year(2, 51, '0.00', '30000.00', '28000.00', '900000.00', {
+				withdrawal: '12000.00',
+				loan: '0.00',
+				loanBalance: '0.00'
+			}),
+			year(3, 52, '0.00', '18000.00', '17000.00', '900000.00', {
+				withdrawal: '0.00',
+				loan: '9000.00',
+				loanBalance: '9500.00'
+			})
+		]);
+	}
+
+	it('carries withdrawal, loan and loan balance onto the rows', () => {
+		const rows = participantLedger(distributingDesign());
+		expect(rows[1]).toMatchObject({ withdrawal: '12000.00', loan: '0.00', loanBalance: '0.00' });
+		expect(rows[2]).toMatchObject({ withdrawal: '0.00', loan: '9000.00', loanBalance: '9500.00' });
+	});
+
+	it('defaults to zero where the stream carries no loan fields', () => {
+		// They arrived after the first persisted snapshots, so an older quote has none of them and
+		// must still read as a ledger rather than showing blanks.
+		const rows = participantLedger(designFor(buildResults().perParticipant[0], 'cost-recovery'));
+		expect(rows[0]).toMatchObject({ withdrawal: '0.00', loan: '0.00', loanBalance: '0.00' });
+	});
+
+	it('totals the flows and leaves the balance alone', () => {
+		const totals = ledgerTotals(participantLedger(distributingDesign()));
+		expect(totals.totalWithdrawal).toBe('12000.00');
+		expect(totals.totalLoan).toBe('9000.00');
+		expect(totals.totalDistribution).toBe('21000.00');
+		// loanBalance is a running balance; summing it down the years would be meaningless, so
+		// LedgerTotals deliberately has no field for it.
+		expect(totals).not.toHaveProperty('totalLoanBalance');
+	});
+
+	it('sums distributions across a composite', () => {
+		const rows = compositeLedger([distributingDesign(), distributingDesign()]);
+		expect(rows[1]).toMatchObject({ withdrawal: '24000.00' });
+		expect(rows[2]).toMatchObject({ loan: '18000.00', loanBalance: '19000.00' });
+	});
+
+	it('is detected only where there is actual distribution activity', () => {
+		// Options 2 and 4 distribute the SERP benefit out of the policy; Options 1 and 3 do not, and
+		// must not carry three columns of zeros.
+		expect(hasDistributions(participantLedger(distributingDesign()))).toBe(true);
+		expect(
+			hasDistributions(
+				participantLedger(designFor(buildResults().perParticipant[0], 'cost-recovery'))
+			)
+		).toBe(false);
+		expect(hasDistributions([])).toBe(false);
+	});
+
+	it('counts a standing loan balance as activity even in a year with no draw', () => {
+		const rows = participantLedger(
+			design([
+				year(1, 50, '0.00', '1.00', '1.00', '9.00'),
+				year(2, 51, '0.00', '1.00', '1.00', '9.00', { loanBalance: '500.00' })
+			])
+		);
+		expect(hasDistributions(rows)).toBe(true);
+	});
+});
+
+describe('net death benefit', () => {
+	it('is the gross benefit less the outstanding loan', () => {
+		const rows = participantLedger(
+			design([
+				year(1, 50, '0.00', '1.00', '1.00', '900000.00', { loanBalance: '0.00' }),
+				year(2, 51, '0.00', '1.00', '1.00', '900000.00', { loanBalance: '120000.00' })
+			])
+		);
+		expect(rows[0].netDeathBenefit).toBe('900000.00');
+		expect(rows[1].netDeathBenefit).toBe('780000.00');
+	});
+
+	it('equals the gross benefit on a policy with no loan', () => {
+		const rows = participantLedger(designFor(buildResults().perParticipant[0], 'cost-recovery'));
+		expect(rows.every((row) => row.netDeathBenefit === row.deathBenefit)).toBe(true);
+	});
+
+	it('floors at zero rather than going negative', () => {
+		// The engine reports a net death benefit of 0 for a contract that is gone; a negative would
+		// quietly subtract from a composite.
+		const rows = participantLedger(
+			design([year(1, 50, '0.00', '1.00', '1.00', '100.00', { loanBalance: '5000.00' })])
+		);
+		expect(rows[0].netDeathBenefit).toBe('0.00');
+	});
+
+	it('sums the per-policy nets across a composite', () => {
+		const withLoan = design([
+			year(1, 50, '0.00', '1.00', '1.00', '900000.00', { loanBalance: '120000.00' })
+		]);
+		const withoutLoan = design([year(1, 60, '0.00', '1.00', '1.00', '300000.00')]);
+		const rows = compositeLedger([withLoan, withoutLoan]);
+		expect(rows[0]).toMatchObject({
+			deathBenefit: '1200000.00',
+			loanBalance: '120000.00',
+			netDeathBenefit: '1080000.00'
+		});
+	});
+
+	it('does not let one policy\u2019s loan eat another policy\u2019s proceeds', () => {
+		// Summing the per-policy nets, rather than subtracting composite loans from composite death
+		// benefit, is what keeps a blown-up policy contained to its own row.
+		const blownUp = design([
+			year(1, 50, '0.00', '1.00', '1.00', '100.00', { loanBalance: '5000.00' })
+		]);
+		const healthy = design([year(1, 60, '0.00', '1.00', '1.00', '300000.00')]);
+		const rows = compositeLedger([blownUp, healthy]);
+		// Naive (300,100 − 5,000) would be 295,100; contained is 0 + 300,000.
+		expect(rows[0].netDeathBenefit).toBe('300000.00');
 	});
 });

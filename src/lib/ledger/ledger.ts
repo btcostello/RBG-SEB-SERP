@@ -32,7 +32,26 @@ export interface LedgerRow {
 	premium: string;
 	accountValue: string;
 	cashSurrenderValue: string;
+	/**
+	 * Death benefit **gross of any loan**. A policy carrying a loan pays this less the outstanding
+	 * balance, so read it against `loanBalance` rather than on its own.
+	 */
 	deathBenefit: string;
+	/** Cash taken out as a withdrawal this year — a return of basis while basis lasts. */
+	withdrawal: string;
+	/** Cash taken out as a policy loan this year, after withdrawals have exhausted basis. */
+	loan: string;
+	/** Outstanding loan balance at year end. A running balance, not a flow — do not total it. */
+	loanBalance: string;
+	/**
+	 * Death benefit net of the outstanding loan — what the company actually collects, since the
+	 * insurer repays the loan out of the proceeds.
+	 *
+	 * This is the engine's own `net_death_benefit` metric, which is defined as
+	 * `death_benefit − eoy_loan_balance` (see `report-data.cashFlowForOption`, which uses the same
+	 * quantity for the life-of-plan cash flow). Equal to the gross figure on a policy with no loan.
+	 */
+	netDeathBenefit: string;
 	/** How many policies contributed. Always 1 for an individual ledger. */
 	policyCount: number;
 }
@@ -44,10 +63,19 @@ export interface LedgerSubject {
 	isComposite: boolean;
 }
 
-/** Column totals — only the flow column (premium) sums meaningfully down the years. */
+/**
+ * Column totals. Only the flow columns sum meaningfully down the years — premium in, withdrawals
+ * and loans out. `loanBalance` is a running balance and has no total.
+ */
 export interface LedgerTotals {
 	/** Every premium paid across the illustrated life of the policy or policies. */
 	totalPremium: string;
+	/** Every withdrawal taken. */
+	totalWithdrawal: string;
+	/** Every loan taken. */
+	totalLoan: string;
+	/** Withdrawals plus loans — the cash the policy handed back. */
+	totalDistribution: string;
 	/** Years the ledger covers. */
 	years: number;
 	/** Highest policy count seen in any year — the number of policies in a composite. */
@@ -78,6 +106,12 @@ export function participantLedger(design: ParticipantDesign | undefined): Ledger
 		accountValue: year.accountValue,
 		cashSurrenderValue: year.cashSurrenderValue,
 		deathBenefit: year.deathBenefit,
+		// The loan fields arrived after the first persisted snapshots and are optional on the wire,
+		// so an older quote reopens with no distribution data rather than failing to validate.
+		withdrawal: year.withdrawal ?? '0.00',
+		loan: year.loan ?? '0.00',
+		loanBalance: year.loanBalance ?? '0.00',
+		netDeathBenefit: netOfLoan(year.deathBenefit, year.loanBalance),
 		policyCount: 1
 	}));
 }
@@ -89,33 +123,32 @@ export function participantLedger(design: ParticipantDesign | undefined): Ledger
  * totals and `policyCount` step down in the year it drops out.
  */
 export function compositeLedger(designs: readonly (ParticipantDesign | undefined)[]): LedgerRow[] {
-	const streams = designs
-		.map((design) => design?.illustrationYears)
-		.filter((years): years is NonNullable<typeof years> => years !== undefined && years.length > 0);
-	if (streams.length === 0) return [];
+	// Built from the single-policy ledgers so both paths share one field mapping — and one set of
+	// defaults for the optional loan fields.
+	const ledgers = designs.map(participantLedger).filter((rows) => rows.length > 0);
+	if (ledgers.length === 0) return [];
 
 	const byYear = new Map<number, LedgerRow>();
-	for (const stream of streams) {
-		for (const year of stream) {
-			const running = byYear.get(year.policyYear);
+	for (const rows of ledgers) {
+		for (const row of rows) {
+			const running = byYear.get(row.policyYear);
 			if (running === undefined) {
-				byYear.set(year.policyYear, {
-					policyYear: year.policyYear,
-					age: null,
-					premium: year.premium,
-					accountValue: year.accountValue,
-					cashSurrenderValue: year.cashSurrenderValue,
-					deathBenefit: year.deathBenefit,
-					policyCount: 1
-				});
+				// A composite spans several lives, so it has no single attained age.
+				byYear.set(row.policyYear, { ...row, age: null });
 				continue;
 			}
-			byYear.set(year.policyYear, {
+			byYear.set(row.policyYear, {
 				...running,
-				premium: add(running.premium, year.premium),
-				accountValue: add(running.accountValue, year.accountValue),
-				cashSurrenderValue: add(running.cashSurrenderValue, year.cashSurrenderValue),
-				deathBenefit: add(running.deathBenefit, year.deathBenefit),
+				premium: add(running.premium, row.premium),
+				accountValue: add(running.accountValue, row.accountValue),
+				cashSurrenderValue: add(running.cashSurrenderValue, row.cashSurrenderValue),
+				deathBenefit: add(running.deathBenefit, row.deathBenefit),
+				withdrawal: add(running.withdrawal, row.withdrawal),
+				loan: add(running.loan, row.loan),
+				loanBalance: add(running.loanBalance, row.loanBalance),
+				// Summed from the per-policy nets rather than recomputed off the composite totals, so
+				// a policy whose loan exceeds its own death benefit cannot eat into another's proceeds.
+				netDeathBenefit: add(running.netDeathBenefit, row.netDeathBenefit),
 				policyCount: running.policyCount + 1
 			});
 		}
@@ -126,11 +159,50 @@ export function compositeLedger(designs: readonly (ParticipantDesign | undefined
 
 /** Totals for a set of ledger rows. */
 export function ledgerTotals(rows: readonly LedgerRow[]): LedgerTotals {
+	const total = (pick: (row: LedgerRow) => string): string =>
+		rows.reduce((sum, row) => add(sum, pick(row)), '0.00');
+	const totalWithdrawal = total((row) => row.withdrawal);
+	const totalLoan = total((row) => row.loan);
 	return {
-		totalPremium: rows.reduce((sum, row) => add(sum, row.premium), '0.00'),
+		totalPremium: total((row) => row.premium),
+		totalWithdrawal,
+		totalLoan,
+		totalDistribution: add(totalWithdrawal, totalLoan),
 		years: rows.length,
 		policyCount: rows.reduce((max, row) => Math.max(max, row.policyCount), 0)
 	};
+}
+
+/**
+ * Whether a ledger has any distribution activity at all — the test for showing the withdrawal,
+ * loan and loan-balance columns.
+ *
+ * Asked of the rows rather than of the funding option, so it stays true to the data: Options 2 and
+ * 4 distribute the SERP benefit out of the policy and Options 1 and 3 do not, but an option that
+ * happens to distribute nothing should not carry three columns of zeros, and a future option that
+ * distributes gets the columns without a change here.
+ */
+export function hasDistributions(rows: readonly LedgerRow[]): boolean {
+	return rows.some(
+		(row) => !isZero(row.withdrawal) || !isZero(row.loan) || !isZero(row.loanBalance)
+	);
+}
+
+function isZero(value: string): boolean {
+	return new Big(value).eq(0);
+}
+
+/**
+ * Death benefit less the outstanding loan, floored at zero.
+ *
+ * The floor matches the engine, which reports a `net_death_benefit` of 0 rather than a negative
+ * once a contract is gone. Inside an in-force stream the loan never exceeds the death benefit, so
+ * the floor should not bind — it is there so a bad stream shows nothing collectable rather than a
+ * negative figure that would quietly subtract from a composite.
+ */
+function netOfLoan(deathBenefit: string, loanBalance: string | undefined): string {
+	const net = new Big(deathBenefit).minus(new Big(loanBalance ?? '0'));
+	return formatMoney(net.lt(0) ? new Big(0) : net);
 }
 
 /**
