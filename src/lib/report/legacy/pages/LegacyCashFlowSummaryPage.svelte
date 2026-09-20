@@ -17,6 +17,8 @@
 	import LegacyPageShell from './LegacyPageShell.svelte';
 
 	let { report }: { report: ReportModel } = $props();
+	/** "Age 84" across the census, or "Varies" — the same rule the Appendix G footnote uses. */
+	const lifeExpectancy = $derived(report.mortalityAssumptions.lifeExpectancyDisplay);
 
 	type Row = {
 		label: string;
@@ -99,8 +101,8 @@
 			{#if unsolvedOptions.length > 0}
 				<p>
 					<strong>Not shown:</strong>
-					{unsolvedOptions.map((o) => `Option ${o.number}`).join(', ')} could not be solved for
-					every participant, so no totals are reported for
+					{unsolvedOptions.map((o) => `Option ${o.number}`).join(', ')} could not be solved for every
+					participant, so no totals are reported for
 					{unsolvedOptions.length > 1 ? 'those columns' : 'that column'}.
 				</p>
 			{/if}
@@ -109,12 +111,10 @@
 				corresponding SERP Cost Recovery target is 100%.
 			</p>
 			<p>
-				<sup>^</sup> Assumed Mortality at Life Expectancy (generally age 84), for benefit and insurance
-				computations.
-			</p>
-			<p>
-				<sup>^</sup> Mortality Table used pursuant to IRC 417(e), for accounting liability &amp; other
-				calculations, as required under GAAP.
+				<sup>^</sup> Each participant is assumed to die at the life expectancy entered for them ({lifeExpectancy}).
+				That single assumed age drives the benefit, insurance and accounting figures alike; none of
+				them are weighted by survival probability. Appendix G illustrates how the projection would
+				differ on a partial-mortality basis.
 			</p>
 		</div>
 	</div>

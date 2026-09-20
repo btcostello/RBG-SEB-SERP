@@ -59,6 +59,38 @@ follows, and that the build should hold to:
   `benefitFormula` — payments certain through a guaranteed period, life-contingent after it, with
   the survivor continuation on death — rather than a flat life-contingent assumption.
 
+## Stated basis vs actual basis (operator, 2026-09-20)
+
+The source report describes a valuation basis this model does not use, and three pages repeated the
+claim. They now state what the tool actually does:
+
+- **Page 2.4** said "Mortality Table used pursuant to IRC 417(e), for accounting liability & other
+  calculations". We do not use 417(e) — or any table — for the accounting liability. It now reads
+  that mortality is taken at the life expectancy entered for each participant (printing the actual
+  value, or "Varies"), for benefit, insurance **and** accounting computations, and that tables are
+  used only to illustrate partial mortality in Appendix G.
+- **Page 4.5** carried the same claim as a footnote, and printed two different notes under one `^`
+  marker. Now a single note saying the one assumed age drives every figure and none are
+  survival-weighted.
+- **Page 5.1** claimed the model "generally uses the mortality table guidance contained in IRC Sec.
+  417(e)" and "employs the Citigroup Pension Discount Curve". Neither is true: mortality is an
+  entered life expectancy and the discount rate is an entered input. The narrative now says so, and
+  a following paragraph explains that a plan in force is valued differently — the actuary will pick
+  a table (commonly 417(e)) and derive the rate from a pension discount curve. Its closing sentence
+  used to say the GAAP and benefit bases "differ, resulting in slight differences"; with one basis
+  throughout, that was false and is gone.
+
+⚠ **If survival weighting is built** (see the mortality decisions above), all three pages need
+revisiting — at that point the accounting liability really would be on a table basis, and 417(e)
+becomes the live question below.
+
+### Open: which table, if the accounting liability is ever weighted
+
+The source names **IRC 417(e)**, which is the **unisex** blend of the § 430 static tables (50/50
+male/female under Rev. Rul. 2007-67). We loaded the § 430 tables **by gender** and read them that
+way. Both are defensible; 417(e) is what this report says it uses and is derivable from what is
+already loaded. Decide before wiring mortality into the accounting layer.
+
 ## ⚠ Missing subsystem — mortality table data
 
 `ModelSettings.mortalityTable` is an **enum with no data behind it**. It offers a single value
@@ -433,10 +465,12 @@ The **only** column that resolves today is the calendar year (30 years from the 
   option (`ColiAccountingYear.combinedEarningsImpact`).
 - ☑ **Totals row (`^`) — RESOLVED (2026-07-25).** Life-of-program totals (the accounting horizon,
   not the 30 displayed years). Verified: at a 0% discount rate, total [1] equals −PBO.
-- ☐ **Mortality-survival percentage** (footnote `**`) — the source states "64.3% of plan
+- ☐ **Mortality-survival percentage** (footnote `**`) — the source states "**41.3%** of plan
   participants are projected to be living at the beginning of the year of average life
-  expectancy". Needs a survival calculation from the mortality table. The page currently prints a
-  neutral wording instead of a number.
+  expectancy" (verified against `Sample Report.pdf` 2026-09-20; this note previously said 64.3%,
+  which was wrong). Now computable: `expectedSurvivors` over the census at the average
+  life-expectancy year gives exactly this figure. The page currently prints a neutral wording
+  instead of a number.
 - ☐ **Option 2's `~` note figures** — total premiums paid, net benefits paid from Company cash
   flow, and COLI mortality gains in excess of those expenses. All three are per-option totals;
   the first two are close to values already derived for page 4.5 (`cashFlowByOption`), the third

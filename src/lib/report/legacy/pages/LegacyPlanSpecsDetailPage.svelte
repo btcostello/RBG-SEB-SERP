@@ -13,6 +13,8 @@
 
 	let { report }: { report: ReportModel } = $props();
 	const ps = $derived(report.planSpecs);
+	/** "Age 84" across the census, or "Varies" — the same rule the Appendix G footnote uses. */
+	const lifeExpectancy = $derived(report.mortalityAssumptions.lifeExpectancyDisplay);
 
 	/** "age 65" for a uniform value, or "varies" (lowercase, reads naturally mid-sentence). */
 	const agePhrase = (v: string) => (v === 'Varies' ? 'varies' : `age ${v}`);
@@ -74,14 +76,22 @@
 		<div class="item">
 			<div class="lbl">Mortality Assumption:</div>
 			<ol class="lettered">
-				<li>Mortality at Life Expectancy (generally age 84), for benefit and insurance computations</li>
-				<li>Mortality Table used pursuant to IRC 417(e), for accounting liability &amp; other calculations</li>
+				<li>
+					Mortality at the life expectancy entered for each participant ({lifeExpectancy}), for
+					benefit, insurance and accounting computations
+				</li>
+				<li>
+					Mortality tables are used to illustrate the effect of partial mortality (Appendix G); the
+					figures in this analysis are not survival-weighted
+				</li>
 			</ol>
 		</div>
 
 		<div class="item">
 			<div class="lbl">Normal Retirement Age (NRA):</div>
-			<div class="txt">Generally {agePhrase(ps.nra)} with no less than five years of plan participation</div>
+			<div class="txt">
+				Generally {agePhrase(ps.nra)} with no less than five years of plan participation
+			</div>
 		</div>
 
 		<div class="item">
