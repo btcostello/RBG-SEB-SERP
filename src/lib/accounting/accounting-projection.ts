@@ -37,6 +37,9 @@ import {
 	type ParticipantResult,
 	type Results
 } from '$lib/domain';
+import { expectedBenefitStream } from '$lib/engine/expected-benefits';
+import { survivorBenefitStream } from '$lib/engine/survivor-benefit';
+import { IRS_BASE_END_AGE, IRS_BASE_START_AGE, irs417eRate } from '$lib/engine/mortality';
 import {
 	averageFutureServiceYears,
 	serpEarningsByYear,
@@ -342,6 +345,57 @@ function accumulateColiPolicy(
 }
 
 /**
+ * The benefit stream the OBLIGATION is valued on — expected, not certain.
+ *
+ * Weighted on the § 417(e) unisex table for the plan's valuation year, which is the basis the
+ * report names. Three payments go into it: the retirement benefit while the participant lives, the
+ * same benefit regardless during any guaranteed period, and the survivor benefit if they die before
+ * retirement. See `engine/expected-benefits.ts`.
+ *
+ * Falls back to the certain stream for a participant the table cannot cover. `deriveReport` runs on
+ * every render, so an age outside 0-120 must not take the whole report down; no real census reaches
+ * that, and the fallback is the same basis the demonstration pages use.
+ */
+function accountingBenefitStream(
+	insured: Insured,
+	result: ParticipantResult,
+	currentAge: number,
+	refDate: string,
+	valuationYear: number
+): { age: number; amount: string }[] {
+	if (currentAge < IRS_BASE_START_AGE || currentAge > IRS_BASE_END_AGE) return result.benefitStream;
+
+	const survivor = survivorBenefitStream({
+		currentSalary: new Big(insured.currentSalary),
+		dateOfBirth: insured.dateOfBirth,
+		asOf: refDate,
+		retirementAge: insured.retirementAge,
+		salaryGrowthRate: insured.salaryGrowthRate,
+		schedule: {
+			tier1Pct: insured.survivorTier1Pct,
+			tier1Years: insured.survivorTier1Years,
+			tier2Pct: insured.survivorTier2Pct,
+			tier2Years: insured.survivorTier2Years
+		}
+	});
+
+	const expected = expectedBenefitStream({
+		annualBenefit: new Big(result.annualBenefit),
+		currentAge,
+		retirementAge: insured.retirementAge,
+		benefitWaitingPeriod: insured.benefitWaitingPeriod,
+		colaScale: insured.colaScale,
+		guaranteedYears: insured.minBenefitYears,
+		maxBenefitYears: insured.maxBenefitYears > 0 ? insured.maxBenefitYears : undefined,
+		survivorStream: survivor,
+		mortality: (age) => irs417eRate(age, valuationYear),
+		terminalAge: IRS_BASE_END_AGE
+	});
+
+	return expected.map((year) => ({ age: year.age, amount: formatMoney(year.amount) }));
+}
+
+/**
  * Compute the accounting (GAAP) projection from a completed run — PARTIAL.
  *
  * The COLI earnings side is built (report 5.2 column [4]); the SERP pension side is still pending,
@@ -351,7 +405,6 @@ function accumulateColiPolicy(
 export function computeAccounting(params: ComputeAccountingParams): AccountingResult {
 	const { results, census, company, settings, refDate } = params;
 	const referenceYear = Number(refDate.slice(0, 4));
-	const horizonPlanYears = lifeOfProgramHorizon(results, census, refDate);
 	const calendarYearOf = (planYear: number) => referenceYear + planYear - 1;
 	// The accounting (FASB) side uses its own discount rate, distinct from the liability NPV rate;
 	// absent an explicit value it falls back to the liability rate (old single-rate behaviour).
@@ -365,16 +418,30 @@ export function computeAccounting(params: ComputeAccountingParams): AccountingRe
 		const result = resultById.get(insured.id);
 		if (!result) continue;
 		const currentAge = ageNearestBirthday(insured.dateOfBirth, refDate);
+		// The obligation is valued on the EXPECTED stream, not the certain one the demonstration
+		// pages use. See `expected-benefits.ts` for what that changes and why.
+		const stream = accountingBenefitStream(insured, result, currentAge, refDate, referenceYear);
 		const pension = serpPensionForParticipant({
-			stream: result.benefitStream,
+			stream,
 			discountRate: accountingRate,
 			nra: insured.retirementAge,
 			currentAge,
 			pastServiceYears: Math.max(0, completedYearsBetween(insured.dateOfHire, refDate))
 		});
-		serpParticipants.push({ pension, currentAge, benefitStream: result.benefitStream });
+		serpParticipants.push({ pension, currentAge, benefitStream: stream });
 		pensionById.push({ insuredId: insured.id, pension });
 	}
+
+	// The expected stream runs to the mortality table's terminal age, well past the certain stream,
+	// so the projection has to reach far enough for the obligation to actually run off. Taking the
+	// max keeps the COLI illustrations covered too.
+	const horizonPlanYears = Math.max(
+		lifeOfProgramHorizon(results, census, refDate),
+		...serpParticipants.map((p) =>
+			p.benefitStream.reduce((max, y) => Math.max(max, y.age - p.currentAge + 1), 0)
+		),
+		1
+	);
 	const avgFutureServiceYears = averageFutureServiceYears(serpParticipants.map((p) => p.pension));
 	const serpRaw = serpEarningsByYear({
 		participants: serpParticipants,

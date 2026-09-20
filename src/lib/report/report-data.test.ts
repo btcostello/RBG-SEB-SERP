@@ -162,13 +162,27 @@ describe('deriveReport', () => {
 			id: 'q2',
 			company: { name: 'Acme', corporateTaxRate: 0.21 },
 			modelSettings: { ...DEFAULT_MODEL_SETTINGS },
-			census: [makeInsured({ id: 'a', planMembership: 'BOTH', lifeExpectancy: 84 })],
+			// No SERP benefit and no survivor schedule, so the pension side is nil and these
+			// assertions isolate the COLI columns. The accounting layer derives its own expected
+			// stream from annualBenefit and the plan's survivor terms rather than reading
+			// benefitStream, so either one left live here would produce an obligation.
+			census: [
+				makeInsured({
+					id: 'a',
+					planMembership: 'BOTH',
+					lifeExpectancy: 84,
+					survivorTier1Pct: 0,
+					survivorTier1Years: 0,
+					survivorTier2Pct: 0,
+					survivorTier2Years: 0
+				})
+			],
 			results: {
 				perParticipant: [
 					{
 						insuredId: 'a',
 						finalAverageSalary: '100000.00',
-						annualBenefit: '60000.00',
+						annualBenefit: '0.00',
 						benefitStream: [],
 						totalBenefitCost: '0.00',
 						netPresentValue: '0.00',

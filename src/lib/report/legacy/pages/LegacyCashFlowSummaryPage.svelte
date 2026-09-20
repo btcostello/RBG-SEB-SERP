@@ -111,10 +111,10 @@
 				corresponding SERP Cost Recovery target is 100%.
 			</p>
 			<p>
-				<sup>^</sup> Each participant is assumed to die at the life expectancy entered for them ({lifeExpectancy}).
-				That single assumed age drives the benefit, insurance and accounting figures alike; none of
-				them are weighted by survival probability. Appendix G illustrates how the projection would
-				differ on a partial-mortality basis.
+				<sup>^</sup> Cash flows on this page assume each participant dies at the life expectancy
+				entered for them ({lifeExpectancy}). The accounting liability is valued separately, on the
+				mortality table prescribed under IRC 417(e) as required under GAAP, so the accounting
+				figures in Section 6 do not tie to the cash flows here.
 			</p>
 		</div>
 	</div>

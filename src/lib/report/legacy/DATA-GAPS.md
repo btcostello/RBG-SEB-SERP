@@ -80,37 +80,45 @@ value is 0 — the surrender charge — so the first year is a full-premium char
 ⚠ Built for **Option 1 only**, matching the source. The component takes `strategyId`, so another
 option is a registry line.
 
-## Stated basis vs actual basis (operator, 2026-09-20)
+## Mortality basis — survival weighting (built 2026-09-20)
 
-The source report describes a valuation basis this model does not use, and three pages repeated the
-claim. They now state what the tool actually does:
+**The accounting liability is now valued on the expected, survival-weighted benefit stream**, on the
+unisex table prescribed under IRC 417(e). That is the basis the source report names, and it closes
+the gap where three pages described a basis this model did not use.
 
-- **Page 2.4** said "Mortality Table used pursuant to IRC 417(e), for accounting liability & other
-  calculations". We do not use 417(e) — or any table — for the accounting liability. It now reads
-  that mortality is taken at the life expectancy entered for each participant (printing the actual
-  value, or "Varies"), for benefit, insurance **and** accounting computations, and that tables are
-  used only to illustrate partial mortality in Appendix G.
-- **Page 4.5** carried the same claim as a footnote, and printed two different notes under one `^`
-  marker. Now a single note saying the one assumed age drives every figure and none are
-  survival-weighted.
-- **Page 5.1** claimed the model "generally uses the mortality table guidance contained in IRC Sec.
-  417(e)" and "employs the Citigroup Pension Discount Curve". Neither is true: mortality is an
-  entered life expectancy and the discount rate is an entered input. The narrative now says so, and
-  a following paragraph explains that a plan in force is valued differently — the actuary will pick
-  a table (commonly 417(e)) and derive the rate from a pension discount curve. Its closing sentence
-  used to say the GAAP and benefit bases "differ, resulting in slight differences"; with one basis
-  throughout, that was false and is gone.
+Why weight at all: the report shows **30 calendar years** of accounting on three pages (5.2, 6.5,
+6.3-2) plus life-of-program totals. At that horizon the certain-payment shortcut is not a
+simplification, it is visibly the wrong shape, and ASC 715 defines the obligation as an actuarial
+present value anyway.
 
-⚠ **If survival weighting is built** (see the mortality decisions above), all three pages need
-revisiting — at that point the accounting liability really would be on a table basis, and 417(e)
-becomes the live question below.
+**It is a re-derivation, not a multiplier.** `engine/expected-benefits.ts` regenerates the
+retirement payments out to the table's terminal age before weighting — the certain stream stops at
+the entered life expectancy, so weighting it would merely shrink something already truncated and
+lose the tail where a participant outlives their life expectancy. Three payments are weighted
+differently: life-contingent benefits by survival to that age; guaranteed payments only by the
+chance of reaching commencement; and the **survivor benefit** by the chance of dying that year.
+That last branch is the one easy to miss — weighting the retirement benefit away while paying
+nothing in its place would understate the obligation.
 
-### Open: which table, if the accounting liability is ever weighted
+**Measured effect** on the working quote: the obligation fell about 3.7% in the first year
+(7,021,580 → 6,763,142) and 4.4% by 2044, and benefit payments now start in year one rather than at
+retirement — 1,639 of expected survivor benefit where the certain basis showed nothing. Every row of
+the roll-forward still foots and the year chain is unbroken.
 
-The source names **IRC 417(e)**, which is the **unisex** blend of the § 430 static tables (50/50
-male/female under Rev. Rul. 2007-67). We loaded the § 430 tables **by gender** and read them that
-way. Both are defensible; 417(e) is what this report says it uses and is derivable from what is
-already loaded. Decide before wiring mortality into the accounting layer.
+### The two bases, and where each is used
+
+| | Basis | Pages |
+|---|---|---|
+| Benefits, insurance, cash flow | Death at the entered life expectancy | 3.2, 4.x, Appendix C/F |
+| Accounting liability | 417(e) unisex table, survival-weighted | 5.2, 6.x |
+
+They do **not** tie, by design, and the pages say so: 2.4 states both assumptions, 4.5 notes the
+Section 6 figures are valued separately, 5.1 explains why the two answer different questions, and
+the 5.2 `**` footnote quotes the proportion of the group still living at average life expectancy
+(computed from `expectedSurvivors`, not hardcoded).
+
+⚠ Still not true of the source's narrative: it claims a **Citigroup Pension Discount Curve**. The
+accounting discount rate here is an entered input. Page 5.1 says so.
 
 ## ⚠ Missing subsystem — mortality table data
 

@@ -47,7 +47,12 @@ function makeResults(): Results {
 			{
 				insuredId: 'i1',
 				finalAverageSalary: '100000.00',
-				annualBenefit: '60000.00',
+				// No SERP benefit at all, so the pension side stays zero and these tests isolate the
+				// COLI side and the axis. The accounting layer derives its own expected stream from
+				// annualBenefit rather than reading benefitStream, so leaving a 60,000 benefit here
+				// with an empty stream would be internally inconsistent — and would produce an
+				// obligation these assertions do not expect.
+				annualBenefit: '0.00',
 				benefitStream: [],
 				totalBenefitCost: '0.00',
 				netPresentValue: '0.00',
@@ -87,7 +92,23 @@ function makeResults(): Results {
 	};
 }
 
-const census = [makeInsured({ id: 'i1', planMembership: 'BOTH', lifeExpectancy: 84 })];
+/**
+ * No survivor benefit either, so the SERP obligation really is nil and these tests isolate the
+ * COLI side. The fixture's default tiers grant two years of salary on a pre-retirement death,
+ * which the expected stream correctly values even when the retirement benefit is zero — see the
+ * dedicated test for that below.
+ */
+const census = [
+	makeInsured({
+		id: 'i1',
+		planMembership: 'BOTH',
+		lifeExpectancy: 84,
+		survivorTier1Pct: 0,
+		survivorTier1Years: 0,
+		survivorTier2Pct: 0,
+		survivorTier2Years: 0
+	})
+];
 const params = () => ({
 	results: makeResults(),
 	census,
@@ -207,6 +228,21 @@ describe('computeAccounting (partial: COLI built, SERP pending)', () => {
 		expect(result.serp[0].aociEoy).toBe('0.00');
 		expect(result.serp[0].aociNetOfTaxEoy).toBe('0.00');
 		expect(result.serp[0].deferredTaxAssetEoy).toBe('0.00');
+	});
+
+	it('values a survivor benefit even when there is no retirement benefit', () => {
+		// Dying before retirement is not the absence of a benefit — the plan pays the beneficiary.
+		// A participant with no retirement benefit but a live survivor schedule still carries an
+		// obligation, and weighting the retirement branch away without this one would understate it.
+		const withSurvivor = computeAccounting({
+			...params(),
+			census: [makeInsured({ id: 'i1', planMembership: 'BOTH', lifeExpectancy: 84 })]
+		});
+		expect(Number(withSurvivor.serp[0].pboEoy)).toBeGreaterThan(0);
+		expect(Number(withSurvivor.serp[0].serviceCost)).toBeGreaterThan(0);
+
+		// And the isolated fixture, with the schedule switched off, carries none.
+		expect(Number(computeAccounting(params()).serp[0].pboEoy)).toBe(0);
 	});
 
 	it('fills the combined column [5] = net SERP [3] + COLI [4]', () => {

@@ -28,6 +28,7 @@ import {
 } from '$lib/domain';
 import {
 	actuarialDeaths,
+	expectedSurvivors,
 	lifeExpectancyDeaths,
 	lifeTable,
 	type CohortMember
@@ -512,6 +513,12 @@ export interface MortalityAssumptions {
 	 * Surfaced rather than swallowed so a partial chart never reads as a complete one.
 	 */
 	excludedCount: number;
+	/**
+	 * Proportion of SERP participants projected to still be living at the start of the year each
+	 * reaches average life expectancy — the figure the 5.2 footnote quotes. Null when there is
+	 * nobody to project, or no single average life expectancy across the census.
+	 */
+	survivalAtAverageLifeExpectancy: string | null;
 }
 
 /** One plotted series: deaths per projection year, and the running total. */
@@ -751,12 +758,40 @@ function mortalityAssumptionsFrom(census: Insured[], refDate: string): Mortality
 		lifeExpectancyDisplay: le === null ? '—' : le === 'varies' ? 'Varies' : `Age ${le}`,
 		years: MORTALITY_CHART_YEARS,
 		actuarial: hasSeries ? actuarialDeaths(members, MORTALITY_CHART_YEARS, valuationYear) : null,
+		survivalAtAverageLifeExpectancy: survivalAtAverageLe(members, valuationYear),
 		assumed: hasSeries ? lifeExpectancyDeaths(members, MORTALITY_CHART_YEARS) : null,
 		excludedCount
 	};
 }
 
 /** Plan-specification display strings for the Plan Specs Overview page (section 2.4). */
+/**
+ * Share of the group still living when the average participant reaches their life expectancy.
+ *
+ * The 5.2 ledger is weighted by survival, and this is the single number that makes that concrete:
+ * by the year the average participant is assumed to die, only this fraction of the group is
+ * expected to still be drawing. Averages the life-expectancy ages across the group, then reads the
+ * expected survivors in that projection year against the headcount.
+ *
+ * Null when there is nobody to project or nobody carries a life expectancy — the footnote then
+ * omits the figure rather than printing a fabricated one.
+ */
+function survivalAtAverageLe(members: CohortMember[], valuationYear: number): string | null {
+	const withLe = members.filter((m) => m.lifeExpectancyAge !== undefined);
+	if (withLe.length === 0) return null;
+
+	// Projection year in which the average participant reaches their assumed death age.
+	const averageYearsToLe =
+		withLe.reduce((sum, m) => sum + ((m.lifeExpectancyAge as number) - m.currentAge), 0) /
+		withLe.length;
+	const year = Math.max(1, Math.round(averageYearsToLe));
+
+	const living = expectedSurvivors(members, year, valuationYear);
+	const alive = living[year - 1];
+	if (alive === undefined || members.length === 0) return null;
+	return `${((alive / members.length) * 100).toFixed(1)}%`;
+}
+
 function planSpecsFrom(quote: Quote): PlanSpecsDisplay {
 	const { company, modelSettings, census } = quote;
 	const nra = commonSerpValue(census, (i) => i.retirementAge);

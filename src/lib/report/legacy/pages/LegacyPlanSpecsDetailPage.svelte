@@ -78,11 +78,11 @@
 			<ol class="lettered">
 				<li>
 					Mortality at the life expectancy entered for each participant ({lifeExpectancy}), for
-					benefit, insurance and accounting computations
+					benefit and insurance computations
 				</li>
 				<li>
-					Mortality tables are used to illustrate the effect of partial mortality (Appendix G); the
-					figures in this analysis are not survival-weighted
+					Mortality table pursuant to IRC 417(e), for the accounting liability &amp; other
+					calculations, as required under GAAP
 				</li>
 			</ol>
 		</div>

@@ -8,10 +8,11 @@
 	 * `report.earningsLedgerSerp` (option-independent), and COLI [4] + combined [5] via
 	 * `report.earningsLedgerByOption[optionId]`. Columns show "—" before a run; the per-option
 	 * columns also show "—" when that option's solve was infeasible (the SERP columns still show).
-	 * The `**` footnote on column [3] says plainly that the column is NOT survival-weighted. The
-	 * source's version claims the opposite — that the column "reflects actuarial mortality
-	 * projections required under GAAP" — which is true of the source's own model and not of this
-	 * one. See pages 2.4, 4.5 and 5.1, corrected the same way, and DATA-GAPS.md.
+	 * The `**` footnote on column [3] states the survival weighting and quotes the proportion of the
+	 * group still living at average life expectancy. Both are true again: the pension obligation is
+	 * valued on the expected (survival-weighted) stream — see `engine/expected-benefits.ts`. It also
+	 * says plainly that these totals do not tie to the benefit and insurance figures elsewhere,
+	 * which are on the single-assumed-death-age basis.
 	 */
 	import type { ReportModel } from '../../report-data';
 	import LegacyPageShell from './LegacyPageShell.svelte';
@@ -105,10 +106,11 @@
 	<div class="notes">
 		<p><sup>{closingNote.marker}</sup> {closingNote.text}</p>
 		<p>
-			<sup>**</sup> Each participant is assumed to die at the life expectancy entered for them, so
-			this column is not weighted by survival probability. A valuation that applies an actuarial
-			mortality table would spread the same amounts across a range of ages; Appendix G illustrates
-			the difference in shape.
+			<sup>**</sup> Reflects the impact of actuarial mortality projections required under GAAP
+			accounting{report.mortalityAssumptions.survivalAtAverageLifeExpectancy
+				? `; ${report.mortalityAssumptions.survivalAtAverageLifeExpectancy} of plan participants are projected to be living at the beginning of the year of average life expectancy`
+				: ''}. Benefits and insurance values elsewhere in this analysis assume death at each
+			participant's life expectancy, so those totals and these do not tie.
 		</p>
 		<p>
 			<sup>^</sup> Represents Total over the life of the program, not limited to the {LEDGER_YEARS}
