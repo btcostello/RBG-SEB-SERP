@@ -23,7 +23,7 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 51 pages built
+## 2. Progress — 52 pages built
 
 Source sections A1 → I1. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 
@@ -58,8 +58,11 @@ Source sections A1 → I1. Registered in [legacy-registry.ts](./legacy-registry.
 | 43 | Comparison of Mortality Assumptions (chart) — **placeholder** | Appendix G | H3 Mortality Chart |
 | 44–48 | Glossary (5 sheets) | Appendix H.1–H.5 | I1 Glossary |
 
-**Next up:** TOC section F (hypothetical COLI value) is the only source not yet supplied.
-Appendix A–E, G and H are built.
+**Appendix F (Hypothetical Value of COLI) is built (2026-09-20).** It was never missing — it is in
+`Sample Report.pdf` in the repo root, which is the full assembled report rather than the
+per-section PDFs. Worth checking that file before concluding a source is unavailable.
+
+Every section the TOC promises is now built.
 
 **Every accounting page now carries live figures** — 5.2-1…5.2-4, 6.1, 6.2, 6.3-1, the added 6.3-2
 obligation roll-forward, 6.4, 6.5 and 6.6. The three-period axis the entry worksheets use lives in

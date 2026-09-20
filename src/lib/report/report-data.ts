@@ -12,6 +12,8 @@ import { Big, formatMoney, formatMoneyDisplay } from '$lib/money/money';
 import { ageNearestBirthday, completedYearsBetween } from '$lib/dates/age';
 import { survivorBenefitAtAge, survivorBenefitStream } from '$lib/engine/survivor-benefit';
 import { compositeLedger } from '$lib/ledger/ledger';
+import { coliValueForOption } from './legacy/coli-value';
+import type { ColiValueDisplay } from './legacy/coli-value';
 import { coliWorksheetAmounts, serpWorksheetAmounts } from './legacy/worksheets';
 import type { ColiWorksheetAmounts, WorksheetAmounts } from './legacy/worksheets';
 import { computeAccounting } from '$lib/accounting';
@@ -608,6 +610,8 @@ export interface ReportModel {
 	worksheets: WorksheetAmounts | null;
 	/** COLI entry amounts for page 6.4, keyed by strategy id. Empty pre-run. */
 	coliWorksheets: Record<string, ColiWorksheetAmounts>;
+	/** Hypothetical Value of COLI (Appendix F), keyed by strategy id. Empty pre-run. */
+	coliValueByOption: Record<string, ColiValueDisplay>;
 	/** Reference-year pension expense allocation by participant (page 6.6), or null pre-run / no SERP. */
 	costAllocation: CostAllocationDisplay | null;
 	/**
@@ -1361,6 +1365,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 	let pboRollforward: PboRollforwardDisplay | null = null;
 	let worksheets: WorksheetAmounts | null = null;
 	const coliWorksheets: Record<string, ColiWorksheetAmounts> = {};
+	const coliValueByOption: Record<string, ColiValueDisplay> = {};
 	let costAllocation: CostAllocationDisplay | null = null;
 	const earningsLedgerByOption: Record<string, EarningsLedgerOptionDisplay> = {};
 	if (results) {
@@ -1479,11 +1484,16 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 			const composite = compositeLedger(
 				results.perParticipant.map((participant) => participant.designs?.[option.id])
 			);
+			const deathProceeds = series.map((y) => new Big(y.deathProceeds ?? '0'));
+			// Appendix F — the same streams read as an asset story rather than an entry.
+			const coliValue = coliValueForOption(results, option.id, deathProceeds);
+			if (coliValue) coliValueByOption[option.id] = coliValue;
+
 			if (composite.length > 0) {
 				coliWorksheets[option.id] = coliWorksheetAmounts(
 					composite.map((row) => new Big(row.cashSurrenderValue)),
 					composite.map((row) => new Big(row.premium)),
-					series.map((year) => new Big(year.deathProceeds ?? '0')),
+					deathProceeds,
 					legacyRefDate
 				);
 			}
@@ -1631,6 +1641,7 @@ export function deriveReport(quote: Quote, todayIso: string): ReportModel {
 		pboRollforward,
 		worksheets,
 		coliWorksheets,
+		coliValueByOption,
 		costAllocation,
 		earningsLedgerByOption,
 		mortalityAssumptions: mortalityAssumptionsFrom(census, legacyRefDate),

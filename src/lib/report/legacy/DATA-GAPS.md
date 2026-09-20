@@ -59,6 +59,27 @@ follows, and that the build should hold to:
   `benefitFormula` — payments certain through a guaranteed period, life-contingent after it, with
   the survivor continuation on death — rather than a flat life-contingent assumption.
 
+## Appendix F — Hypothetical Value of COLI (built 2026-09-20)
+
+The asset-side page: policy values year by year, the annual charge or credit to earnings, a
+cumulative-earnings chart, and the four summary figures. Derived in `coli-value.ts` from the
+persisted illustration streams — no new engine work, since `compositeLedger` already sums an
+option's policies by policy year.
+
+Definitions, since the source only labels them: **CSV + Proceeds** is surrender value at year end
+plus death benefits collected to date; **after-tax earnings** is the surrender-value movement less
+premium plus proceeds (labelled after-tax because none applies — premiums are not deductible and
+the build-up and proceeds are not taxable); **total return** is the closing asset; **total gain** is
+that less every premium paid; **accretive from year N** is the first year the annual figure turns
+positive.
+
+Verified live on Option 1: total return **10,309,827** is exactly the after-tax SERP cost the
+cost-recovery design targets, and the gain is that less the 2,682,955 of premiums. Year 1 surrender
+value is 0 — the surrender charge — so the first year is a full-premium charge to earnings.
+
+⚠ Built for **Option 1 only**, matching the source. The component takes `strategyId`, so another
+option is a registry line.
+
 ## Stated basis vs actual basis (operator, 2026-09-20)
 
 The source report describes a valuation basis this model does not use, and three pages repeated the
