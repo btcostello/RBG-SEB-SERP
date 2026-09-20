@@ -23,7 +23,7 @@ existing production report at `/report`, and reuses the same design system and `
 
 ---
 
-## 2. Progress — 52 pages built
+## 2. Progress — 53 pages built
 
 Source sections A1 → I1. Registered in [legacy-registry.ts](./legacy-registry.ts) in this order:
 

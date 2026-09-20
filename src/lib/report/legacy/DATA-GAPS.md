@@ -710,9 +710,11 @@ Gaps:
   the engine re-point is the **IRS static mortality table for the plan's valuation year**, already
   projected with the 2024 Adjusted Scale MP-2021. The earlier note here said the plotted rates were
   unprojected 2012 base rates; that stopped being true when the engine was re-pointed.
-- ☐ **Supporting table sheet not built.** The source's second Appendix G sheet is the raw
-  living/deaths table behind the chart. Now derivable — `lifeTable`/`expectedSurvivors` produce
-  exactly those columns — but not built; say if you want it.
+- ☑ **Supporting table sheet — BUILT (2026-09-20).** The source's second Appendix G sheet, the
+  living/deaths table behind the chart. Year, then beginning-of-year living and deaths on each
+  basis, in two side-by-side blocks so 68 years fit on a printable sheet. Both series come from
+  `report.mortalityAssumptions`, the same derivation the chart plots, so the two sheets cannot
+  disagree. Beginning-of-year living is the group less the cumulative deaths before that year.
 
 Chart design notes (first chart, so conventions set here):
 - Series colours are the report's own teal/copper, with the teal nudged from `#1f7a8c` to

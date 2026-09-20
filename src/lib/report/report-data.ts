@@ -514,6 +514,11 @@ export interface MortalityAssumptions {
 	 */
 	excludedCount: number;
 	/**
+	 * SERP participants actually projected — the group both series count down from, and the opening
+	 * "living" figure on the Appendix G supporting table. Excludes anyone the table cannot cover.
+	 */
+	participantCount: number;
+	/**
 	 * Proportion of SERP participants projected to still be living at the start of the year each
 	 * reaches average life expectancy — the figure the 5.2 footnote quotes. Null when there is
 	 * nobody to project, or no single average life expectancy across the census.
@@ -759,6 +764,7 @@ function mortalityAssumptionsFrom(census: Insured[], refDate: string): Mortality
 		years: MORTALITY_CHART_YEARS,
 		actuarial: hasSeries ? actuarialDeaths(members, MORTALITY_CHART_YEARS, valuationYear) : null,
 		survivalAtAverageLifeExpectancy: survivalAtAverageLe(members, valuationYear),
+		participantCount: members.length,
 		assumed: hasSeries ? lifeExpectancyDeaths(members, MORTALITY_CHART_YEARS) : null,
 		excludedCount
 	};

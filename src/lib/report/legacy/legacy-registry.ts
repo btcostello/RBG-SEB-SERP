@@ -52,6 +52,7 @@ import LegacyAccountingDescPage from './pages/LegacyAccountingDescPage.svelte';
 import LegacySerpOverviewPage from './pages/LegacySerpOverviewPage.svelte';
 import LegacyColiOverviewPage from './pages/LegacyColiOverviewPage.svelte';
 import LegacyMortalityChartPage from './pages/LegacyMortalityChartPage.svelte';
+import LegacyMortalityTablePage from './pages/LegacyMortalityTablePage.svelte';
 import LegacyColiValuePage from './pages/LegacyColiValuePage.svelte';
 import LegacyGlossaryPage from './pages/LegacyGlossaryPage.svelte';
 
@@ -175,6 +176,11 @@ export const legacyReportPages: LegacyReportPage[] = [
 		props: { strategyId: 'cost-recovery', optionLabel: 'Cost Recovery Basis (Option 1)' }
 	},
 	{ id: 'h3-mortality-chart', title: 'Comparison of Mortality Assumptions (Appendix G)', component: LegacyMortalityChartPage },
+	{
+		id: 'h3-mortality-table',
+		title: 'Comparison of Mortality Assumptions — supporting table (Appendix G)',
+		component: LegacyMortalityTablePage
+	},
 	// Appendix H — five glossary sheets, one component driven by registry props.
 	...GLOSSARY_SHEETS.map((sheet, index) => ({
 		id: `i1-glossary-${index + 1}`,
